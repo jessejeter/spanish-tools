@@ -1,0 +1,22 @@
+# Credentials - NEVER commit these
+credentials.json
+*.json.bak
+
+# Logs
+sync_log.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
 """
-SpanishDict to Google Sheets Vocabulary Sync
+SpanishDict Vocabulary Scraper
 
-This script scrapes vocabulary words from SpanishDict lists and syncs them
-to a Google Spreadsheet, tracking when words were first added.
+Scrapes vocabulary words from SpanishDict lists and exports to CSV.
 """
 
+import csv
 import json
 import re
-import os
 from datetime import datetime
 from pathlib import Path
 
 import requests
-import gspread
-from google.oauth2.service_account import Credentials
 
-# Configuration
+# Configuration - your SpanishDict list URLs
 SPANISHDICT_URLS = {
     "misc": "https://www.spanishdict.com/lists/8562777/jesse35630s-misc",
     "nouns": "https://www.spanishdict.com/lists/8543367/jesse35630s-nouns",
@@ -25,11 +22,7 @@ SPANISHDICT_URLS = {
     "phrases": "https://www.spanishdict.com/lists/8545326/jesse35630s-phrases",
 }
 
-SPREADSHEET_ID = "1os_1x085Kr4eDVdDrylwGdZlR2HW8a2iocRN5Dm0dI0"
-
-# Path to your Google service account credentials JSON file
-# Update this path to where you save your credentials
-CREDENTIALS_PATH = Path(__file__).parent / "credentials.json"
+OUTPUT_FILE = Path(__file__).parent / "spanishdict_vocab.csv"
 
 
 def scrape_spanishdict_list(url: str) -> list[dict]:
@@ -116,99 +109,30 @@ def get_all_vocabulary() -> list[dict]:
     return all_words
 
 
-def get_google_sheets_client():
-    """
-    Authenticate and return a gspread client.
-    """
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ]
-
-    if not CREDENTIALS_PATH.exists():
-        raise FileNotFoundError(
-            f"Credentials file not found at {CREDENTIALS_PATH}\n"
-            "Please download your service account JSON key from Google Cloud Console "
-            "and save it as 'credentials.json' in the same folder as this script."
-        )
-
-    creds = Credentials.from_service_account_file(CREDENTIALS_PATH, scopes=scopes)
-    return gspread.authorize(creds)
-
-
-def sync_to_google_sheets(words: list[dict]):
-    """
-    Sync vocabulary words to Google Sheets.
-
-    - Reads existing words from the sheet
-    - Adds only new words (not already in the sheet)
-    - Records the date each word was added
-    """
-    print("\nConnecting to Google Sheets...")
-    client = get_google_sheets_client()
-
-    spreadsheet = client.open_by_key(SPREADSHEET_ID)
-
-    # Use the first sheet
-    sheet = spreadsheet.sheet1
-
-    # Get all existing data
-    existing_data = sheet.get_all_values()
-
-    # Check if sheet has headers, if not add them
-    headers = ["Spanish", "English", "Type", "Date Added"]
-    if not existing_data or existing_data[0] != headers:
-        if not existing_data:
-            sheet.append_row(headers)
-            existing_spanish = set()
-        else:
-            # Sheet has data but different headers - assume first row is headers
-            existing_spanish = {row[0] for row in existing_data[1:] if row}
-    else:
-        existing_spanish = {row[0] for row in existing_data[1:] if row}
-
-    # Find new words
+def export_to_csv(words: list[dict], output_path: Path = OUTPUT_FILE):
+    """Export vocabulary to CSV file with UTF-8 BOM for Excel compatibility."""
     today = datetime.now().strftime("%Y-%m-%d")
-    new_words = []
 
-    for word in words:
-        if word["spanish"] not in existing_spanish:
-            new_words.append([
-                word["spanish"],
-                word["english"],
-                word["type"],
-                today
-            ])
-            existing_spanish.add(word["spanish"])
+    with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Spanish", "English", "Type", "Date Added"])
+        for w in words:
+            writer.writerow([w["spanish"], w["english"], w["type"], today])
 
-    if new_words:
-        print(f"Adding {len(new_words)} new words...")
-        # Batch append for efficiency
-        sheet.append_rows(new_words)
-        print("Done!")
-    else:
-        print("No new words to add.")
-
-    return len(new_words)
+    print(f"\nExported {len(words)} words to {output_path}")
 
 
 def main():
     """Main entry point."""
     print("=" * 50)
-    print("SpanishDict to Google Sheets Sync")
+    print("SpanishDict Vocabulary Scraper")
     print(f"Running at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 50)
+    print("=" * 50 + "\n")
 
-    # Scrape all vocabulary
     all_words = get_all_vocabulary()
-    print(f"\nTotal words scraped: {len(all_words)}")
+    export_to_csv(all_words)
 
-    # Sync to Google Sheets
-    new_count = sync_to_google_sheets(all_words)
-
-    print("\n" + "=" * 50)
-    print(f"Sync complete. Added {new_count} new words.")
-    print("=" * 50)
+    print("\nDone!")
 
 
 if __name__ == "__main__":

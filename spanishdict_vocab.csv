@@ -1,706 +1,826 @@
 ﻿Spanish,English,Type,Date Added
-aunque,even if,misc,2026-02-02
-mediante,by means of,misc,2026-02-02
-a menos que,unless,misc,2026-02-02
-ya sea,either,misc,2026-02-02
-reseña,review,misc,2026-02-02
-siempre que,provided that,misc,2026-02-02
-por encima de,above,misc,2026-02-02
-ojalá,I wish,misc,2026-02-02
-aparte de,besides,misc,2026-02-02
-muro,wall,nouns,2026-02-02
-concha,shell,nouns,2026-02-02
-huelga,strike,nouns,2026-02-02
-llanta,tire,nouns,2026-02-02
-cuchara,spoon,nouns,2026-02-02
-hilo,thread,nouns,2026-02-02
-madrugada,small hours,nouns,2026-02-02
-cuchillo,knife,nouns,2026-02-02
-sala,living room,nouns,2026-02-02
-ola,wave,nouns,2026-02-02
-tela,fabric,nouns,2026-02-02
-llave,faucet,nouns,2026-02-02
-pasillo,aisle,nouns,2026-02-02
-sierra,saw,nouns,2026-02-02
-bien,property,nouns,2026-02-02
-campesino,peasant,nouns,2026-02-02
-herida,wound,nouns,2026-02-02
-olla,pot,nouns,2026-02-02
-pizarra,blackboard,nouns,2026-02-02
-derecho,law,nouns,2026-02-02
-mancha,stain,nouns,2026-02-02
-piedra,stone,nouns,2026-02-02
-muelle,pier,nouns,2026-02-02
-tenedor,fork,nouns,2026-02-02
-vela,candle,nouns,2026-02-02
-lana,wool,nouns,2026-02-02
-orilla,shore,nouns,2026-02-02
-aguja,needle,nouns,2026-02-02
-rabia,anger,nouns,2026-02-02
-madrastra,stepmother,nouns,2026-02-02
-cana,gray hair,nouns,2026-02-02
-rumbo,course,nouns,2026-02-02
-ceja,eyebrow,nouns,2026-02-02
-retrato,portrait,nouns,2026-02-02
-trama,plot,nouns,2026-02-02
-temor,fear,nouns,2026-02-02
-anuncio,advertisement,nouns,2026-02-02
-jaula,cage,nouns,2026-02-02
-vivienda,housing,nouns,2026-02-02
-beca,scholarship,nouns,2026-02-02
-trozo,piece,nouns,2026-02-02
-mejilla,cheek,nouns,2026-02-02
-coro,choir,nouns,2026-02-02
-gorro,hat,nouns,2026-02-02
-aldea,small village,nouns,2026-02-02
-cinturón,belt,nouns,2026-02-02
-ocio,leisure,nouns,2026-02-02
-rincón,corner,nouns,2026-02-02
-pesadilla,nightmare,nouns,2026-02-02
-manguera,hose,nouns,2026-02-02
-jornada,working day,nouns,2026-02-02
-carpeta,folder,nouns,2026-02-02
-resfriado,cold,nouns,2026-02-02
-don,talent,nouns,2026-02-02
-manga,sleeve,nouns,2026-02-02
-cobija,blanket,nouns,2026-02-02
-sombra,shade,nouns,2026-02-02
-sendero,path,nouns,2026-02-02
-superficie,surface,nouns,2026-02-02
-voluntad,will,nouns,2026-02-02
-socio,partner,nouns,2026-02-02
-grasa,fat,nouns,2026-02-02
-rencor,resentment,nouns,2026-02-02
-fuga,escape,nouns,2026-02-02
-empresario,businessman,nouns,2026-02-02
-testigo,witness,nouns,2026-02-02
-unidad,unit,nouns,2026-02-02
-inodoro,toilet,nouns,2026-02-02
-escasez,shortage,nouns,2026-02-02
-enseñanza,education,nouns,2026-02-02
-almacén,warehouse,nouns,2026-02-02
-batido,shake,nouns,2026-02-02
-sacerdote,priest,nouns,2026-02-02
-ganado,livestock,nouns,2026-02-02
-hueco,hole,nouns,2026-02-02
-anhelo,longing,nouns,2026-02-02
-aula,classroom,nouns,2026-02-02
-ánimo,mood,nouns,2026-02-02
-cosecha,harvest,nouns,2026-02-02
-ejército,army,nouns,2026-02-02
-obrero,worker,nouns,2026-02-02
-tijera,scissors,nouns,2026-02-02
-capricho,whim,nouns,2026-02-02
-eje,main idea,nouns,2026-02-02
-guion,script,nouns,2026-02-02
-grifo,faucet,nouns,2026-02-02
-misa,mass,nouns,2026-02-02
-relato,story,nouns,2026-02-02
-lectura,reading,nouns,2026-02-02
-portada,title page,nouns,2026-02-02
-trineo,sled,nouns,2026-02-02
-ladrillo,brick,nouns,2026-02-02
-dispositivo,device,nouns,2026-02-02
-arma,weapon,nouns,2026-02-02
-paleta,paddle,nouns,2026-02-02
-jarra,jug,nouns,2026-02-02
-sequía,drought,nouns,2026-02-02
-ala,wing,nouns,2026-02-02
-propósito,purpose,nouns,2026-02-02
-ayuntamiento,city council,nouns,2026-02-02
-alivio,relief,nouns,2026-02-02
-maricón,queer,nouns,2026-02-02
-nudo,knot,nouns,2026-02-02
-patrón,standard,nouns,2026-02-02
-volante,steering wheel,nouns,2026-02-02
-ámbito,field,nouns,2026-02-02
-flecha,arrow,nouns,2026-02-02
-lazo,bond,nouns,2026-02-02
-gota,drop,nouns,2026-02-02
-pereza,laziness,nouns,2026-02-02
-rebaño,herd,nouns,2026-02-02
-hito,milestone,nouns,2026-02-02
-infarto,heart attack,nouns,2026-02-02
-cuerno,horn,nouns,2026-02-02
-colega,coworker,nouns,2026-02-02
-borde,edge,nouns,2026-02-02
-puño,fist,nouns,2026-02-02
-enchufe,plug,nouns,2026-02-02
-umbral,threshold,nouns,2026-02-02
-villancico,Christmas carol,nouns,2026-02-02
-trapo,rag,nouns,2026-02-02
-formación,training,nouns,2026-02-02
-peluche,stuffed animal,nouns,2026-02-02
-lentes,glasses,nouns,2026-02-02
-empeño,determination,nouns,2026-02-02
-invernadero,greenhouse,nouns,2026-02-02
-manada,herd,nouns,2026-02-02
-persiana,blind,nouns,2026-02-02
-puñal,dagger,nouns,2026-02-02
-franja,band,nouns,2026-02-02
-trámite,process,nouns,2026-02-02
-garra,claw,nouns,2026-02-02
-chatarra,junk,nouns,2026-02-02
-matiz,nuance,nouns,2026-02-02
-condena,sentence,nouns,2026-02-02
-escondite,hiding place,nouns,2026-02-02
-conducta,behavior,nouns,2026-02-02
-poesía,poetry,nouns,2026-02-02
-inquilino,tenant,nouns,2026-02-02
-código,code,nouns,2026-02-02
-brecha,gap,nouns,2026-02-02
-desempeño,performance,nouns,2026-02-02
-codicia,greed,nouns,2026-02-02
-meseta,plateau,nouns,2026-02-02
-tuerca,nut,nouns,2026-02-02
-capilla,chapel,nouns,2026-02-02
-reclamo,complaint,nouns,2026-02-02
-mandado,errand,nouns,2026-02-02
-filo,cutting edge,nouns,2026-02-02
-bofetada,slap in the face,nouns,2026-02-02
-ajuste,adjustment,nouns,2026-02-02
-ampolla,blister,nouns,2026-02-02
-potencia,power,nouns,2026-02-02
-grúa,tow truck,nouns,2026-02-02
-recompensa,reward,nouns,2026-02-02
-Nochevieja,New Year's Eve,nouns,2026-02-02
-trecho,stretch,nouns,2026-02-02
-redactor,editor,nouns,2026-02-02
-raja,crack,nouns,2026-02-02
-repuesto,spare part,nouns,2026-02-02
-pauta,norm,nouns,2026-02-02
-partidario,supporter,nouns,2026-02-02
-heredero,heir,nouns,2026-02-02
-grieta,fissure,nouns,2026-02-02
-jerga,slang,nouns,2026-02-02
-embajada,embassy,nouns,2026-02-02
-desecho,waste,nouns,2026-02-02
-pólvora,gunpowder,nouns,2026-02-02
-soberanía,sovereignty,nouns,2026-02-02
-estallido,explosion,nouns,2026-02-02
-palo,stick,nouns,2026-02-02
-liderazgo,leadership,nouns,2026-02-02
-oleada,wave,nouns,2026-02-02
-diarrea,diarrhea,nouns,2026-02-02
-bestia,stupid,nouns,2026-02-02
-inmobiliaria,real estate agency,nouns,2026-02-02
-brote,outbreak,nouns,2026-02-02
-crisol,melting pot,nouns,2026-02-02
-abastecimiento,supply,nouns,2026-02-02
-cauce,riverbed,nouns,2026-02-02
-cautela,caution,nouns,2026-02-02
-aro,hoop,nouns,2026-02-02
-arado,plow,nouns,2026-02-02
-bullicio,racket,nouns,2026-02-02
-tajo,slash,nouns,2026-02-02
-miga,crumb,nouns,2026-02-02
-pomo,knob,nouns,2026-02-02
-trueque,barter,nouns,2026-02-02
-moretón,bruise,nouns,2026-02-02
-sorbo,sip,nouns,2026-02-02
-halago,compliment,nouns,2026-02-02
-parche,patch,nouns,2026-02-02
-manifestante,demonstrator,nouns,2026-02-02
-tubería,pipe,nouns,2026-02-02
-palabrota,swear word,nouns,2026-02-02
-decadencia,decline,nouns,2026-02-02
-gestor,agent,nouns,2026-02-02
-perilla,knob,nouns,2026-02-02
-tapón,plug,nouns,2026-02-02
-panal,honeycomb,nouns,2026-02-02
-coraza,shield,nouns,2026-02-02
-sesgo,bias,nouns,2026-02-02
-cínico,cynic,nouns,2026-02-02
-escalón,echelon,nouns,2026-02-02
-fichero,filing cabinet,nouns,2026-02-02
-listón,level,nouns,2026-02-02
-cajero automático,ATM,nouns,2026-02-02
-tinte,dye,nouns,2026-02-02
-guinda,cherry,nouns,2026-02-02
-pichón,chick,nouns,2026-02-02
-agua dulce,freshwater,nouns,2026-02-02
-repertorio,repertoire,nouns,2026-02-02
-porrazo,blow,nouns,2026-02-02
-hormigón,concrete,nouns,2026-02-02
-váter,toilet,nouns,2026-02-02
-papeleo,paperwork,nouns,2026-02-02
-insumo,supply,nouns,2026-02-02
-inmobiliario,real estate,nouns,2026-02-02
-retroalimentación,feedback,nouns,2026-02-02
-inciso,aside,nouns,2026-02-02
-soroche,altitude sickness,nouns,2026-02-02
-recaída,relapse,nouns,2026-02-02
-quiebre,turning point,nouns,2026-02-02
-cabestrillo,sling,nouns,2026-02-02
-metraje,running time,nouns,2026-02-02
-sobrecarga,overload,nouns,2026-02-02
-pagaré,IOU,nouns,2026-02-02
-costurero,seamster,nouns,2026-02-02
-desajuste,imbalance,nouns,2026-02-02
-banda sonora,soundtrack,nouns,2026-02-02
-flexión,push-up,nouns,2026-02-02
-montaña rusa,roller coaster,nouns,2026-02-02
-tecito,cup of tea,nouns,2026-02-02
-pan de molde,sliced bread,nouns,2026-02-02
-desborde,overflowing,nouns,2026-02-02
-joyita,nasty piece of work,nouns,2026-02-02
-en sí,in itself,nouns,2026-02-02
-pana,buddy,nouns,2026-02-02
-antelación,notice,nouns,2026-02-02
-carril bici,bike path,nouns,2026-02-02
-parte baja,lower part,nouns,2026-02-02
-puta,slut,nouns,2026-02-02
-encasillar,to pigeonhole,verbs,2026-02-02
-aportar,to contribute,verbs,2026-02-02
-padecer,to suffer from,verbs,2026-02-02
-desempeñarse,to work as,verbs,2026-02-02
-mirarse,to look at oneself,verbs,2026-02-02
-quedar,to agree to meet,verbs,2026-02-02
-deberse,to be due to,verbs,2026-02-02
-prepararse,to get ready,verbs,2026-02-02
-atreverse,to dare,verbs,2026-02-02
-despertarse,to wake up,verbs,2026-02-02
-coger,to take,verbs,2026-02-02
-llevar puesto,to wear,verbs,2026-02-02
-acabarse,to run out,verbs,2026-02-02
-corregir,to correct,verbs,2026-02-02
-falda,skirt,verbs,2026-02-02
-acudir,to turn to,verbs,2026-02-02
-payaso,clown,verbs,2026-02-02
-encender,to turn on,verbs,2026-02-02
-costar,to be hard,verbs,2026-02-02
-tender,to lay out,verbs,2026-02-02
-fijarse,to notice,verbs,2026-02-02
-cadera,hip,verbs,2026-02-02
-hígado,liver,verbs,2026-02-02
-manejarse,to get by,verbs,2026-02-02
-conjunto,collection,verbs,2026-02-02
-gorra,cap,verbs,2026-02-02
-atender,to pay attention,verbs,2026-02-02
-asustarse,to get frightened,verbs,2026-02-02
-cuna,cradle,verbs,2026-02-02
-enterarse,to find out,verbs,2026-02-02
-talla,size,verbs,2026-02-02
-otorgar,to grant,verbs,2026-02-02
-alejar,to move away from,verbs,2026-02-02
-calabaza,pumpkin,verbs,2026-02-02
-montar,to put on,verbs,2026-02-02
-cansarse,to get tired,verbs,2026-02-02
-reconocer,to recognize,verbs,2026-02-02
-ensayar,to rehearse,verbs,2026-02-02
-estirar,to stretch,verbs,2026-02-02
-toser,to cough,verbs,2026-02-02
-a menos que,unless,verbs,2026-02-02
-trozo,piece,verbs,2026-02-02
-acera,sidewalk,verbs,2026-02-02
-agotarse,to run out,verbs,2026-02-02
-agotar,to wear out,verbs,2026-02-02
-repartir,to give out,verbs,2026-02-02
-portarse,to behave,verbs,2026-02-02
-revolver,to stir,verbs,2026-02-02
-exponer,to explain,verbs,2026-02-02
-convivir,to live together,verbs,2026-02-02
-estallar,to explode,verbs,2026-02-02
-coser,to sew,verbs,2026-02-02
-panza,belly,verbs,2026-02-02
-mora,blackberry,verbs,2026-02-02
-don,gift,verbs,2026-02-02
-tener ganas de,to want to,verbs,2026-02-02
-sembrar,to plant,verbs,2026-02-02
-sendero,path,verbs,2026-02-02
-rasgo,feature,verbs,2026-02-02
-callar,to shut up,verbs,2026-02-02
-callarse,to be quiet,verbs,2026-02-02
-hacer falta,to need,verbs,2026-02-02
-morder,to bite,verbs,2026-02-02
-difundir,to spread,verbs,2026-02-02
-taco,heel,verbs,2026-02-02
-arándano,blueberry,verbs,2026-02-02
-secuestrar,to kidnap,verbs,2026-02-02
-plantear,to suggest,verbs,2026-02-02
-plantearse,to consider,verbs,2026-02-02
-apartar,to set aside,verbs,2026-02-02
-derrotar,to defeat,verbs,2026-02-02
-ensayo,rehearsal,verbs,2026-02-02
-vaciar,to drain,verbs,2026-02-02
-chupar,to suck,verbs,2026-02-02
-asco,disgust,verbs,2026-02-02
-juzgar,to judge,verbs,2026-02-02
-vigilar,to guard,verbs,2026-02-02
-asombroso,amazing,verbs,2026-02-02
-acabar con,to put an end to,verbs,2026-02-02
-trepar,to climb,verbs,2026-02-02
-partirse,to break,verbs,2026-02-02
-obligar,to force,verbs,2026-02-02
-comprobar,to prove,verbs,2026-02-02
-arrancar,to start,verbs,2026-02-02
-frambuesa,raspberry,verbs,2026-02-02
-saltarse,to skip,verbs,2026-02-02
-abordar,to approach,verbs,2026-02-02
-ceniza,ash,verbs,2026-02-02
-afirmar,to assert,verbs,2026-02-02
-tragarse,to swallow,verbs,2026-02-02
-impulsar,to propel,verbs,2026-02-02
-macho,male,verbs,2026-02-02
-ligar,to tie,verbs,2026-02-02
-mojar,to get wet,verbs,2026-02-02
-regañar,to scold,verbs,2026-02-02
-retirar,to take away,verbs,2026-02-02
-despreciar,to despise,verbs,2026-02-02
-estropear,to spoil,verbs,2026-02-02
-estropearse,to go bad,verbs,2026-02-02
-estafar,to rip off,verbs,2026-02-02
-descartar,to rule out,verbs,2026-02-02
-derretir,to melt,verbs,2026-02-02
-meterse,to go in,verbs,2026-02-02
-arder,to burn,verbs,2026-02-02
-percibir,to receive,verbs,2026-02-02
-recurrir,to turn to,verbs,2026-02-02
-desmayarse,to faint,verbs,2026-02-02
-madrugar,to get up early,verbs,2026-02-02
-confundir,to mix up,verbs,2026-02-02
-trastorno,disorder,verbs,2026-02-02
-hembra,female,verbs,2026-02-02
-heredar,to inherit,verbs,2026-02-02
-frenar,to slow down,verbs,2026-02-02
-bendecir,to bless,verbs,2026-02-02
-almacenar,to store,verbs,2026-02-02
-acariciar,to pet,verbs,2026-02-02
-retrasar,to delay,verbs,2026-02-02
-acertar,to get right,verbs,2026-02-02
-resultar,to turn out,verbs,2026-02-02
-apuntar,to write down,verbs,2026-02-02
-encogerse,to shrink,verbs,2026-02-02
-desplazar,to displace,verbs,2026-02-02
-desplazarse,to move,verbs,2026-02-02
-contraer,to contract,verbs,2026-02-02
-escupir,to spit,verbs,2026-02-02
-azotar,to whip,verbs,2026-02-02
-retroceder,to back up,verbs,2026-02-02
-brotar,to sprout,verbs,2026-02-02
-comportarse,to behave,verbs,2026-02-02
-coquetear,to flirt,verbs,2026-02-02
-extenderse,to spread,verbs,2026-02-02
-latir,to beat,verbs,2026-02-02
-al igual que,just like,verbs,2026-02-02
-truco,trick,verbs,2026-02-02
-lodo,mud,verbs,2026-02-02
-anhelar,to long,verbs,2026-02-02
-acechar,to stalk,verbs,2026-02-02
-enganchar,to hook,verbs,2026-02-02
-elaborar,to manufacture,verbs,2026-02-02
-jactarse,to boast,verbs,2026-02-02
-demorar,to delay,verbs,2026-02-02
-retratar,to portray,verbs,2026-02-02
-topar,to run into,verbs,2026-02-02
-dar una vuelta,to go for a drive,verbs,2026-02-02
-aporte,contribution,verbs,2026-02-02
-descontar,to deduct,verbs,2026-02-02
-conmoverse,to be moved,verbs,2026-02-02
-bromear,to kid,verbs,2026-02-02
-restar,to minimize,verbs,2026-02-02
-desviar,to divert,verbs,2026-02-02
-desgastarse,to wear out,verbs,2026-02-02
-fundir,to melt,verbs,2026-02-02
-inscribirse,to register,verbs,2026-02-02
-finca,country house,verbs,2026-02-02
-abarcar,to cover,verbs,2026-02-02
-trazar,to draw,verbs,2026-02-02
-derrocar,to overthrow,verbs,2026-02-02
-tumbar,to knock down,verbs,2026-02-02
-freno,brake,verbs,2026-02-02
-salpicar,to splash,verbs,2026-02-02
-trabarse,to get tangled up,verbs,2026-02-02
-rociar,to spray,verbs,2026-02-02
-instalarse,to settle,verbs,2026-02-02
-regir,to govern,verbs,2026-02-02
-indagar,to investigate,verbs,2026-02-02
-enloquecer,to drive crazy,verbs,2026-02-02
-enchufar,to plug in,verbs,2026-02-02
-contagiar,to pass on,verbs,2026-02-02
-contagiarse,to become infected,verbs,2026-02-02
-calzar,to wear,verbs,2026-02-02
-entablar,to start up,verbs,2026-02-02
-asentarse,to settle,verbs,2026-02-02
-aplazar,to postpone,verbs,2026-02-02
-manchar,to stain,verbs,2026-02-02
-resumir,to summarize,verbs,2026-02-02
-prestar atención,to pay attention,verbs,2026-02-02
-rebotar,to bounce,verbs,2026-02-02
-rallar,to grate,verbs,2026-02-02
-sobornar,to bribe,verbs,2026-02-02
-retomar,to resume,verbs,2026-02-02
-apuntarse,to be up for it,verbs,2026-02-02
-paradero,whereabouts,verbs,2026-02-02
-perdurar,to live on,verbs,2026-02-02
-marear,to make sick,verbs,2026-02-02
-rematar,to cap off,verbs,2026-02-02
-machacar,to crush,verbs,2026-02-02
-integrarse,to fit in,verbs,2026-02-02
-patrocinar,to sponsor,verbs,2026-02-02
-desahogar,to vent,verbs,2026-02-02
-desahogarse,to vent,verbs,2026-02-02
-zarpar,to set sail,verbs,2026-02-02
-tramitar,to apply for,verbs,2026-02-02
-recalcar,to stress,verbs,2026-02-02
-rondar,to be about,verbs,2026-02-02
-matizar,to qualify,verbs,2026-02-02
-palo,stick,verbs,2026-02-02
-encarar,to confront,verbs,2026-02-02
-mear,to piss,verbs,2026-02-02
-darse,to happen,verbs,2026-02-02
-arcilla,clay,verbs,2026-02-02
-ahorcarse,to hang oneself,verbs,2026-02-02
-ahuyentar,to frighten off,verbs,2026-02-02
-triturar,to grind,verbs,2026-02-02
-crack,star,verbs,2026-02-02
-fingir,to fake,verbs,2026-02-02
-factible,feasible,verbs,2026-02-02
-disfrazar,to disguise as,verbs,2026-02-02
-deprimir,to depress,verbs,2026-02-02
-digerir,to digest,verbs,2026-02-02
-calar,to catch on,verbs,2026-02-02
-aguantar,to hold up,verbs,2026-02-02
-tropiezo,stumble,verbs,2026-02-02
-traba,obstacle,verbs,2026-02-02
-pudrir,to rot,verbs,2026-02-02
-sortear,to avoid,verbs,2026-02-02
-arrendar,to rent,verbs,2026-02-02
-reprimir,to suppress,verbs,2026-02-02
-remedar,to mimic,verbs,2026-02-02
-acaparar,to monopolize,verbs,2026-02-02
-albergar,to be home to,verbs,2026-02-02
-desmoronarse,to collapse,verbs,2026-02-02
-ingresar,to enter,verbs,2026-02-02
-atascarse,to get stuck,verbs,2026-02-02
-prevalecer,to prevail,verbs,2026-02-02
-arar,to plow,verbs,2026-02-02
-tranquilizarse,to calm down,verbs,2026-02-02
-desembocar,to lead to,verbs,2026-02-02
-hurgar,to dig around in,verbs,2026-02-02
-apapachar,to cuddle,verbs,2026-02-02
-chafa,crappy,verbs,2026-02-02
-asemejarse,to resemble,verbs,2026-02-02
-tararear,to hum,verbs,2026-02-02
-comillas,quotation marks,verbs,2026-02-02
-asolar,to devastate,verbs,2026-02-02
-aliarse,to join forces,verbs,2026-02-02
-canalizar,to channel,verbs,2026-02-02
-escasear,to be scarce,verbs,2026-02-02
-hilar,to string together,verbs,2026-02-02
-pajita,straw,verbs,2026-02-02
-tapear,to have some tapas,verbs,2026-02-02
-cegar,to blind,verbs,2026-02-02
-forrarse,to make a killing,verbs,2026-02-02
-ojera,bag under one's eyes,verbs,2026-02-02
-desbloquear,to unblock,verbs,2026-02-02
-entrelazar,to intertwine,verbs,2026-02-02
-rastrillar,to rake,verbs,2026-02-02
-comprimir,to compress,verbs,2026-02-02
-altibajo,ups and downs,verbs,2026-02-02
-cotillear,to gossip,verbs,2026-02-02
-ambientar,to set,verbs,2026-02-02
-cabecear,to nod off,verbs,2026-02-02
-urgir,to urge,verbs,2026-02-02
-armonizar,to match,verbs,2026-02-02
-congeniar,to get along,verbs,2026-02-02
-varar,to run aground,verbs,2026-02-02
-opacar,to detract from,verbs,2026-02-02
-en aquel entonces,back then,verbs,2026-02-02
-rendirse,to give up,verbs,2026-02-02
-encargarse de,to take care of,verbs,2026-02-02
-estar harto de,to be fed up with,verbs,2026-02-02
-replantear,to bring up again,verbs,2026-02-02
-cumplir con,to comply with,verbs,2026-02-02
-dar de baja,to have disconnected,verbs,2026-02-02
-salir bien,to go well,verbs,2026-02-02
-tomar en cuenta,to keep in mind,verbs,2026-02-02
-¡Tate!,Look out!,verbs,2026-02-02
-desbancar,to oust,verbs,2026-02-02
-descontrolarse,to get out of control,verbs,2026-02-02
-encontrarse con,to find,verbs,2026-02-02
-echarse a perder,to go bad,verbs,2026-02-02
-echar a perder,to spoil,verbs,2026-02-02
-dar de comer,to feed,verbs,2026-02-02
-dar asco,to disgust,verbs,2026-02-02
-tener que ver con,to have to do with,verbs,2026-02-02
-apoderarse de,to seize,verbs,2026-02-02
-disponer de,to have,verbs,2026-02-02
-hacer caso de,to pay attention to,verbs,2026-02-02
-de ahí que,that's why,verbs,2026-02-02
-de cuando en cuando,from time to time,verbs,2026-02-02
-fardar,to show off,verbs,2026-02-02
-mantillo,mulch,verbs,2026-02-02
-hacerse cargo de,to take charge of,verbs,2026-02-02
-atracón,feast,verbs,2026-02-02
-desmerecer,to deteriorate,verbs,2026-02-02
-llover a cántaros,to pour,verbs,2026-02-02
-dar por hecho,to take for granted,verbs,2026-02-02
-bajarse de,to get off,verbs,2026-02-02
-esforzarse por,to try hard to,verbs,2026-02-02
-dar lugar a,to give rise to,verbs,2026-02-02
-dejar huella,to leave one's mark,verbs,2026-02-02
-alfabetizar,to teach to read and write,verbs,2026-02-02
-arruncharse,to curl up,verbs,2026-02-02
-estar dispuesto a,to be willing to,verbs,2026-02-02
-poquito a poquito,little by little,verbs,2026-02-02
-perrear,to twerk,verbs,2026-02-02
-partir de,to start from,verbs,2026-02-02
-marcharse de,to leave,verbs,2026-02-02
-autoconocimiento,self-knowledge,verbs,2026-02-02
-volar la cabeza,to blow one's mind,verbs,2026-02-02
-ir en bici,to go by bike,verbs,2026-02-02
-dar ganas de,to feel like,verbs,2026-02-02
-probar suerte,to try one's luck,verbs,2026-02-02
-a lo grande,in a big way,verbs,2026-02-02
-poner fin a,put an end to,verbs,2026-02-02
-arriesgarse a,to risk,verbs,2026-02-02
-ponerse en contacto con,to contact,verbs,2026-02-02
-tender a,to tend to,verbs,2026-02-02
-tirar de la cadena,to flush,verbs,2026-02-02
-acceder a,to access,verbs,2026-02-02
-remontarse a,to go back to,verbs,2026-02-02
-estar a la altura de,to be up to,verbs,2026-02-02
-inicia sesión,log in,verbs,2026-02-02
-alejado de,far from,verbs,2026-02-02
-desempeñar,to play,verbs,2026-02-02
-salir impune de,to get away with,verbs,2026-02-02
-aplanar,to flatten,verbs,2026-02-02
-autoconfianza,self-confidence,verbs,2026-02-02
-antropófago,cannibalistic,verbs,2026-02-02
-externar,to express,verbs,2026-02-02
-abrirse paso,to make one's way,verbs,2026-02-02
-agendar,to schedule,verbs,2026-02-02
-percatarse de,to realize,verbs,2026-02-02
-lagrimear,to tear up,verbs,2026-02-02
-dar vuelta en,to turn into,verbs,2026-02-02
-mentalizarse,to mentally prepare oneself,verbs,2026-02-02
-contrapesar,to offset,verbs,2026-02-02
-pase lo que pase,no matter what,verbs,2026-02-02
-rayado,scratched,adjectives,2026-02-02
-vago,lazy,adjectives,2026-02-02
-tacaño,stingy,adjectives,2026-02-02
-atrevido,bold,adjectives,2026-02-02
-apenas,barely,adjectives,2026-02-02
-fiel,loyal,adjectives,2026-02-02
-flojo,loose,adjectives,2026-02-02
-callado,silent,adjectives,2026-02-02
-ancho,wide,adjectives,2026-02-02
-capaz,able,adjectives,2026-02-02
-roto,broken,adjectives,2026-02-02
-débil,weak,adjectives,2026-02-02
-imprescindible,essential,adjectives,2026-02-02
-liso,smooth,adjectives,2026-02-02
-sabio,wise,adjectives,2026-02-02
-tierno,tender,adjectives,2026-02-02
-terco,stubborn,adjectives,2026-02-02
-escaso,scarce,adjectives,2026-02-02
-torpe,clumsy,adjectives,2026-02-02
-semejante,such,adjectives,2026-02-02
-pendiente,pending,adjectives,2026-02-02
-salvaje,wild,adjectives,2026-02-02
-ciego,blind,adjectives,2026-02-02
-encantador,charming,adjectives,2026-02-02
-leve,mild,adjectives,2026-02-02
-lacio,straight,adjectives,2026-02-02
-amargo,bitter,adjectives,2026-02-02
-asqueroso,disgusting,adjectives,2026-02-02
-recto,straight,adjectives,2026-02-02
-fino,thin,adjectives,2026-02-02
-sensato,sensible,adjectives,2026-02-02
-habitual,usual,adjectives,2026-02-02
-descalzo,barefoot,adjectives,2026-02-02
-por casualidad,by accident,adjectives,2026-02-02
-rentable,profitable,adjectives,2026-02-02
-grueso,thick,adjectives,2026-02-02
-inquietante,disturbing,adjectives,2026-02-02
-hábil,skilled,adjectives,2026-02-02
-encerrado,shut in,adjectives,2026-02-02
-servicial,helpful,adjectives,2026-02-02
-polémico,controversial,adjectives,2026-02-02
-penoso,laborious,adjectives,2026-02-02
-laico,secular,adjectives,2026-02-02
-concurrido,crowded,adjectives,2026-02-02
-anticuado,old-fashioned,adjectives,2026-02-02
-empinado,steep,adjectives,2026-02-02
-ahumado,smoked,adjectives,2026-02-02
-turbio,shady,adjectives,2026-02-02
-ileso,unharmed,adjectives,2026-02-02
-altamente,highly,adjectives,2026-02-02
-acomodado,well-off,adjectives,2026-02-02
-añadido,added,adjectives,2026-02-02
-imparable,unstoppable,adjectives,2026-02-02
-meramente,merely,adjectives,2026-02-02
-quirúrgico,surgical,adjectives,2026-02-02
-rotundo,resounding,adjectives,2026-02-02
-estirado,stuck-up,adjectives,2026-02-02
-rupestre,rock,adjectives,2026-02-02
-devastador,devastating,adjectives,2026-02-02
-bucal,oral,adjectives,2026-02-02
-pegadizo,catchy,adjectives,2026-02-02
-premiado,prizewinning,adjectives,2026-02-02
-paulatino,gradual,adjectives,2026-02-02
-irremediablemente,inevitably,adjectives,2026-02-02
-llevadero,bearable,adjectives,2026-02-02
-aledaño,adjacent,adjectives,2026-02-02
-somnoliento,drowsy,adjectives,2026-02-02
-docto,scholar,adjectives,2026-02-02
-férreo,strict,adjectives,2026-02-02
-verídico,truthful,adjectives,2026-02-02
-retraído,reserved,adjectives,2026-02-02
-a fondo,in depth,adjectives,2026-02-02
-por mucho,by far,adjectives,2026-02-02
-de sobra,spare,adjectives,2026-02-02
-sin rodeos,bluntly,adjectives,2026-02-02
-lineal,linear,adjectives,2026-02-02
-de broma,joking,adjectives,2026-02-02
-rácano,stingy,adjectives,2026-02-02
-a lo mejor,maybe,phrases,2026-02-02
+abarcar,to cover,verbs,2025-09-27
+chafa,crappy,verbs,2025-09-27
+exponer,to explain,verbs,2025-09-27
+hilar,to string together,verbs,2025-09-27
+perrear,to twerk,verbs,2025-09-27
+rallar,to grate,verbs,2025-09-27
+remedar,to mimic,verbs,2025-09-27
+tararear,to hum,verbs,2025-09-27
+¡Tate!,Look out!,verbs,2025-09-27
+comillas,quotation marks,verbs,2025-09-28
+ligar,to tie,verbs,2025-09-28
+replantear,to bring up again,verbs,2025-09-28
+callar,to shut up,verbs,2025-09-29
+pase lo que pase,no matter what,verbs,2025-09-29
+calzar,to wear,verbs,2025-09-30
+falda,skirt,verbs,2025-09-30
+taco,heel,verbs,2025-09-30
+talla,size,verbs,2025-09-30
+acabarse,to run out,verbs,2025-10-01
+asco,disgust,verbs,2025-10-01
+estirar,to stretch,verbs,2025-10-01
+lodo,mud,verbs,2025-10-01
+mantillo,mulch,verbs,2025-10-01
+marear,to make sick,verbs,2025-10-01
+morder,to bite,verbs,2025-10-03
+altibajo,ups and downs,verbs,2025-10-04
+atracón,feast,verbs,2025-10-04
+derretir,to melt,verbs,2025-10-04
+desmayarse,to faint,verbs,2025-10-04
+gorra,cap,verbs,2025-10-04
+pajita,straw,verbs,2025-10-04
+trastorno,disorder,verbs,2025-10-04
+truco,trick,verbs,2025-10-04
+abordar,to approach,verbs,2025-10-05
+bromear,to kid,verbs,2025-10-07
+callarse,to be quiet,verbs,2025-10-07
+panza,belly,verbs,2025-10-07
+arándano,blueberry,verbs,2025-10-08
+conjunto,collection,verbs,2025-10-08
+despertarse,to wake up,verbs,2025-10-08
+frambuesa,raspberry,verbs,2025-10-08
+mora,blackberry,verbs,2025-10-08
+ojera,bag under one's eyes,verbs,2025-10-08
+recalcar,to stress,verbs,2025-10-08
+traba,obstacle,verbs,2025-10-08
+rendirse,to give up,verbs,2025-10-09
+anhelar,to long,verbs,2025-10-10
+retomar,to resume,verbs,2025-10-10
+apartar,to set aside,verbs,2025-10-11
+aplazar,to postpone,verbs,2025-10-11
+aporte,contribution,verbs,2025-10-11
+cadera,hip,verbs,2025-10-11
+crack,star,verbs,2025-10-11
+enloquecer,to drive crazy,verbs,2025-10-11
+externar,to express,verbs,2025-10-11
+impulsar,to propel,verbs,2025-10-11
+juzgar,to judge,verbs,2025-10-11
+regañar,to scold,verbs,2025-10-11
+regir,to govern,verbs,2025-10-11
+tropiezo,stumble,verbs,2025-10-11
+a lo grande,in a big way,verbs,2025-10-12
+digerir,to digest,verbs,2025-10-12
+hembra,female,verbs,2025-10-12
+macho,male,verbs,2025-10-12
+a menos que,unless,verbs,2025-10-13
+acudir,to turn to,verbs,2025-10-13
+arcilla,clay,verbs,2025-10-13
+autoconfianza,self-confidence,verbs,2025-10-13
+autoconocimiento,self-knowledge,verbs,2025-10-13
+cansarse,to get tired,verbs,2025-10-13
+desahogarse,to vent,verbs,2025-10-13
+don,gift,verbs,2025-10-13
+inscribirse,to register,verbs,2025-10-13
+obligar,to force,verbs,2025-10-13
+payaso,clown,verbs,2025-10-13
+poquito a poquito,little by little,verbs,2025-10-13
+probar suerte,to try one's luck,verbs,2025-10-13
+tramitar,to apply for,verbs,2025-10-13
+arder,to burn,verbs,2025-10-14
+contrapesar,to offset,verbs,2025-10-14
+desplazar,to displace,verbs,2025-10-14
+extenderse,to spread,verbs,2025-10-14
+freno,brake,verbs,2025-10-14
+palo,stick,verbs,2025-10-14
+ahorcarse,to hang oneself,verbs,2025-10-15
+alejado de,far from,verbs,2025-10-15
+antropófago,cannibalistic,verbs,2025-10-15
+canalizar,to channel,verbs,2025-10-15
+ceniza,ash,verbs,2025-10-15
+finca,country house,verbs,2025-10-15
+hígado,liver,verbs,2025-10-15
+paradero,whereabouts,verbs,2025-10-15
+rasgo,feature,verbs,2025-10-15
+calabaza,pumpkin,verbs,2025-10-16
+congeniar,to get along,verbs,2025-10-16
+integrarse,to fit in,verbs,2025-10-16
+meterse,to go in,verbs,2025-10-16
+toser,to cough,verbs,2025-10-16
+fijarse,to notice,verbs,2025-10-18
+partirse,to break,verbs,2025-10-18
+tumbar,to knock down,verbs,2025-10-18
+coquetear,to flirt,verbs,2025-10-20
+desbloquear,to unblock,verbs,2025-10-20
+trozo,piece,verbs,2025-10-20
+cabecear,to nod off,verbs,2025-10-21
+cegar,to blind,verbs,2025-10-21
+cuna,cradle,verbs,2025-10-21
+ensayo,rehearsal,verbs,2025-10-21
+fingir,to fake,verbs,2025-10-21
+almacenar,to store,verbs,2025-10-22
+darse,to happen,verbs,2025-10-22
+deberse,to be due to,verbs,2025-10-22
+arruncharse,to curl up,verbs,2025-10-23
+desbancar,to oust,verbs,2025-10-23
+factible,feasible,verbs,2025-10-23
+grasa,fat,nouns,2025-10-23
+ladrillo,brick,nouns,2025-10-23
+plantear,to suggest,verbs,2025-10-23
+plantearse,to consider,verbs,2025-10-23
+al igual que,just like,verbs,2025-10-24
+arma,weapon,nouns,2025-10-24
+asombroso,amazing,verbs,2025-10-24
+banda sonora,soundtrack,nouns,2025-10-24
+colega,coworker,nouns,2025-10-24
+conducta,behavior,nouns,2025-10-24
+de ahí que,that's why,verbs,2025-10-24
+de cuando en cuando,from time to time,verbs,2025-10-24
+desajuste,imbalance,nouns,2025-10-24
+en sí,in itself,nouns,2025-10-24
+encarar,to confront,verbs,2025-10-24
+entablar,to start up,verbs,2025-10-24
+filo,cutting edge,nouns,2025-10-24
+jornada,working day,nouns,2025-10-24
+montar,to put on,verbs,2025-10-24
+obrero,worker,nouns,2025-10-24
+panal,honeycomb,nouns,2025-10-24
+recompensa,reward,nouns,2025-10-24
+retrasar,to delay,verbs,2025-10-24
+trama,plot,nouns,2025-10-24
+vaciar,to drain,verbs,2025-10-24
+asentarse,to settle,verbs,2025-10-25
+asustarse,to get frightened,verbs,2025-10-25
+coraza,shield,nouns,2025-10-25
+en aquel entonces,back then,verbs,2025-10-25
+herida,wound,nouns,2025-10-25
+hilo,thread,nouns,2025-10-25
+hito,milestone,nouns,2025-10-25
+inquietante,disturbing,adjectives,2025-10-25
+lentes,glasses,nouns,2025-10-25
+mejilla,cheek,nouns,2025-10-25
+piedra,stone,nouns,2025-10-25
+portada,title page,nouns,2025-10-25
+acomodado,well-off,adjectives,2025-10-26
+al borde de,on the verge of,phrases,2025-10-26
+lagrimear,to tear up,verbs,2025-10-26
+metraje,running time,nouns,2025-10-26
+potencia,power,nouns,2025-10-26
+soberanía,sovereignty,nouns,2025-10-26
+acechar,to stalk,verbs,2025-10-28
+madrugar,to get up early,verbs,2025-10-29
+revolver,to stir,verbs,2025-10-29
+coger,to take,verbs,2025-10-31
+derrotar,to defeat,verbs,2025-10-31
+ejército,army,nouns,2025-11-01
+enchufe,plug,nouns,2025-11-01
+garra,claw,nouns,2025-11-01
+manchar,to stain,verbs,2025-11-01
+tender,to lay out,verbs,2025-11-01
+tener ganas de,to want to,verbs,2025-11-01
+aro,hoop,nouns,2025-11-02
+atender,to pay attention,verbs,2025-11-02
+coser,to sew,verbs,2025-11-02
+encogerse,to shrink,verbs,2025-11-02
+grueso,thick,adjectives,2025-11-02
+inmobiliaria,real estate agency,nouns,2025-11-02
+inquilino,tenant,nouns,2025-11-02
+ola,wave,nouns,2025-11-02
+tubería,pipe,nouns,2025-11-02
+quedar,to agree to meet,verbs,2025-11-03
+tuerca,nut,nouns,2025-11-03
+aportar,to contribute,verbs,2025-11-04
+ayuntamiento,city council,nouns,2025-11-04
+bajarse de,to get off,verbs,2025-11-04
+bendecir,to bless,verbs,2025-11-04
+chupar,to suck,verbs,2025-11-04
+descontar,to deduct,verbs,2025-11-04
+grúa,tow truck,nouns,2025-11-04
+hacerse cargo de,to take charge of,verbs,2025-11-04
+ileso,unharmed,adjectives,2025-11-04
+por adelantado,in advance,phrases,2025-11-04
+rayado,scratched,adjectives,2025-11-04
+al tanto,up to date,phrases,2025-11-05
+desembocar,to lead to,verbs,2025-11-05
+desmoronarse,to collapse,verbs,2025-11-05
+"Mal de muchos, consuelo de tontos.",That's no consolation.,phrases,2025-11-05
+persiana,blind,nouns,2025-11-05
+rastrillar,to rake,verbs,2025-11-05
+alejar,to move away from,verbs,2025-11-06
+apenas,barely,adjectives,2025-11-06
+disponer de,to have,verbs,2025-11-06
+heredar,to inherit,verbs,2025-11-06
+semejante,such,adjectives,2025-11-06
+desahogar,to vent,verbs,2025-11-07
+capaz,able,adjectives,2025-11-08
+lineal,linear,adjectives,2025-11-08
+penoso,laborious,adjectives,2025-11-08
+retroceder,to back up,verbs,2025-11-08
+tijera,scissors,nouns,2025-11-08
+aldea,small village,nouns,2025-11-09
+aula,classroom,nouns,2025-11-09
+tender a,to tend to,verbs,2025-11-09
+a la vez,at the same time,phrases,2025-11-11
+convivir,to live together,verbs,2025-11-11
+dar ganas de,to feel like,verbs,2025-11-11
+difundir,to spread,verbs,2025-11-11
+volar la cabeza,to blow one's mind,verbs,2025-11-11
+dar vuelta en,to turn into,verbs,2025-11-12
+elaborar,to manufacture,verbs,2025-11-12
+entre sí,among themselves,phrases,2025-11-12
+machacar,to crush,verbs,2025-11-12
+manada,herd,nouns,2025-11-12
+polémico,controversial,adjectives,2025-11-12
+retirar,to take away,verbs,2025-11-12
+triturar,to grind,verbs,2025-11-12
+y si,what if,phrases,2025-11-12
+contagiarse,to become infected,verbs,2025-11-13
+estropearse,to go bad,verbs,2025-11-13
+laico,secular,adjectives,2025-11-13
+por lo general,in general,phrases,2025-11-13
+arar,to plow,verbs,2025-11-14
+ciego,blind,adjectives,2025-11-14
+lana,wool,nouns,2025-11-14
+salvaje,wild,adjectives,2025-11-14
+rumbo,course,nouns,2025-11-15
+cuerno,horn,nouns,2025-11-16
+cosecha,harvest,nouns,2025-11-17
+disfrazar,to disguise as,verbs,2025-11-17
+madrugada,small hours,nouns,2025-11-17
+decadencia,decline,nouns,2025-11-18
+huelga,strike,nouns,2025-11-18
+liderazgo,leadership,nouns,2025-11-18
+muro,wall,nouns,2025-11-18
+sembrar,to plant,verbs,2025-11-18
+alfabetizar,to teach to read and write,verbs,2025-11-19
+desmerecer,to deteriorate,verbs,2025-11-19
+inciso,aside,nouns,2025-11-19
+lectura,reading,nouns,2025-11-19
+sensato,sensible,adjectives,2025-11-19
+condena,sentence,nouns,2025-11-20
+pesadilla,nightmare,nouns,2025-11-20
+vigilar,to guard,verbs,2025-11-20
+mediante,by means of,misc,2025-11-21
+cínico,cynic,nouns,2025-11-22
+encargarse de,to take care of,verbs,2025-11-22
+hacer falta,to need,verbs,2025-11-22
+insumo,supply,nouns,2025-11-22
+más adelante,later,phrases,2025-11-22
+pana,buddy,nouns,2025-11-22
+por más que,no matter how,phrases,2025-11-22
+rebaño,herd,nouns,2025-11-22
+retrato,portrait,nouns,2025-11-22
+rupestre,rock,adjectives,2025-11-22
+arrancar,to start,verbs,2025-11-23
+aunque,even if,misc,2025-11-23
+callado,silent,adjectives,2025-11-23
+coro,choir,nouns,2025-11-23
+costar,to be hard,verbs,2025-11-23
+débil,weak,adjectives,2025-11-23
+flojo,loose,adjectives,2025-11-23
+hueco,hole,nouns,2025-11-23
+menos mal que,it's a good thing that,phrases,2025-11-23
+mentalizarse,to mentally prepare oneself,verbs,2025-11-23
+para nada,at all,phrases,2025-11-23
+reclamo,complaint,nouns,2025-11-23
+restar,to minimize,verbs,2025-11-23
+temor,fear,nouns,2025-11-23
+ya veremos,we'll see,phrases,2025-11-23
+inicia sesión,log in,verbs,2025-11-24
+tarde o temprano,sooner or later,phrases,2025-11-24
+topar,to run into,verbs,2025-11-24
+ala,wing,nouns,2025-11-25
+aliarse,to join forces,verbs,2025-11-25
+arrendar,to rent,verbs,2025-11-25
+desecho,waste,nouns,2025-11-25
+llevadero,bearable,adjectives,2025-11-25
+lo antes posible,ASAP,phrases,2025-11-25
+mandado,errand,nouns,2025-11-25
+manejarse,to get by,verbs,2025-11-25
+ocio,leisure,nouns,2025-11-25
+patrocinar,to sponsor,verbs,2025-11-25
+remontarse a,to go back to,verbs,2025-11-25
+rondar,to be about,verbs,2025-11-25
+tomar en cuenta,to keep in mind,verbs,2025-11-25
+vivienda,housing,nouns,2025-11-25
+a menos que,unless,misc,2025-11-26
+a su vez,in turn,phrases,2025-11-26
+armonizar,to match,verbs,2025-11-26
+como tal,as such,phrases,2025-11-26
+ensayar,to rehearse,verbs,2025-11-26
+escondite,hiding place,nouns,2025-11-26
+ir en bici,to go by bike,verbs,2025-11-26
+por lo cual,therefore,phrases,2025-11-26
+soroche,altitude sickness,nouns,2025-11-26
+todo lo posible,everything possible,phrases,2025-11-26
+trazar,to draw,verbs,2025-11-26
+al final,in the end,phrases,2025-11-27
+aparte de,besides,phrases,2025-11-27
+arriesgarse a,to risk,verbs,2025-11-27
+añadido,added,adjectives,2025-11-27
+cautela,caution,nouns,2025-11-27
+contagiar,to pass on,verbs,2025-11-27
+descontrolarse,to get out of control,verbs,2025-11-27
+esforzarse por,to try hard to,verbs,2025-11-27
+fiel,loyal,adjectives,2025-11-27
+imprescindible,essential,adjectives,2025-11-27
+instalarse,to settle,verbs,2025-11-27
+qué tal,how is,phrases,2025-11-27
+rebotar,to bounce,verbs,2025-11-27
+repartir,to give out,verbs,2025-11-27
+retroalimentación,feedback,nouns,2025-11-27
+somnoliento,drowsy,adjectives,2025-11-27
+umbral,threshold,nouns,2025-11-27
+urgir,to urge,verbs,2025-11-27
+apuntarse,to be up for it,verbs,2025-11-28
+cauce,riverbed,nouns,2025-11-28
+confundir,to mix up,verbs,2025-11-28
+de distancia,away,phrases,2025-11-28
+desborde,overflowing,nouns,2025-11-28
+frenar,to slow down,verbs,2025-11-28
+ganado,livestock,nouns,2025-11-28
+leve,mild,adjectives,2025-11-28
+orilla,shore,nouns,2025-11-28
+resfriado,cold,nouns,2025-11-28
+resumir,to summarize,verbs,2025-11-28
+tapón,plug,nouns,2025-11-28
+a grandes rasgos,broadly,phrases,2025-11-29
+a medida que,as,phrases,2025-11-29
+acariciar,to pet,verbs,2025-11-29
+afirmar,to assert,verbs,2025-11-29
+amargo,bitter,adjectives,2025-11-29
+cabestrillo,sling,nouns,2025-11-29
+demorar,to delay,verbs,2025-11-29
+estar a la altura de,to be up to,verbs,2025-11-29
+parte baja,lower part,nouns,2025-11-29
+sendero,path,verbs,2025-11-29
+sobornar,to bribe,verbs,2025-11-29
+aledaño,adjacent,adjectives,2025-11-30
+carril bici,bike path,nouns,2025-11-30
+código,code,nouns,2025-11-30
+dar por hecho,to take for granted,verbs,2025-11-30
+de sobra,spare,adjectives,2025-11-30
+dispositivo,device,nouns,2025-11-30
+estirado,stuck-up,adjectives,2025-11-30
+mojar,to get wet,verbs,2025-11-30
+más que nada,more than anything,phrases,2025-11-30
+por las dudas,just in case,phrases,2025-11-30
+retraído,reserved,adjectives,2025-11-30
+asolar,to devastate,verbs,2025-12-01
+jactarse,to boast,verbs,2025-12-01
+menos mal,it's a good thing,phrases,2025-12-01
+docto,scholar,adjectives,2025-12-02
+enseñanza,education,nouns,2025-12-02
+llave,faucet,nouns,2025-12-02
+premiado,prizewinning,adjectives,2025-12-02
+rincón,corner,nouns,2025-12-02
+sabio,wise,adjectives,2025-12-02
+almacén,warehouse,nouns,2025-12-03
+perdurar,to live on,verbs,2025-12-03
+poesía,poetry,nouns,2025-12-03
+rabia,anger,nouns,2025-12-03
+sobrecarga,overload,nouns,2025-12-03
+apuntar,to write down,verbs,2025-12-04
+carpeta,folder,nouns,2025-12-04
+derrocar,to overthrow,verbs,2025-12-04
+fichero,filing cabinet,nouns,2025-12-04
+nudo,knot,nouns,2025-12-04
+ojalá,I wish,misc,2025-12-04
+qué carajo,what the fuck,phrases,2025-12-04
+terco,stubborn,adjectives,2025-12-04
+desempeñar,to play,verbs,2025-12-06
+a lo mejor,maybe,phrases,2025-12-07
+férreo,strict,adjectives,2025-12-08
+dar lugar a,to give rise to,verbs,2025-12-10
+encerrado,shut in,adjectives,2025-12-10
+enchufar,to plug in,verbs,2025-12-10
+estafar,to rip off,verbs,2025-12-10
+flecha,arrow,nouns,2025-12-10
+irremediablemente,inevitably,adjectives,2025-12-10
+qué pedo,what's wrong,phrases,2025-12-10
+rentable,profitable,adjectives,2025-12-10
+de todas maneras,anyway,phrases,2025-12-11
+enterarse,to find out,verbs,2025-12-11
+villancico,Christmas carol,nouns,2025-12-11
+eje,main idea,nouns,2025-12-12
+bullicio,racket,nouns,2025-12-13
+por el cual,for which,phrases,2025-12-13
+salpicar,to splash,verbs,2025-12-13
+sendero,path,nouns,2025-12-13
+Nochevieja,New Year's Eve,nouns,2025-12-14
+olla,pot,nouns,2025-12-14
+ahumado,smoked,adjectives,2025-12-15
+cana,gray hair,nouns,2025-12-15
+echarse a perder,to go bad,verbs,2025-12-15
+estallido,explosion,nouns,2025-12-15
+halago,compliment,nouns,2025-12-15
+mancha,stain,nouns,2025-12-15
+prestar atención,to pay attention,verbs,2025-12-15
+derecho,law,nouns,2025-12-16
+sacerdote,priest,nouns,2025-12-16
+si es así,if so,phrases,2025-12-16
+trueque,barter,nouns,2025-12-16
+aguantar,to hold up,verbs,2025-12-17
+bien,property,nouns,2025-12-17
+concha,shell,nouns,2025-12-17
+embajada,embassy,nouns,2025-12-17
+escaso,scarce,adjectives,2025-12-17
+fundir,to melt,verbs,2025-12-17
+pagaré,IOU,nouns,2025-12-17
+patrón,standard,nouns,2025-12-17
+pudrir,to rot,verbs,2025-12-17
+tela,fabric,nouns,2025-12-17
+y tal,and all that stuff,phrases,2025-12-17
+comprimir,to compress,verbs,2025-12-18
+despreciar,to despise,verbs,2025-12-18
+gran cosa,much,phrases,2025-12-18
+opacar,to detract from,verbs,2025-12-18
+por si fuera poco,on top of that,phrases,2025-12-18
+portarse,to behave,verbs,2025-12-18
+quirúrgico,surgical,adjectives,2025-12-18
+altamente,highly,adjectives,2025-12-19
+bucal,oral,adjectives,2025-12-19
+gorro,hat,nouns,2025-12-19
+atascarse,to get stuck,verbs,2025-12-20
+bofetada,slap in the face,nouns,2025-12-20
+dar de baja,to have disconnected,verbs,2025-12-20
+desplazarse,to move,verbs,2025-12-20
+es lo que es,it is what it is,phrases,2025-12-20
+estar harto de,to be fed up with,verbs,2025-12-20
+guinda,cherry,nouns,2025-12-20
+parche,patch,nouns,2025-12-20
+por más ... que,no matter how much,phrases,2025-12-20
+repertorio,repertoire,nouns,2025-12-20
+roto,broken,adjectives,2025-12-20
+capricho,whim,nouns,2025-12-21
+gestor,agent,nouns,2025-12-21
+otorgar,to grant,verbs,2025-12-21
+pauta,norm,nouns,2025-12-21
+tierno,tender,adjectives,2025-12-21
+ancho,wide,adjectives,2025-12-23
+escalón,echelon,nouns,2025-12-23
+jarra,jug,nouns,2025-12-23
+misa,mass,nouns,2025-12-23
+trecho,stretch,nouns,2025-12-23
+turbio,shady,adjectives,2025-12-23
+vela,candle,nouns,2025-12-23
+contraer,to contract,verbs,2025-12-24
+ingresar,to enter,verbs,2025-12-24
+lacio,straight,adjectives,2025-12-24
+rociar,to spray,verbs,2025-12-24
+a fondo,in depth,adjectives,2025-12-25
+agotarse,to run out,verbs,2025-12-25
+agua dulce,freshwater,nouns,2025-12-25
+escasear,to be scarce,verbs,2025-12-25
+imparable,unstoppable,adjectives,2025-12-25
+mirarse,to look at oneself,verbs,2025-12-25
+perilla,knob,nouns,2025-12-25
+pomo,knob,nouns,2025-12-25
+por casualidad,by accident,adjectives,2025-12-25
+sesgo,bias,nouns,2025-12-25
+abastecimiento,supply,nouns,2025-12-26
+acertar,to get right,verbs,2025-12-26
+fuga,escape,nouns,2025-12-26
+grifo,faucet,nouns,2025-12-26
+paulatino,gradual,adjectives,2025-12-26
+testigo,witness,nouns,2025-12-26
+volante,steering wheel,nouns,2025-12-26
+ya sea,either,misc,2025-12-26
+abrirse paso,to make one's way,verbs,2025-12-28
+atreverse,to dare,verbs,2025-12-28
+atrevido,bold,adjectives,2025-12-28
+cuchara,spoon,nouns,2025-12-28
+cuchillo,knife,nouns,2025-12-28
+en sí,in itself,phrases,2025-12-28
+encasillar,to pigeonhole,verbs,2025-12-28
+moretón,bruise,nouns,2025-12-28
+tenedor,fork,nouns,2025-12-28
+tranquilizarse,to calm down,verbs,2025-12-28
+acabar con,to put an end to,verbs,2025-12-29
+devastador,devastating,adjectives,2025-12-29
+echar a perder,to spoil,verbs,2025-12-29
+estropear,to spoil,verbs,2025-12-29
+invernadero,greenhouse,nouns,2025-12-29
+poner fin a,put an end to,verbs,2025-12-29
+rematar,to cap off,verbs,2025-12-29
+voluntad,will,nouns,2025-12-29
+asqueroso,disgusting,adjectives,2025-12-30
+azotar,to whip,verbs,2025-12-30
+conmoverse,to be moved,verbs,2025-12-30
+dar asco,to disgust,verbs,2025-12-30
+dejar huella,to leave one's mark,verbs,2025-12-30
+madrastra,stepmother,nouns,2025-12-30
+trapo,rag,nouns,2025-12-30
+grieta,fissure,nouns,2025-12-31
+puñal,dagger,nouns,2025-12-31
+quiebre,turning point,nouns,2025-12-31
+raja,crack,nouns,2025-12-31
+zarpar,to set sail,verbs,2025-12-31
+aplanar,to flatten,verbs,2026-01-01
+arado,plow,nouns,2026-01-01
+borde,edge,nouns,2026-01-01
+franja,band,nouns,2026-01-01
+liso,smooth,adjectives,2026-01-01
+peluche,stuffed animal,nouns,2026-01-01
+pendiente,pending,adjectives,2026-01-01
+prevalecer,to prevail,verbs,2026-01-01
+superficie,surface,nouns,2026-01-01
+tajo,slash,nouns,2026-01-01
+deprimir,to depress,verbs,2026-01-02
+empeño,determination,nouns,2026-01-02
+llanta,tire,nouns,2026-01-02
+concurrido,crowded,adjectives,2026-01-03
+inmobiliario,real estate,nouns,2026-01-03
+pasillo,aisle,nouns,2026-01-03
+ponerse en contacto con,to contact,verbs,2026-01-03
+propósito,purpose,nouns,2026-01-03
+recurrir,to turn to,verbs,2026-01-03
+trabarse,to get tangled up,verbs,2026-01-03
+brotar,to sprout,verbs,2026-01-04
+brote,outbreak,nouns,2026-01-04
+cotillear,to gossip,verbs,2026-01-04
+padecer,to suffer from,verbs,2026-01-04
+salir impune de,to get away with,verbs,2026-01-04
+socio,partner,nouns,2026-01-04
+brecha,gap,nouns,2026-01-05
+trámite,process,nouns,2026-01-05
+beca,scholarship,nouns,2026-01-06
+rotundo,resounding,adjectives,2026-01-06
+chatarra,junk,nouns,2026-01-07
+fino,thin,adjectives,2026-01-07
+pereza,laziness,nouns,2026-01-07
+reconocer,to recognize,verbs,2026-01-07
+tacaño,stingy,adjectives,2026-01-07
+tapear,to have some tapas,verbs,2026-01-07
+alivio,relief,nouns,2026-01-08
+infarto,heart attack,nouns,2026-01-08
+latir,to beat,verbs,2026-01-08
+puta,slut,nouns,2026-01-08
+tener que ver con,to have to do with,verbs,2026-01-08
+acaparar,to monopolize,verbs,2026-01-09
+anuncio,advertisement,nouns,2026-01-09
+aparte de,besides,misc,2026-01-09
+corregir,to correct,verbs,2026-01-09
+escupir,to spit,verbs,2026-01-09
+estar dispuesto a,to be willing to,verbs,2026-01-09
+hábil,skilled,adjectives,2026-01-09
+listón,level,nouns,2026-01-09
+papeleo,paperwork,nouns,2026-01-09
+porrazo,blow,nouns,2026-01-09
+redactor,editor,nouns,2026-01-09
+rencor,resentment,nouns,2026-01-09
+reseña,review,misc,2026-01-09
+unidad,unit,nouns,2026-01-09
+campesino,peasant,nouns,2026-01-10
+encantador,charming,adjectives,2026-01-10
+llover a cántaros,to pour,verbs,2026-01-10
+partir de,to start from,verbs,2026-01-10
+recto,straight,adjectives,2026-01-10
+servicial,helpful,adjectives,2026-01-10
+siempre que,provided that,misc,2026-01-10
+comprobar,to prove,verbs,2026-01-11
+cumplir con,to comply with,verbs,2026-01-11
+desgastarse,to wear out,verbs,2026-01-11
+diarrea,diarrhea,nouns,2026-01-11
+encontrarse con,to find,verbs,2026-01-11
+fardar,to show off,verbs,2026-01-11
+guion,script,nouns,2026-01-11
+inodoro,toilet,nouns,2026-01-11
+matiz,nuance,nouns,2026-01-11
+mear,to piss,verbs,2026-01-11
+miga,crumb,nouns,2026-01-11
+montaña rusa,roller coaster,nouns,2026-01-11
+resultar,to turn out,verbs,2026-01-11
+rácano,stingy,adjectives,2026-01-11
+secuestrar,to kidnap,verbs,2026-01-11
+tirar de la cadena,to flush,verbs,2026-01-11
+vago,lazy,adjectives,2026-01-11
+váter,toilet,nouns,2026-01-11
+aguja,needle,nouns,2026-01-12
+empinado,steep,adjectives,2026-01-12
+sierra,saw,nouns,2026-01-12
+tragarse,to swallow,verbs,2026-01-12
+manga,sleeve,nouns,2026-01-13
+oleada,wave,nouns,2026-01-13
+acceder a,to access,verbs,2026-01-14
+cajero automático,ATM,nouns,2026-01-14
+enganchar,to hook,verbs,2026-01-14
+manguera,hose,nouns,2026-01-14
+apoderarse de,to seize,verbs,2026-01-15
+relato,story,nouns,2026-01-15
+retratar,to portray,verbs,2026-01-15
+bestia,stupid,nouns,2026-01-16
+descartar,to rule out,verbs,2026-01-17
+desempeño,performance,nouns,2026-01-17
+gota,drop,nouns,2026-01-17
+habitual,usual,adjectives,2026-01-17
+hay que ver,it's incredible,phrases,2026-01-17
+lazo,bond,nouns,2026-01-17
+lo máximo,the best,phrases,2026-01-17
+ni modo,there's no way,phrases,2026-01-17
+partidario,supporter,nouns,2026-01-17
+por encima de,above,misc,2026-01-17
+salir bien,to go well,verbs,2026-01-17
+sequía,drought,nouns,2026-01-17
+tecito,cup of tea,nouns,2026-01-17
+tinte,dye,nouns,2026-01-17
+agendar,to schedule,verbs,2026-01-18
+comportarse,to behave,verbs,2026-01-18
+sin rodeos,bluntly,adjectives,2026-01-18
+agotar,to wear out,verbs,2026-01-19
+anhelo,longing,nouns,2026-01-19
+asemejarse,to resemble,verbs,2026-01-19
+calar,to catch on,verbs,2026-01-19
+hacer caso de,to pay attention to,verbs,2026-01-19
+varar,to run aground,verbs,2026-01-19
+indagar,to investigate,verbs,2026-01-20
+matizar,to qualify,verbs,2026-01-20
+batido,shake,nouns,2026-01-21
+codicia,greed,nouns,2026-01-21
+entrelazar,to intertwine,verbs,2026-01-21
+hasta dónde,how far,phrases,2026-01-21
+percibir,to receive,verbs,2026-01-21
+pólvora,gunpowder,nouns,2026-01-21
+verídico,truthful,adjectives,2026-01-21
+antelación,notice,nouns,2026-01-22
+capilla,chapel,nouns,2026-01-22
+repuesto,spare part,nouns,2026-01-22
+ánimo,mood,nouns,2026-01-22
+pegadizo,catchy,adjectives,2026-01-23
+jerga,slang,nouns,2026-01-24
+palabrota,swear word,nouns,2026-01-24
+percatarse de,to realize,verbs,2026-01-24
+acera,sidewalk,verbs,2026-01-25
+encender,to turn on,verbs,2026-01-25
+sombra,shade,nouns,2026-01-25
+trineo,sled,nouns,2026-01-25
+trozo,piece,nouns,2026-01-25
+descalzo,barefoot,adjectives,2026-01-26
+desempeñarse,to work as,verbs,2026-01-26
+meramente,merely,adjectives,2026-01-26
+anticuado,old-fashioned,adjectives,2026-01-27
+cinturón,belt,nouns,2026-01-27
+joyita,nasty piece of work,nouns,2026-01-27
+maricón,queer,nouns,2026-01-27
+muelle,pier,nouns,2026-01-27
+pan de molde,sliced bread,nouns,2026-01-27
+saltarse,to skip,verbs,2026-01-27
+sin ir más lejos,as it happens,phrases,2026-01-27
+sortear,to avoid,verbs,2026-01-27
+trepar,to climb,verbs,2026-01-27
+ahuyentar,to frighten off,verbs,2026-01-28
+ampolla,blister,nouns,2026-01-28
+flexión,push-up,nouns,2026-01-28
+hormigón,concrete,nouns,2026-01-28
+hurgar,to dig around in,verbs,2026-01-28
+meseta,plateau,nouns,2026-01-28
+pizarra,blackboard,nouns,2026-01-28
+torpe,clumsy,adjectives,2026-01-28
+ámbito,field,nouns,2026-01-28
+desviar,to divert,verbs,2026-01-29
+estallar,to explode,verbs,2026-01-29
+forrarse,to make a killing,verbs,2026-01-29
+por mucho,by far,adjectives,2026-01-29
+puño,fist,nouns,2026-01-29
+pichón,chick,nouns,2026-01-30
+ajuste,adjustment,nouns,2026-01-31
+ceja,eyebrow,nouns,2026-01-31
+crisol,melting pot,nouns,2026-01-31
+dar una vuelta,to go for a drive,verbs,2026-01-31
+don,talent,nouns,2026-01-31
+jaula,cage,nouns,2026-01-31
+no hay problema,no problem,phrases,2026-01-31
+paleta,paddle,nouns,2026-01-31
+prepararse,to get ready,verbs,2026-01-31
+recaída,relapse,nouns,2026-01-31
+sala,living room,nouns,2026-01-31
+sorbo,sip,nouns,2026-01-31
+¡Wepa!,Oh yeah!,phrases,2026-01-31
+albergar,to be home to,verbs,2026-02-01
+ambientar,to set,verbs,2026-02-01
+apapachar,to cuddle,verbs,2026-02-01
+cobija,blanket,nouns,2026-02-01
+costurero,seamster,nouns,2026-02-01
+empresario,businessman,nouns,2026-02-01
+heredero,heir,nouns,2026-02-01
+llevar puesto,to wear,verbs,2026-02-01
 a pesar de,despite,phrases,2026-02-02
-al final,in the end,phrases,2026-02-02
-a la vez,at the same time,phrases,2026-02-02
-a medida que,as,phrases,2026-02-02
-por lo general,in general,phrases,2026-02-02
-a su vez,in turn,phrases,2026-02-02
-menos mal,it's a good thing,phrases,2026-02-02
-¡Wepa!,Oh yeah!,phrases,2026-02-02
-para nada,at all,phrases,2026-02-02
-de todas maneras,anyway,phrases,2026-02-02
-lo antes posible,ASAP,phrases,2026-02-02
-al tanto,up to date,phrases,2026-02-02
-no hay problema,no problem,phrases,2026-02-02
-ni modo,there's no way,phrases,2026-02-02
-como tal,as such,phrases,2026-02-02
-por más que,no matter how,phrases,2026-02-02
-aparte de,besides,phrases,2026-02-02
-más adelante,later,phrases,2026-02-02
-por lo cual,therefore,phrases,2026-02-02
+dar de comer,to feed,verbs,2026-02-02
+de broma,joking,adjectives,2026-02-02
+escasez,shortage,nouns,2026-02-02
+formación,training,nouns,2026-02-02
+manifestante,demonstrator,nouns,2026-02-02
+marcharse de,to leave,verbs,2026-02-02
+palo,stick,nouns,2026-02-02
 pese a,in spite of,phrases,2026-02-02
-qué tal,how is,phrases,2026-02-02
-menos mal que,it's a good thing that,phrases,2026-02-02
-tarde o temprano,sooner or later,phrases,2026-02-02
-ya veremos,we'll see,phrases,2026-02-02
-por adelantado,in advance,phrases,2026-02-02
-por si fuera poco,on top of that,phrases,2026-02-02
-entre sí,among themselves,phrases,2026-02-02
-más que nada,more than anything,phrases,2026-02-02
-hay que ver,it's incredible,phrases,2026-02-02
-al borde de,on the verge of,phrases,2026-02-02
-sin ir más lejos,as it happens,phrases,2026-02-02
-en sí,in itself,phrases,2026-02-02
-hasta dónde,how far,phrases,2026-02-02
-si es así,if so,phrases,2026-02-02
-qué pedo,what's wrong,phrases,2026-02-02
-por el cual,for which,phrases,2026-02-02
-por las dudas,just in case,phrases,2026-02-02
-qué carajo,what the fuck,phrases,2026-02-02
-"Mal de muchos, consuelo de tontos.",That's no consolation.,phrases,2026-02-02
-lo máximo,the best,phrases,2026-02-02
-a grandes rasgos,broadly,phrases,2026-02-02
-todo lo posible,everything possible,phrases,2026-02-02
-y tal,and all that stuff,phrases,2026-02-02
-de distancia,away,phrases,2026-02-02
-por más ... que,no matter how much,phrases,2026-02-02
-y si,what if,phrases,2026-02-02
-es lo que es,it is what it is,phrases,2026-02-02
-gran cosa,much,phrases,2026-02-02
+reprimir,to suppress,verbs,2026-02-02
+apego,attachment,nouns,2026-02-03
+boicotear,to boycott,verbs,2026-02-03
+gafas,glasses,nouns,2026-02-03
+ir a parar,to end up,verbs,2026-02-03
+prudencia,caution,nouns,2026-02-03
+dejar atrás,to leave behind,verbs,2026-02-04
+fisioterapeuta,physical therapist,nouns,2026-02-04
+remolacha,beet,nouns,2026-02-04
+sindicato,labor union,nouns,2026-02-04
+sugerencia,suggestion,nouns,2026-02-04
+verse,to see oneself,verbs,2026-02-04
+en aras de,in the interest of,phrases,2026-02-05
+en materia de,in terms of,phrases,2026-02-05
+sacar adelante,to make a success of,verbs,2026-02-05
+alcalde,mayor,nouns,2026-02-06
+factible,feasible,adjectives,2026-02-06
+fastidiar,to spoil,verbs,2026-02-06
+tal cual,exactly,phrases,2026-02-06
+a tope,seriously,phrases,2026-02-07
+actitud,attitude,nouns,2026-02-07
+ajeno,other people's,adjectives,2026-02-07
+chilango,native of Mexico City,nouns,2026-02-07
+desgarrado,torn,adjectives,2026-02-07
+escudo,shield,nouns,2026-02-07
+espantar,to frighten away,verbs,2026-02-07
+fregadero,sink,nouns,2026-02-07
+meñique,little finger,nouns,2026-02-07
+qué onda,what's up,phrases,2026-02-07
+cañón,really hard,adjectives,2026-02-08
+certeza,certainty,adjectives,2026-02-08
+chingo,shitload,adjectives,2026-02-08
+consentir,to spoil,verbs,2026-02-08
+cuadrado,square,nouns,2026-02-08
+cuadrícula,grid,nouns,2026-02-08
+cursi,corny,adjectives,2026-02-08
+derramar,to spill,verbs,2026-02-08
+derribar,to overthrow,verbs,2026-02-08
+desahuciar,to declare terminally ill,verbs,2026-02-08
+embate,onslaught,nouns,2026-02-08
+entregarse,to devote oneself,verbs,2026-02-08
+fleco,bangs,nouns,2026-02-08
+fracasar,to fail,verbs,2026-02-08
+lo lamento,I'm very sorry,phrases,2026-02-08
+pala,shovel,nouns,2026-02-08
+qué hueva,what a bummer,phrases,2026-02-08
+reñido,close,adjectives,2026-02-08
+pozo,well,nouns,2026-02-09
+sordo,deaf,adjectives,2026-02-09
+fiarse de,to trust,verbs,2026-02-10
+galgo,greyhound,nouns,2026-02-10
+aduana,customs,nouns,2026-02-11
+casualidad,coincidence,nouns,2026-02-11
+diestro,right-handed,adjectives,2026-02-11
+diputado,deputy,nouns,2026-02-11
+estar a punto de,to be about to,verbs,2026-02-11
+matutino,morning,adjectives,2026-02-11
+recaudar,to collect,verbs,2026-02-11
+varado,stranded,adjectives,2026-02-11
+vigente,in force,adjectives,2026-02-11
+zurdo,left-handed,adjectives,2026-02-11
+apretado,tight,adjectives,2026-02-12
+aventar,to throw out,verbs,2026-02-12
+collar,necklace,nouns,2026-02-12
+darse un atracón,to binge,verbs,2026-02-12
+despejar,to clear,verbs,2026-02-12
+gancho,hook,nouns,2026-02-12
+noviazgo,engagement,nouns,2026-02-12
+percatarse,to notice,verbs,2026-02-12
+rasgo,feature,nouns,2026-02-12
+reja,railing,nouns,2026-02-12
+rostro,face,nouns,2026-02-12
+voltear,to turn over,verbs,2026-02-12
+centro comercial,mall,nouns,2026-02-13
+garantía,guarantee,nouns,2026-02-13
+aludir,to allude to,verbs,2026-02-14
+antaño,in the past,adjectives,2026-02-14
+blando,soft,adjectives,2026-02-14
+cabreado,furious,adjectives,2026-02-14
+cal,lime,nouns,2026-02-14
+celeste,light-blue,adjectives,2026-02-14
+como que,as if,phrases,2026-02-14
+conmocionar,to shake profoundly,verbs,2026-02-14
+dimitir,to resign,verbs,2026-02-14
+en definitiva,in the end,phrases,2026-02-14
+estamparse,to crash into,verbs,2026-02-14
+fallecer,to pass away,verbs,2026-02-14
+flamear,to flap,verbs,2026-02-14
+libro de bolsillo,paperback,nouns,2026-02-14
+rastrear,to track,verbs,2026-02-14
+sello,stamp,nouns,2026-02-14
+acoger,to receive,verbs,2026-02-15
+boca arriba,on one's back,adjectives,2026-02-15
+calambre,cramp,nouns,2026-02-15
+cartera,wallet,nouns,2026-02-15
+carterista,pickpocket,nouns,2026-02-15
+cepo,trap,nouns,2026-02-15
+etiqueta,tag,nouns,2026-02-15
+hijo de puta,son of a bitch,nouns,2026-02-15
+lastimar,to hurt,verbs,2026-02-15
+meneo,jolt,nouns,2026-02-15
+tela de araña,spider web,nouns,2026-02-15
+alambre,wire,nouns,2026-02-16
+apodo,nickname,nouns,2026-02-16
+fugarse,to escape,verbs,2026-02-16
+pulso,hand,nouns,2026-02-16
+seno,heart,nouns,2026-02-16
+temblar,to tremble,verbs,2026-02-16
+agradecer,to thank,verbs,2026-02-17
+ausencia,absence,nouns,2026-02-17
+ficha,chip,nouns,2026-02-17
+mira nomás,just look at,phrases,2026-02-17
+no mames,no fucking way,phrases,2026-02-17
+palmas,clapping,nouns,2026-02-17
+¿Qué rollo?,What's up?,phrases,2026-02-17
+hasta que,until,phrases,2026-02-18
+anonadado,stunned,adjectives,2026-02-19
+llanto,crying,nouns,2026-02-19
+sobresalir,to stick out,verbs,2026-02-19
+tieso,stiff,adjectives,2026-02-19
+toparse con,to come across,verbs,2026-02-19

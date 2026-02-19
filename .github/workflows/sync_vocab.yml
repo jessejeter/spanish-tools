@@ -1,0 +1,33 @@
+name: Sync SpanishDict Vocabulary
+
+on:
+  schedule:
+    # 3 AM Eastern (8 AM UTC). During daylight saving time this runs at 4 AM EDT.
+    - cron: "0 8 * * *"
+  workflow_dispatch: # Allow manual runs from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run vocabulary sync
+        run: python sync_vocab.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet spanishdict_vocab.csv && exit 0
+          git add spanishdict_vocab.csv
+          git commit -m "Update vocabulary data"
+          git push

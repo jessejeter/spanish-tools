@@ -62,13 +62,27 @@ def scrape_spanishdict_list(url: str) -> list[dict]:
     senses = data.get("senses", [])
     translations = data.get("translations", [])
 
-    # Build lookup: senseId -> translation text
-    sense_to_translation = {t.get("senseId"): t.get("translation") for t in translations}
+    vocab_translations = data.get("vocabTranslations", [])
+
+    # Build lookup: senseId -> translation (text and id)
+    sense_to_translation = {}
+    for t in translations:
+        sense_to_translation[t.get("senseId")] = {
+            "text": t.get("translation"),
+            "id": t.get("id"),
+        }
+
+    # Build lookup: translationId -> createdAt date
+    translation_to_date = {}
+    for vt in vocab_translations:
+        created = vt.get("createdAt", "")
+        if created:
+            translation_to_date[vt.get("translationId")] = created[:10]  # "YYYY-MM-DD"
 
     # Build lookup: wordId -> senseId
     word_to_sense = {s.get("wordId"): s.get("id") for s in senses}
 
-    # Extract each word with its translation
+    # Extract each word with its translation and date added
     for word_entry in word_list:
         word_id = word_entry.get("id")
         spanish = word_entry.get("source")
@@ -76,13 +90,16 @@ def scrape_spanishdict_list(url: str) -> list[dict]:
         if not spanish:
             continue
 
-        # word.id -> sense.wordId -> sense.id -> translation.senseId
+        # word.id -> sense.wordId -> sense.id -> translation.senseId -> translation.id -> vocabTranslation.createdAt
         sense_id = word_to_sense.get(word_id)
-        english = sense_to_translation.get(sense_id, "") if sense_id else ""
+        trans = sense_to_translation.get(sense_id, {}) if sense_id else {}
+        english = trans.get("text", "")
+        date_added = translation_to_date.get(trans.get("id"), "")
 
         words.append({
             "spanish": spanish,
             "english": english,
+            "date_added": date_added,
         })
 
     return words
@@ -111,13 +128,13 @@ def get_all_vocabulary() -> list[dict]:
 
 def export_to_csv(words: list[dict], output_path: Path = OUTPUT_FILE):
     """Export vocabulary to CSV file with UTF-8 BOM for Excel compatibility."""
-    today = datetime.now().strftime("%Y-%m-%d")
+    words.sort(key=lambda w: (w.get("date_added", ""), w["spanish"].lower()))
 
     with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
         writer.writerow(["Spanish", "English", "Type", "Date Added"])
         for w in words:
-            writer.writerow([w["spanish"], w["english"], w["type"], today])
+            writer.writerow([w["spanish"], w["english"], w["type"], w.get("date_added", "")])
 
     print(f"\nExported {len(words)} words to {output_path}")
 

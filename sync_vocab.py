@@ -7,9 +7,7 @@ Scrapes vocabulary words from SpanishDict lists and exports to CSV.
 
 import csv
 import json
-import os
 import re
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -160,69 +158,15 @@ def get_all_vocabulary() -> list[dict]:
     return all_words
 
 
-def load_existing_analyses(output_path: Path = OUTPUT_FILE) -> dict[str, str]:
-    """Load previously generated AI analyses from the existing CSV, keyed by Spanish word."""
-    analyses = {}
-    if not output_path.exists():
-        return analyses
-    with open(output_path, "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            analysis = row.get("AI Analysis", "").strip()
-            if analysis:
-                analyses[row["Spanish"]] = analysis
-    return analyses
-
-
-def generate_ai_analysis(word: dict) -> str:
-    """Call Gemini API to generate analysis for a word."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return ""
-
-    prompt = (
-        f"For these cells, {word['spanish']}, {word['english']}, "
-        f"{word['part_of_speech']}, {word['popularity']}, put them together "
-        f"in this format: Cell1: Cell2 -- Cell 3 (Cell 4). Then, for this word, "
-        f"{word['spanish']}, note the main definition(s) and usages (ignore less "
-        f"common defs/usages), any important grammatical context (if anything "
-        f"particularly unusual or interesting, but say none if nothing worth "
-        f"noting) and a sample sentence, note the root origin, note the closest "
-        f"etymologically related English words (maybe one to three). If said "
-        f"English word is extremely rare define it in parentheses. If said English "
-        f"word has serious meaning drift, or it is not obvious how the words are "
-        f"etymologically related, detail the meaning and/or phonetic drift in "
-        f"parentheses. If no related English words, note that. Also note any very "
-        f"common etymologically related words in Spanish that are absolutely worth "
-        f"knowing. You do not have to include Spanish words that are not commonly "
-        f"used. If there are Spanish cognates worth including, then after listing "
-        f"them, define them in parentheses. Also, formatting-wise, can you "
-        f"separate each section with a vertical space?"
-    )
-
-    try:
-        resp = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=60,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except Exception as e:
-        print(f"  Warning: Gemini API error for {word['spanish']}: {e}")
-        return ""
-
-
 def export_to_csv(words: list[dict], output_path: Path = OUTPUT_FILE):
     """Export vocabulary to CSV file with UTF-8 BOM for Excel compatibility."""
     words.sort(key=lambda w: (w.get("date_added", ""), w["spanish"].lower()))
 
     with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
-        writer.writerow(["Date Added", "Spanish", "English", "Part of Speech", "Popularity", "AI Analysis"])
+        writer.writerow(["Date Added", "Spanish", "English", "Part of Speech", "Popularity"])
         for w in words:
-            writer.writerow([w["date_added"], w["spanish"], w["english"], w["part_of_speech"], w["popularity"], w.get("ai_analysis", "")])
+            writer.writerow([w["date_added"], w["spanish"], w["english"], w["part_of_speech"], w["popularity"]])
 
     print(f"\nExported {len(words)} words to {output_path}")
 
@@ -235,21 +179,6 @@ def main():
     print("=" * 50 + "\n")
 
     all_words = get_all_vocabulary()
-
-    # Load existing AI analyses so we only generate for new words
-    existing = load_existing_analyses()
-    new_count = 0
-    for w in all_words:
-        if w["spanish"] in existing:
-            w["ai_analysis"] = existing[w["spanish"]]
-        else:
-            print(f"  Generating AI analysis for: {w['spanish']}")
-            w["ai_analysis"] = generate_ai_analysis(w)
-            new_count += 1
-            if new_count % 15 == 0:
-                time.sleep(60)  # Rate limit: 15 requests per minute
-    print(f"\nGenerated {new_count} new AI analyses")
-
     export_to_csv(all_words)
 
     print("\nDone!")

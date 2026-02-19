@@ -132,6 +132,7 @@ def scrape_spanishdict_list(url: str) -> list[dict]:
         words.append({
             "spanish": spanish,
             "english": english,
+            "context_en": sense.get("contextEn", ""),
             "part_of_speech": pos,
             "popularity": word_entry.get("popularity", ""),
             "date_added": date_added,
@@ -163,9 +164,9 @@ def export_to_csv(words: list[dict], output_path: Path = OUTPUT_FILE):
 
     with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
-        writer.writerow(["Spanish", "English", "Part of Speech", "Popularity", "Date Added"])
+        writer.writerow(["Spanish", "English", "Context (EN)", "Part of Speech", "Popularity", "Date Added"])
         for w in words:
-            writer.writerow([w["spanish"], w["english"], w["part_of_speech"], w["popularity"], w["date_added"]])
+            writer.writerow([w["spanish"], w["english"], w["context_en"], w["part_of_speech"], w["popularity"], w["date_added"]])
 
     print(f"\nExported {len(words)} words to {output_path}")
 

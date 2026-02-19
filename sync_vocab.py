@@ -24,6 +24,26 @@ SPANISHDICT_URLS = {
 
 OUTPUT_FILE = Path(__file__).parent / "spanishdict_vocab.csv"
 
+PART_OF_SPEECH = {
+    1: "adjective",
+    2: "transitive verb",
+    3: "reflexive verb",
+    4: "noun",
+    5: "phrase",
+    9: "adverb",
+    10: "preposition",
+    11: "conjunction",
+    12: "interjection",
+    13: "intransitive verb",
+    14: "reciprocal verb",
+    20: "proper noun",
+    22: "pronominal verb",
+    25: "transitive verb phrase",
+    26: "intransitive verb phrase",
+    27: "plural noun",
+    32: "pronominal verb phrase",
+}
+
 
 def scrape_spanishdict_list(url: str) -> list[dict]:
     """
@@ -79,10 +99,18 @@ def scrape_spanishdict_list(url: str) -> list[dict]:
         if created:
             translation_to_date[vt.get("translationId")] = created[:10]  # "YYYY-MM-DD"
 
-    # Build lookup: wordId -> senseId
-    word_to_sense = {s.get("wordId"): s.get("id") for s in senses}
+    # Build lookup: wordId -> sense data
+    word_to_sense = {}
+    for s in senses:
+        word_to_sense[s.get("wordId")] = {
+            "id": s.get("id"),
+            "contextEn": s.get("contextEn", ""),
+            "contextEs": s.get("contextEs", ""),
+            "partOfSpeechId": s.get("partOfSpeechId", ""),
+            "gender": s.get("gender", ""),
+        }
 
-    # Extract each word with its translation and date added
+    # Extract each word with its translation, metadata, and date added
     for word_entry in word_list:
         word_id = word_entry.get("id")
         spanish = word_entry.get("source")
@@ -90,15 +118,22 @@ def scrape_spanishdict_list(url: str) -> list[dict]:
         if not spanish:
             continue
 
-        # word.id -> sense.wordId -> sense.id -> translation.senseId -> translation.id -> vocabTranslation.createdAt
-        sense_id = word_to_sense.get(word_id)
+        sense = word_to_sense.get(word_id, {})
+        sense_id = sense.get("id")
         trans = sense_to_translation.get(sense_id, {}) if sense_id else {}
         english = trans.get("text", "")
         date_added = translation_to_date.get(trans.get("id"), "")
 
+        pos = PART_OF_SPEECH.get(sense.get("partOfSpeechId"), str(sense.get("partOfSpeechId", "")))
+        gender = sense.get("gender", "")
+        if gender:
+            pos = f"{pos} ({gender})"
+
         words.append({
             "spanish": spanish,
             "english": english,
+            "part_of_speech": pos,
+            "popularity": word_entry.get("popularity", ""),
             "date_added": date_added,
         })
 
@@ -116,10 +151,6 @@ def get_all_vocabulary() -> list[dict]:
     for word_type, url in SPANISHDICT_URLS.items():
         print(f"Fetching {word_type} from {url}...")
         words = scrape_spanishdict_list(url)
-
-        for word in words:
-            word["type"] = word_type
-
         all_words.extend(words)
         print(f"  Found {len(words)} words")
 
@@ -132,9 +163,9 @@ def export_to_csv(words: list[dict], output_path: Path = OUTPUT_FILE):
 
     with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
-        writer.writerow(["Spanish", "English", "Type", "Date Added"])
+        writer.writerow(["Spanish", "English", "Part of Speech", "Popularity", "Date Added"])
         for w in words:
-            writer.writerow([w["spanish"], w["english"], w["type"], w.get("date_added", "")])
+            writer.writerow([w["spanish"], w["english"], w["part_of_speech"], w["popularity"], w["date_added"]])
 
     print(f"\nExported {len(words)} words to {output_path}")
 

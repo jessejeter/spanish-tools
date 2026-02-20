@@ -368,6 +368,7 @@ body {
     </div>
   </div>
   <button onclick="location.reload()">Start New Session</button>
+  <button onclick="practiceAll()" style="background:#16213e; margin-top:0;">Practice All Cards</button>
 </div>
 
 <script>
@@ -635,6 +636,16 @@ function showDone() {
 
   // Progress bar full
   document.getElementById('progress').style.width = '100%';
+}
+
+function practiceAll() {
+  sessionQueue = [...allCards];
+  shuffle(sessionQueue);
+  currentIndex = 0;
+  sessionStats = { reviewed: 0, newCards: 0 };
+  document.getElementById('done').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  showCard();
 }
 
 // ---- Event Listeners ----

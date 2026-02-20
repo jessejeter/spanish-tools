@@ -372,8 +372,8 @@ body {
 
 <script>
 const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
-const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet1`;
-const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet2`;
+const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
+const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
 const STORAGE_KEY = 'spanish-flashcards-srs';
 const NEW_CARDS_PER_SESSION = 10;
 
@@ -384,63 +384,35 @@ let currentCard = null;
 let isFlipped = false;
 let sessionStats = { reviewed: 0, newCards: 0 };
 
-// ---- CSV Parsing ----
-function parseCSV(text) {
-  const rows = [];
-  let current = '';
-  let inQuotes = false;
-  let row = [];
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"' && text[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else if (ch === '"') {
-        inQuotes = false;
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ',') {
-        row.push(current.trim());
-        current = '';
-      } else if (ch === '\n' || ch === '\r') {
-        if (ch === '\r' && text[i + 1] === '\n') i++;
-        row.push(current.trim());
-        if (row.some(c => c !== '')) rows.push(row);
-        row = [];
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
+// ---- Google Visualization JSON Parsing ----
+function parseGvizJson(text) {
+  // Response is: /*O_o*/\ngoogle.visualization.Query.setResponse({...});
+  const match = text.match(/google\.visualization\.Query\.setResponse\(({.*})\)/s);
+  if (!match) throw new Error('Invalid response from Google Sheets');
+  const data = JSON.parse(match[1]);
+  if (data.status === 'error') {
+    throw new Error(data.errors?.map(e => e.message).join(', ') || 'Sheet error');
   }
-  row.push(current.trim());
-  if (row.some(c => c !== '')) rows.push(row);
-  return rows;
+  const table = data.table;
+  // Convert to rows of string arrays (skip header row)
+  return table.rows.map(row =>
+    row.c.map(cell => (cell && cell.v != null) ? String(cell.v) : '')
+  );
 }
 
 // ---- Data Loading ----
 async function fetchSheet(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return parseCSV(await res.text());
+  return parseGvizJson(await res.text());
 }
 
 async function loadData() {
   try {
-    const [sheet1Rows, sheet2Rows] = await Promise.all([
+    const [s1, s2] = await Promise.all([
       fetchSheet(SHEET1_URL),
       fetchSheet(SHEET2_URL)
     ]);
-
-    // Skip headers
-    const s1 = sheet1Rows.slice(1);
-    const s2 = sheet2Rows.slice(1);
 
     const cards = [];
     for (let i = 0; i < s1.length && i < s2.length; i++) {

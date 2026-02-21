@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="42%" r="40%">
+      <stop offset="0%" stop-color="#e94560" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#e94560" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="icon-clip">
+      <rect width="512" height="512" rx="108"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#icon-clip)">
+    <!-- Background -->
+    <rect width="512" height="512" fill="url(#bg)"/>
+
+    <!-- Subtle warm glow behind letter -->
+    <rect width="512" height="512" fill="url(#glow)"/>
+
+    <!-- Giant Ñ lettermark -->
+    <text
+      x="256" y="322"
+      font-family="Georgia, 'Times New Roman', serif"
+      font-size="310"
+      font-weight="bold"
+      fill="white"
+      fill-opacity="0.95"
+      text-anchor="middle">&#209;</text>
+
+    <!-- Teal accent line -->
+    <rect x="0" y="416" width="512" height="8" fill="#4ecca3"/>
+
+    <!-- Red bottom stripe -->
+    <rect x="0" y="424" width="512" height="88" fill="#e94560"/>
+
+    <!-- Red top stripe -->
+    <rect x="0" y="0" width="512" height="10" fill="#e94560"/>
+  </g>
+</svg>

@@ -194,6 +194,27 @@ body {
   font-style: italic;
 }
 
+.card-other {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--green);
+  text-align: left;
+  width: 100%;
+  white-space: pre-wrap;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  display: none;
+}
+
+.card-other .other-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
 .card-analysis {
   font-size: 14px;
   line-height: 1.6;
@@ -335,6 +356,7 @@ body {
         <div class="card-label" id="back-label"></div>
         <div class="card-translation" id="back-word"></div>
         <div class="card-pos" id="back-pos"></div>
+        <div class="card-other" id="back-other"></div>
         <div class="card-analysis" id="back-analysis"></div>
       </div>
     </div>
@@ -428,6 +450,7 @@ async function loadData() {
         english: s1[i][2] || '',
         pos: s1[i][3] || '',
         analysis: s2[i][1] || '',
+        otherTranslations: s2[i][4] || '',
       });
     }
 
@@ -578,6 +601,17 @@ function showCard() {
   }
 
   document.getElementById('back-pos').textContent = currentCard.pos;
+
+  // Show other translations only for English→Spanish cards
+  const otherEl = document.getElementById('back-other');
+  if (!showSpanish && currentCard.otherTranslations) {
+    otherEl.style.display = 'block';
+    otherEl.innerHTML = '<div class="other-title">Other Translations</div>' +
+      currentCard.otherTranslations;
+  } else {
+    otherEl.style.display = 'none';
+  }
+
   document.getElementById('back-analysis').textContent = currentCard.analysis;
 
   // Update counter

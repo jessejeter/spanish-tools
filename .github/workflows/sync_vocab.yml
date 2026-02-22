@@ -31,3 +31,12 @@ jobs:
           git add spanishdict_vocab.csv
           git commit -m "Update vocabulary data"
           git push
+
+      - name: Install analysis dependencies
+        run: pip install google-auth google-api-python-client
+
+      - name: Run AI analysis
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: python analyze_vocab.py

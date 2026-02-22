@@ -169,7 +169,7 @@ def main():
         return
 
     # Process each word, writing in batches to preserve progress
-    BATCH_SIZE = 50
+    BATCH_SIZE = 10
     pending_updates = []
     total_written = 0
 

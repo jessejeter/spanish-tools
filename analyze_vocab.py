@@ -19,7 +19,8 @@ SPREADSHEET_ID = "14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 GEMINI_MODEL = "gemini-2.0-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-RATE_LIMIT_DELAY = 4  # seconds between Gemini calls (stays under 15 RPM free tier)
+RATE_LIMIT_DELAY = 5  # seconds between Gemini calls
+MAX_RETRIES = 5  # retry on rate limit errors
 
 
 def get_sheets_service():
@@ -50,16 +51,23 @@ def read_sheet(service, range_name):
 
 
 def call_gemini(prompt, api_key):
-    """Call Gemini API and return the text response."""
-    response = requests.post(
-        GEMINI_URL,
-        params={"key": api_key},
-        json={"contents": [{"parts": [{"text": prompt}]}]},
-        timeout=60,
-    )
-    response.raise_for_status()
-    data = response.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    """Call Gemini API with retry and exponential backoff on rate limits."""
+    for attempt in range(MAX_RETRIES):
+        response = requests.post(
+            GEMINI_URL,
+            params={"key": api_key},
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=60,
+        )
+        if response.status_code == 429:
+            wait = RATE_LIMIT_DELAY * (2 ** attempt)  # 5, 10, 20, 40, 80s
+            print(f"  Rate limited, waiting {wait}s (attempt {attempt + 1}/{MAX_RETRIES})")
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    raise Exception("Rate limited after all retries")
 
 
 def needs_generation(value):
@@ -160,8 +168,10 @@ def main():
         print("Nothing to do!")
         return
 
-    # Process each word, collecting batch updates
-    all_updates = []
+    # Process each word, writing in batches to preserve progress
+    BATCH_SIZE = 50
+    pending_updates = []
+    total_written = 0
 
     for idx, word in enumerate(words_to_process):
         row = word["row"]
@@ -173,7 +183,7 @@ def main():
         if word["need_analysis"]:
             try:
                 result = call_gemini(make_analysis_prompt(spanish), gemini_key)
-                all_updates.append({"range": f"Sheet2!B{row}", "values": [[result]]})
+                pending_updates.append({"range": f"Sheet2!B{row}", "values": [[result]]})
                 print(f"  Analysis generated ({len(result)} chars)")
             except Exception as e:
                 print(f"  Analysis failed: {e}")
@@ -184,22 +194,32 @@ def main():
                 result = call_gemini(
                     make_other_translations_prompt(english), gemini_key
                 )
-                all_updates.append({"range": f"Sheet2!E{row}", "values": [[result]]})
+                pending_updates.append({"range": f"Sheet2!E{row}", "values": [[result]]})
                 print(f"  Other translations generated ({len(result)} chars)")
             except Exception as e:
                 print(f"  Other translations failed: {e}")
             time.sleep(RATE_LIMIT_DELAY)
 
-    # Batch write all results to Sheet2
-    if all_updates:
-        print(f"\nWriting {len(all_updates)} updates to Sheet2...")
+        # Write batch to sheet periodically so progress isn't lost
+        if len(pending_updates) >= BATCH_SIZE:
+            print(f"  Writing batch of {len(pending_updates)} updates...")
+            service.spreadsheets().values().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={"valueInputOption": "RAW", "data": pending_updates},
+            ).execute()
+            total_written += len(pending_updates)
+            pending_updates = []
+
+    # Write any remaining updates
+    if pending_updates:
+        print(f"Writing final batch of {len(pending_updates)} updates...")
         service.spreadsheets().values().batchUpdate(
             spreadsheetId=SPREADSHEET_ID,
-            body={"valueInputOption": "RAW", "data": all_updates},
+            body={"valueInputOption": "RAW", "data": pending_updates},
         ).execute()
-        print("Done!")
-    else:
-        print("No successful generations to write.")
+        total_written += len(pending_updates)
+
+    print(f"Done! Wrote {total_written} updates total.")
 
 
 if __name__ == "__main__":

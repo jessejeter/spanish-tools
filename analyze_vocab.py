@@ -363,7 +363,15 @@ def sort_sheets(service):
     )
 
     all_s1 = [p[0] for p in pairs]
-    all_s2 = [p[1] for p in pairs]
+
+    # Convert reviewed column (col C, index 2) back to boolean so checkboxes aren't
+    # replaced with literal 'TRUE'/'FALSE' strings when writing with RAW mode.
+    all_s2 = []
+    for s2 in [p[1] for p in pairs]:
+        row = list(s2)
+        if len(row) > 2:
+            row[2] = row[2].strip().upper() == "TRUE"
+        all_s2.append(row)
 
     execute_with_retry(
         service.spreadsheets().values().update(

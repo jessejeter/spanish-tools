@@ -22,7 +22,8 @@ function onEdit(e) {
   const sheet = e.range.getSheet();
   if (sheet.getName() !== 'Sheet2' || e.range.getColumn() !== 3 || e.range.getRow() < 2) return;
   if (e.value === 'TRUE') {
-    sheet.getRange(e.range.getRow(), 4).setValue(new Date());
+    const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'M/d/yyyy');
+    sheet.getRange(e.range.getRow(), 4).setValue(today);
   } else {
     sheet.getRange(e.range.getRow(), 4).clearContent();
   }

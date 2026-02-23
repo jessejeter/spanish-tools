@@ -401,7 +401,8 @@ const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
 const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
 const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
 const STORAGE_KEY = 'spanish-flashcards-srs';
-const NEW_CARDS_PER_SESSION = 10;
+const NEW_CARDS_PER_DAY = 10;
+const NEW_CARDS_TODAY_KEY = 'spanish-flashcards-new-today';
 
 let allCards = [];
 let sessionQueue = [];
@@ -466,6 +467,20 @@ async function loadData() {
     document.getElementById('error').style.display = 'flex';
     document.getElementById('error-msg').textContent = err.message;
   }
+}
+
+// ---- Daily New Card Tracking ----
+function getNewCardsToday() {
+  try {
+    const data = JSON.parse(localStorage.getItem(NEW_CARDS_TODAY_KEY));
+    if (data && data.date === todayStr()) return data.count;
+  } catch {}
+  return 0;
+}
+
+function incrementNewCardsToday() {
+  const count = getNewCardsToday() + 1;
+  localStorage.setItem(NEW_CARDS_TODAY_KEY, JSON.stringify({ date: todayStr(), count }));
 }
 
 // ---- SRS Storage ----
@@ -542,9 +557,11 @@ function buildSession() {
   // Shuffle due cards
   shuffle(due);
 
-  // Take a batch of new cards
+  // Limit new cards to daily cap
+  const newToday = getNewCardsToday();
+  const remaining = Math.max(0, NEW_CARDS_PER_DAY - newToday);
   shuffle(newCards);
-  const newBatch = newCards.slice(0, NEW_CARDS_PER_SESSION);
+  const newBatch = newCards.slice(0, remaining);
 
   // Due cards first, then new
   sessionQueue = [...due, ...newBatch];
@@ -651,7 +668,10 @@ function grade(rating) {
 
   const srs = getSRS();
   const isNew = !srs[currentCard.spanish];
-  if (isNew) sessionStats.newCards++;
+  if (isNew) {
+    sessionStats.newCards++;
+    incrementNewCardsToday();
+  }
   sessionStats.reviewed++;
 
   updateCardSRS(currentCard.spanish, rating);

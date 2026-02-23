@@ -212,8 +212,8 @@ def main():
                 print(f"  Other translations failed: {e}")
             time.sleep(RATE_LIMIT_DELAY)
 
-        # Write batch to sheet periodically so progress isn't lost
-        if len(pending_updates) >= BATCH_SIZE:
+        # Write first word immediately, then batch the rest
+        if idx == 0 or len(pending_updates) >= BATCH_SIZE:
             print(f"  Writing batch of {len(pending_updates)} updates...")
             service.spreadsheets().values().batchUpdate(
                 spreadsheetId=SPREADSHEET_ID,

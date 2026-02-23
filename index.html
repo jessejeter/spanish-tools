@@ -637,10 +637,10 @@ function buildSession() {
   // Shuffle due cards
   shuffle(due);
 
-  // Limit new cards to daily cap — oldest date reviewed first so backlog clears in order
+  // Limit new cards to daily cap
   const newToday = getNewCardsToday();
   const remaining = Math.max(0, NEW_CARDS_PER_DAY - newToday);
-  newCards.sort((a, b) => (a.dateReviewed || '') < (b.dateReviewed || '') ? -1 : 1);
+  shuffle(newCards);
   const newBatch = newCards.slice(0, remaining);
 
   // Due cards first, then new

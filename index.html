@@ -270,6 +270,34 @@ body {
 .btn-hard { background: #7a6c2a; }
 .btn-easy { background: #2a7a5a; }
 
+/* Retire button */
+.retire-row {
+  display: flex;
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom, 4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.retire-row.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.btn-retire {
+  background: transparent;
+  border: 1px solid #444466;
+  color: #666688;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.btn-retire:active { transform: scale(0.95); }
+
 /* Done screen */
 #done {
   display: none;
@@ -375,6 +403,9 @@ body {
       Easy
       <span class="label" id="easy-interval"></span>
     </button>
+  </div>
+  <div class="retire-row" id="retire-row">
+    <button class="btn-retire" onclick="retire()">Retire — I'll never forget this</button>
   </div>
 </div>
 
@@ -547,6 +578,7 @@ function buildSession() {
 
   for (const card of allCards) {
     const data = srs[card.spanish];
+    if (data?.retired) continue;
     if (!data) {
       newCards.push(card);
     } else if (isDue(data)) {
@@ -601,6 +633,7 @@ function showCard() {
   const card = document.getElementById('card');
   card.classList.remove('flipped');
   document.getElementById('grade-buttons').classList.remove('visible');
+  document.getElementById('retire-row').classList.remove('visible');
 
   // Random direction
   const showSpanish = Math.random() < 0.5;
@@ -661,6 +694,16 @@ function flipCard() {
   isFlipped = true;
   document.getElementById('card').classList.add('flipped');
   document.getElementById('grade-buttons').classList.add('visible');
+  document.getElementById('retire-row').classList.add('visible');
+}
+
+function retire() {
+  if (!currentCard) return;
+  const srs = getSRS();
+  srs[currentCard.spanish] = { ...(srs[currentCard.spanish] || {}), retired: true };
+  saveSRS(srs);
+  currentIndex++;
+  showCard();
 }
 
 function grade(rating) {
@@ -721,6 +764,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === '1') grade('again');
     else if (e.key === '2') grade('hard');
     else if (e.key === '3') grade('easy');
+    else if (e.key === 'r' || e.key === 'R') retire();
   }
 });
 

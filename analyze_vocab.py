@@ -9,6 +9,7 @@ using Gemini API, and writes results to Sheet2.
 import csv
 import json
 import os
+import ssl
 import sys
 import time
 from pathlib import Path
@@ -39,9 +40,32 @@ def get_sheets_service():
     return build("sheets", "v4", credentials=creds)
 
 
+def execute_with_retry(request, max_retries=5):
+    """Execute a Google API request with retry on transient network/SSL errors."""
+    for attempt in range(max_retries):
+        try:
+            return request.execute()
+        except (ssl.SSLEOFError, ssl.SSLError, OSError, ConnectionError) as e:
+            if attempt < max_retries - 1:
+                wait = 15 * (2 ** attempt)  # 15, 30, 60, 120, 240s
+                print(f"  Network/SSL error (attempt {attempt + 1}/{max_retries}), retrying in {wait}s: {e}")
+                time.sleep(wait)
+            else:
+                raise
+        except Exception as e:
+            if attempt < max_retries - 1 and any(
+                code in str(e) for code in ["500", "502", "503", "504"]
+            ):
+                wait = 15 * (2 ** attempt)
+                print(f"  API server error, retrying in {wait}s: {e}")
+                time.sleep(wait)
+            else:
+                raise
+
+
 def read_sheet(service, range_name):
     """Read values from a sheet range."""
-    result = (
+    result = execute_with_retry(
         service.spreadsheets()
         .values()
         .get(
@@ -49,7 +73,6 @@ def read_sheet(service, range_name):
             range=range_name,
             valueRenderOption="FORMATTED_VALUE",
         )
-        .execute()
     )
     return result.get("values", [])
 
@@ -156,12 +179,14 @@ def sync_csv_to_sheet1(service):
 
     print(f"Adding {len(new_rows)} new words to Sheet1...")
     next_row = len(sheet1_rows) + 1
-    service.spreadsheets().values().update(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"Sheet1!A{next_row}",
-        valueInputOption="RAW",
-        body={"values": new_rows},
-    ).execute()
+    execute_with_retry(
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f"Sheet1!A{next_row}",
+            valueInputOption="RAW",
+            body={"values": new_rows},
+        )
+    )
     print(f"Synced {len(new_rows)} new words to Sheet1")
 
 
@@ -263,20 +288,24 @@ def main():
         # Write first word immediately, then batch the rest
         if idx == 0 or len(pending_updates) >= BATCH_SIZE:
             print(f"  Writing batch of {len(pending_updates)} updates...")
-            service.spreadsheets().values().batchUpdate(
-                spreadsheetId=SPREADSHEET_ID,
-                body={"valueInputOption": "RAW", "data": pending_updates},
-            ).execute()
+            execute_with_retry(
+                service.spreadsheets().values().batchUpdate(
+                    spreadsheetId=SPREADSHEET_ID,
+                    body={"valueInputOption": "RAW", "data": pending_updates},
+                )
+            )
             total_written += len(pending_updates)
             pending_updates = []
 
     # Write any remaining updates
     if pending_updates:
         print(f"Writing final batch of {len(pending_updates)} updates...")
-        service.spreadsheets().values().batchUpdate(
-            spreadsheetId=SPREADSHEET_ID,
-            body={"valueInputOption": "RAW", "data": pending_updates},
-        ).execute()
+        execute_with_retry(
+            service.spreadsheets().values().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={"valueInputOption": "RAW", "data": pending_updates},
+            )
+        )
         total_written += len(pending_updates)
 
     print(f"Done! Wrote {total_written} updates total.")
@@ -320,31 +349,39 @@ def sort_sheets(service):
 
     # Clear old data then write back only real rows
     clear_rows = max_rows - 1
-    service.spreadsheets().values().clear(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"Sheet1!A2:E{clear_rows + 1}",
-    ).execute()
-    service.spreadsheets().values().clear(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"Sheet2!A2:E{clear_rows + 1}",
-    ).execute()
+    execute_with_retry(
+        service.spreadsheets().values().clear(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f"Sheet1!A2:E{clear_rows + 1}",
+        )
+    )
+    execute_with_retry(
+        service.spreadsheets().values().clear(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f"Sheet2!A2:E{clear_rows + 1}",
+        )
+    )
 
     all_s1 = [p[0] for p in pairs]
     all_s2 = [p[1] for p in pairs]
 
-    service.spreadsheets().values().update(
-        spreadsheetId=SPREADSHEET_ID,
-        range="Sheet1!A2",
-        valueInputOption="RAW",
-        body={"values": all_s1},
-    ).execute()
+    execute_with_retry(
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range="Sheet1!A2",
+            valueInputOption="RAW",
+            body={"values": all_s1},
+        )
+    )
 
-    service.spreadsheets().values().update(
-        spreadsheetId=SPREADSHEET_ID,
-        range="Sheet2!A2",
-        valueInputOption="RAW",
-        body={"values": all_s2},
-    ).execute()
+    execute_with_retry(
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range="Sheet2!A2",
+            valueInputOption="RAW",
+            body={"values": all_s2},
+        )
+    )
 
     print(f"Sorted: {len(unreviewed)} unreviewed on top, {len(reviewed)} reviewed below")
 

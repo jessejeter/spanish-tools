@@ -17,7 +17,7 @@ from googleapiclient.discovery import build
 
 SPREADSHEET_ID = "14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 RATE_LIMIT_DELAY = 5  # seconds between Gemini calls
 MAX_RETRIES = 5  # retry on rate limit errors

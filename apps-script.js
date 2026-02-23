@@ -17,6 +17,17 @@
 
 const SRS_SHEET_NAME = 'SRS';
 
+// Auto-populate column D with today's date when the Reviewed checkbox (col C) is checked.
+function onEdit(e) {
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== 'Sheet2' || e.range.getColumn() !== 3 || e.range.getRow() < 2) return;
+  if (e.value === 'TRUE') {
+    sheet.getRange(e.range.getRow(), 4).setValue(new Date());
+  } else {
+    sheet.getRange(e.range.getRow(), 4).clearContent();
+  }
+}
+
 function getSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(SRS_SHEET_NAME) || ss.insertSheet(SRS_SHEET_NAME);

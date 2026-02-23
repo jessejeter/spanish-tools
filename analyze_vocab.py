@@ -110,7 +110,11 @@ def make_other_translations_prompt(english_word):
     return (
         f"{english_word} What are the main spanish translations of this word? "
         "List all *very* common ones. Omit infrequent ones. Also give the sense "
-        "of the translation in parentheses"
+        "of the translation in parentheses.\n\n"
+        "IMPORTANT formatting rules: Write in plain text only. Do NOT use markdown "
+        "formatting — no bold, no headers, no numbered lists. Use a simple list with "
+        "dashes. Keep each entry to one line: the Spanish word followed by the sense "
+        "in parentheses. Do NOT include example sentences. Be concise."
     )
 
 

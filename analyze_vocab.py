@@ -19,7 +19,7 @@ SPREADSHEET_ID = "14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-RATE_LIMIT_DELAY = 5  # seconds between Gemini calls
+RATE_LIMIT_DELAY = 0.5  # seconds between Gemini calls (paid tier has ~1000 RPM)
 MAX_RETRIES = 5  # retry on rate limit errors
 
 

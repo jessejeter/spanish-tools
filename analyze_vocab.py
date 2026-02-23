@@ -297,48 +297,51 @@ def sort_sheets(service):
     header1 = sheet1_rows[0]
     header2 = sheet2_rows[0] if sheet2_rows else []
 
-    # Pair data rows, padding Sheet2 to match Sheet1 length
+    # Pair data rows, skipping empty rows (no Spanish word in Sheet1 col B)
     pairs = []
-    for i in range(1, len(sheet1_rows)):
-        s1 = sheet1_rows[i]
+    max_rows = max(len(sheet1_rows), len(sheet2_rows))
+    for i in range(1, max_rows):
+        s1 = sheet1_rows[i] if i < len(sheet1_rows) else []
         s2 = sheet2_rows[i] if i < len(sheet2_rows) else []
         while len(s1) < 5:
             s1.append("")
         while len(s2) < 5:
             s2.append("")
+        if not s1[1].strip():
+            continue
         pairs.append((s1, s2))
 
-    # Sort: unreviewed first, then by date descending within each group
-    def sort_key(pair):
-        s2 = pair[1]
-        reviewed = 1 if s2[2].strip().upper() == "TRUE" else 0
-        date = pair[0][0] or ""  # Sheet1 col A = date added
-        return (reviewed, date)
-
-    # Sort unreviewed first, newest date first (reverse date within each group)
-    pairs.sort(key=lambda p: (sort_key(p)[0], ""), reverse=False)
-
-    # More precise sort: unreviewed first, then newest date first within each group
+    # Sort: unreviewed first (newest date first), then reviewed (newest date first)
     unreviewed = [(s1, s2) for s1, s2 in pairs if s2[2].strip().upper() != "TRUE"]
     reviewed = [(s1, s2) for s1, s2 in pairs if s2[2].strip().upper() == "TRUE"]
     unreviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
     reviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
     pairs = unreviewed + reviewed
 
-    # Write both sheets back
-    all_s1 = [header1] + [p[0] for p in pairs]
-    all_s2 = [header2] + [p[1] for p in pairs]
+    # Clear old data then write back only real rows
+    clear_rows = max_rows - 1
+    service.spreadsheets().values().clear(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f"Sheet1!A2:E{clear_rows + 1}",
+    ).execute()
+    service.spreadsheets().values().clear(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f"Sheet2!A2:E{clear_rows + 1}",
+    ).execute()
+
+    all_s1 = [p[0] for p in pairs]
+    all_s2 = [p[1] for p in pairs]
 
     service.spreadsheets().values().update(
         spreadsheetId=SPREADSHEET_ID,
-        range="Sheet1!A1",
+        range="Sheet1!A2",
         valueInputOption="RAW",
         body={"values": all_s1},
     ).execute()
 
     service.spreadsheets().values().update(
         spreadsheetId=SPREADSHEET_ID,
-        range="Sheet2!A1",
+        range="Sheet2!A2",
         valueInputOption="RAW",
         body={"values": all_s2},
     ).execute()

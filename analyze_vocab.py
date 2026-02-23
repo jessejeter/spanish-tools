@@ -86,9 +86,10 @@ def call_gemini(prompt, api_key):
             json={"contents": [{"parts": [{"text": prompt}]}]},
             timeout=60,
         )
-        if response.status_code == 429:
+        if response.status_code in (429, 503):
             wait = RATE_LIMIT_DELAY * (2 ** attempt)  # 5, 10, 20, 40, 80s
-            print(f"  Rate limited, waiting {wait}s (attempt {attempt + 1}/{MAX_RETRIES})")
+            label = "Rate limited" if response.status_code == 429 else "Service unavailable"
+            print(f"  {label}, waiting {wait}s (attempt {attempt + 1}/{MAX_RETRIES})")
             time.sleep(wait)
             continue
         response.raise_for_status()

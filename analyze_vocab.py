@@ -98,10 +98,12 @@ def make_analysis_prompt(spanish_word):
         "can you separate each section with a vertical space?\n\n"
         "IMPORTANT formatting rules: Write in plain text only. Do NOT use markdown "
         "formatting — no bold (**), no headers, no bullet points, no numbered lists. "
-        "Write in flowing paragraphs. Be concise. If grammatical context is none, "
-        "just write \"Grammatical context: none.\" on its own line. For the sample "
-        "sentence, write only the Spanish sentence — do NOT include an English "
-        "translation of it."
+        "Write in flowing paragraphs. Be concise. Use short section labels followed "
+        "by a colon, like: \"Grammatical context: none.\" or \"Root origin: ...\" or "
+        "\"Related English words: ...\" or \"Related Spanish words: ...\". "
+        "If grammatical context is none, just write \"Grammatical context: none.\" "
+        "For the sample sentence, write only the Spanish sentence — do NOT include "
+        "an English translation of it."
     )
 
 

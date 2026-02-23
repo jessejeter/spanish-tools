@@ -484,6 +484,7 @@ async function loadData() {
         pos: s1[i][3] || '',
         analysis: s2[i][1] || '',
         otherTranslations: s2[i][4] || '',
+        dateReviewed: s2[i][3] || '',
       });
     }
 
@@ -636,10 +637,10 @@ function buildSession() {
   // Shuffle due cards
   shuffle(due);
 
-  // Limit new cards to daily cap
+  // Limit new cards to daily cap — oldest date reviewed first so backlog clears in order
   const newToday = getNewCardsToday();
   const remaining = Math.max(0, NEW_CARDS_PER_DAY - newToday);
-  shuffle(newCards);
+  newCards.sort((a, b) => (a.dateReviewed || '') < (b.dateReviewed || '') ? -1 : 1);
   const newBatch = newCards.slice(0, remaining);
 
   // Due cards first, then new

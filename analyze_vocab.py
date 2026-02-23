@@ -348,18 +348,17 @@ def sort_sheets(service):
     reviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
     pairs = unreviewed + reviewed
 
-    # Clear old data then write back only real rows
-    clear_rows = max_rows - 1
+    # Clear a large fixed range to catch any stray rows from previous runs
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
-            range=f"Sheet1!A2:E{clear_rows + 1}",
+            range="Sheet1!A2:E10000",
         )
     )
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
-            range=f"Sheet2!A2:E{clear_rows + 1}",
+            range="Sheet2!A2:E10000",
         )
     )
 

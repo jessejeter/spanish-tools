@@ -434,6 +434,7 @@ const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gvi
 const STORAGE_KEY = 'spanish-flashcards-srs';
 const NEW_CARDS_PER_DAY = 10;
 const NEW_CARDS_TODAY_KEY = 'spanish-flashcards-new-today';
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE'; // paste Web app URL after deploying apps-script.js
 
 let allCards = [];
 let sessionQueue = [];
@@ -467,9 +468,9 @@ async function fetchSheet(url) {
 
 async function loadData() {
   try {
-    const [s1, s2] = await Promise.all([
-      fetchSheet(SHEET1_URL),
-      fetchSheet(SHEET2_URL)
+    const [[s1, s2]] = await Promise.all([
+      Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
+      syncRemoteSRS(),
     ]);
 
     const cards = [];
@@ -525,6 +526,51 @@ function saveSRS(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// ---- Remote SRS Sync ----
+function remoteEnabled() {
+  return APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE';
+}
+
+// On load: fetch remote SRS and merge with local (later lastReview wins).
+// Also pushes any local-only entries back so the server stays complete.
+async function syncRemoteSRS() {
+  if (!remoteEnabled()) return;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL);
+    if (!res.ok) return;
+    const remote = await res.json();
+    const local = getSRS();
+
+    // Merge: remote is base, but local entry wins if its lastReview is newer
+    const merged = { ...remote };
+    const localOnly = [];
+    for (const [word, data] of Object.entries(local)) {
+      if (!merged[word] || (data.lastReview || '') > (merged[word].lastReview || '')) {
+        merged[word] = data;
+      }
+      if (!remote[word]) localOnly.push({ word, ...data });
+    }
+
+    saveSRS(merged);
+
+    // Push local-only entries to remote so it stays complete
+    if (localOnly.length > 0) pushSRSRemote(localOnly);
+  } catch (e) {
+    console.warn('SRS remote sync failed, using local data:', e);
+  }
+}
+
+// Fire-and-forget: push one or more SRS entries to the server.
+// Uses no-cors POST so there's no preflight and we don't need to read the response.
+function pushSRSRemote(updates) {
+  if (!remoteEnabled()) return;
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify(updates),
+  }).catch(e => console.warn('SRS remote save failed:', e));
+}
+
 function getCardSRS(word) {
   const srs = getSRS();
   return srs[word] || null;
@@ -553,6 +599,7 @@ function updateCardSRS(word, rating) {
 
   srs[word] = card;
   saveSRS(srs);
+  pushSRSRemote([{ word, ...card }]);
   return card;
 }
 
@@ -700,8 +747,10 @@ function flipCard() {
 function retire() {
   if (!currentCard) return;
   const srs = getSRS();
-  srs[currentCard.spanish] = { ...(srs[currentCard.spanish] || {}), retired: true };
+  const cardData = { ...(srs[currentCard.spanish] || {}), retired: true };
+  srs[currentCard.spanish] = cardData;
   saveSRS(srs);
+  pushSRSRemote([{ word: currentCard.spanish, ...cardData }]);
   currentIndex++;
   showCard();
 }

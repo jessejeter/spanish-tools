@@ -6,14 +6,18 @@ Reads vocabulary from Google Sheet (Sheet1), generates AI analysis
 using Gemini API, and writes results to Sheet2.
 """
 
+import csv
 import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import requests
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+
+CSV_FILE = Path(__file__).parent / "spanishdict_vocab.csv"
 
 SPREADSHEET_ID = "14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -120,6 +124,47 @@ def make_other_translations_prompt(english_word):
     )
 
 
+def sync_csv_to_sheet1(service):
+    """Sync new words from the CSV to Sheet1, appending any missing entries."""
+    if not CSV_FILE.exists():
+        print(f"CSV file not found: {CSV_FILE}")
+        return
+
+    # Read CSV
+    with open(CSV_FILE, encoding="utf-8-sig") as f:
+        reader = csv.reader(f)
+        csv_header = next(reader)
+        csv_rows = list(reader)
+
+    # Read current Sheet1
+    sheet1_rows = read_sheet(service, "Sheet1!A:E")
+    existing_words = set()
+    for row in sheet1_rows[1:]:  # skip header
+        if len(row) >= 2 and row[1]:
+            existing_words.add(row[1].strip())
+
+    # Find new words in CSV not in Sheet1
+    # CSV columns: [Date Added, Spanish, English, Part of Speech, Popularity]
+    new_rows = []
+    for row in csv_rows:
+        if len(row) >= 2 and row[1].strip() not in existing_words:
+            new_rows.append(row)
+
+    if not new_rows:
+        print("Sheet1 is up to date with CSV")
+        return
+
+    print(f"Adding {len(new_rows)} new words to Sheet1...")
+    next_row = len(sheet1_rows) + 1
+    service.spreadsheets().values().update(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f"Sheet1!A{next_row}",
+        valueInputOption="RAW",
+        body={"values": new_rows},
+    ).execute()
+    print(f"Synced {len(new_rows)} new words to Sheet1")
+
+
 def main():
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if not gemini_key:
@@ -128,6 +173,9 @@ def main():
 
     print("Authenticating with Google Sheets API...")
     service = get_sheets_service()
+
+    print("Syncing CSV to Sheet1...")
+    sync_csv_to_sheet1(service)
 
     print("Reading Sheet1...")
     sheet1_rows = read_sheet(service, "Sheet1!A:E")

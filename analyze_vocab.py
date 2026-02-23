@@ -95,7 +95,13 @@ def make_analysis_prompt(spanish_word):
         "that are absolutely worth knowing. You do not have to include Spanish words "
         "that are not commonly used. If there are Spanish cognates worth including, "
         "then after listing them, define them in parentheses. Also, formatting-wise, "
-        "can you separate each section with a vertical space?"
+        "can you separate each section with a vertical space?\n\n"
+        "IMPORTANT formatting rules: Write in plain text only. Do NOT use markdown "
+        "formatting — no bold (**), no headers, no bullet points, no numbered lists. "
+        "Write in flowing paragraphs. Be concise. If grammatical context is none, "
+        "just write \"Grammatical context: none.\" on its own line. For the sample "
+        "sentence, write only the Spanish sentence — do NOT include an English "
+        "translation of it."
     )
 
 

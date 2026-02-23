@@ -281,6 +281,70 @@ def main():
 
     print(f"Done! Wrote {total_written} updates total.")
 
+    # Sort both sheets: unreviewed first (newest date first), then reviewed
+    sort_sheets(service)
+
+
+def sort_sheets(service):
+    """Sort Sheet1 and Sheet2 together: unreviewed on top (newest first), reviewed below."""
+    print("\nSorting sheets...")
+    sheet1_rows = read_sheet(service, "Sheet1!A:E")
+    sheet2_rows = read_sheet(service, "Sheet2!A:E")
+
+    if len(sheet1_rows) < 2:
+        return
+
+    header1 = sheet1_rows[0]
+    header2 = sheet2_rows[0] if sheet2_rows else []
+
+    # Pair data rows, padding Sheet2 to match Sheet1 length
+    pairs = []
+    for i in range(1, len(sheet1_rows)):
+        s1 = sheet1_rows[i]
+        s2 = sheet2_rows[i] if i < len(sheet2_rows) else []
+        while len(s1) < 5:
+            s1.append("")
+        while len(s2) < 5:
+            s2.append("")
+        pairs.append((s1, s2))
+
+    # Sort: unreviewed first, then by date descending within each group
+    def sort_key(pair):
+        s2 = pair[1]
+        reviewed = 1 if s2[2].strip().upper() == "TRUE" else 0
+        date = pair[0][0] or ""  # Sheet1 col A = date added
+        return (reviewed, date)
+
+    # Sort unreviewed first, newest date first (reverse date within each group)
+    pairs.sort(key=lambda p: (sort_key(p)[0], ""), reverse=False)
+
+    # More precise sort: unreviewed first, then newest date first within each group
+    unreviewed = [(s1, s2) for s1, s2 in pairs if s2[2].strip().upper() != "TRUE"]
+    reviewed = [(s1, s2) for s1, s2 in pairs if s2[2].strip().upper() == "TRUE"]
+    unreviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
+    reviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
+    pairs = unreviewed + reviewed
+
+    # Write both sheets back
+    all_s1 = [header1] + [p[0] for p in pairs]
+    all_s2 = [header2] + [p[1] for p in pairs]
+
+    service.spreadsheets().values().update(
+        spreadsheetId=SPREADSHEET_ID,
+        range="Sheet1!A1",
+        valueInputOption="RAW",
+        body={"values": all_s1},
+    ).execute()
+
+    service.spreadsheets().values().update(
+        spreadsheetId=SPREADSHEET_ID,
+        range="Sheet2!A1",
+        valueInputOption="RAW",
+        body={"values": all_s2},
+    ).execute()
+
+    print(f"Sorted: {len(unreviewed)} unreviewed on top, {len(reviewed)} reviewed below")
+
 
 if __name__ == "__main__":
     main()

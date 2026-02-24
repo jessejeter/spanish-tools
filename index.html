@@ -424,6 +424,7 @@ body {
     </div>
   </div>
   <button onclick="location.reload()">Start New Session</button>
+  <button onclick="startBonusMode()" style="background:#16213e; margin-top:0;">Bonus Mode</button>
   <button onclick="practiceAll()" style="background:#16213e; margin-top:0;">Practice All Cards</button>
 </div>
 
@@ -442,6 +443,7 @@ let currentIndex = 0;
 let currentCard = null;
 let isFlipped = false;
 let sessionStats = { reviewed: 0, newCards: 0 };
+let isBonusMode = false;
 
 // ---- Google Visualization JSON Parsing ----
 function parseGvizJson(text) {
@@ -647,6 +649,31 @@ function buildSession() {
   sessionQueue = [...due, ...newBatch];
   currentIndex = 0;
   sessionStats = { reviewed: 0, newCards: 0 };
+  isBonusMode = false;
+}
+
+function startBonusMode() {
+  isBonusMode = true;
+  const srs = getSRS();
+  const today = new Date();
+
+  const scored = allCards
+    .filter(card => !srs[card.spanish]?.retired)
+    .map(card => {
+      const data = srs[card.spanish];
+      if (!data || !data.lastReview || !data.interval) return { card, score: -1 };
+      const daysSince = (today - new Date(data.lastReview)) / 86400000;
+      const retention = Math.pow(0.9, daysSince / data.interval);
+      return { card, score: 1 - retention };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(({ card }) => card);
+
+  sessionQueue = scored;
+  currentIndex = 0;
+  document.getElementById('done').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  showCard();
 }
 
 function shuffle(arr) {
@@ -714,10 +741,13 @@ function showCard() {
 
   // Update counter
   const remaining = sessionQueue.length - currentIndex;
-  document.getElementById('counter').textContent =
-    `${currentIndex + 1} of ${sessionQueue.length}`;
-  document.getElementById('due-label').textContent =
-    `${remaining} remaining`;
+  if (isBonusMode) {
+    document.getElementById('counter').textContent = `Bonus Mode: Card ${currentIndex + 1}`;
+    document.getElementById('due-label').textContent = '';
+  } else {
+    document.getElementById('counter').textContent = `Daily Mode: ${currentIndex + 1} of ${sessionQueue.length}`;
+    document.getElementById('due-label').textContent = `${remaining} remaining`;
+  }
 
   // Progress bar
   const pct = (currentIndex / sessionQueue.length) * 100;

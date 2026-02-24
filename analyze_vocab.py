@@ -70,8 +70,8 @@ def ensure_sheet_capacity(service, sheet_names, min_rows=2000):
     )
     requests = []
     for sheet in spreadsheet["sheets"]:
-        props = sheet["sheetProperties"]
-        if props["title"] in sheet_names:
+        props = sheet["properties"]
+        if props.get("title") in sheet_names:
             current = props["gridProperties"]["rowCount"]
             if current < min_rows:
                 requests.append({

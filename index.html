@@ -710,8 +710,7 @@ function showCard() {
   document.getElementById('grade-buttons').classList.remove('visible');
   document.getElementById('retire-row').classList.remove('visible');
 
-  // Random direction
-  const showSpanish = Math.random() < 0.5;
+  const showSpanish = false;
 
   if (showSpanish) {
     document.getElementById('front-label').textContent = 'Spanish';

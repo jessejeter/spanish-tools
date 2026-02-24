@@ -21,11 +21,24 @@ const SRS_SHEET_NAME = 'SRS';
 function onEdit(e) {
   const sheet = e.range.getSheet();
   if (sheet.getName() !== 'Sheet2' || e.range.getColumn() !== 3 || e.range.getRow() < 2) return;
+  const row = e.range.getRow();
   if (e.value === 'TRUE') {
+    // Write review date to col D
     const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'M/d/yyyy');
-    sheet.getRange(e.range.getRow(), 4).setValue(today);
+    sheet.getRange(row, 4).setValue(today);
+
+    // Write summary to col A from Sheet1 data
+    const s1 = e.source.getSheetByName('Sheet1').getRange(row, 1, 1, 5).getValues()[0];
+    const date    = s1[0] ? Utilities.formatDate(new Date(s1[0]), Session.getScriptTimeZone(), 'M/d/yyyy') : '';
+    const spanish = s1[1] || '';
+    const english = s1[2] || '';
+    const pos     = s1[3] || '';
+    const pop     = s1[4] || '';
+    const summary = `${date}\n\n${spanish}: ${english}\n\nPOS: ${pos}\n\nPop: ${pop}`;
+    sheet.getRange(row, 1).setValue(summary);
   } else {
-    sheet.getRange(e.range.getRow(), 4).clearContent();
+    sheet.getRange(row, 4).clearContent();
+    sheet.getRange(row, 1).clearContent();
   }
 }
 

@@ -63,6 +63,34 @@ def execute_with_retry(request, max_retries=5):
                 raise
 
 
+def ensure_sheet_capacity(service, sheet_names, min_rows=2000):
+    """Expand any sheets that don't have enough rows."""
+    spreadsheet = execute_with_retry(
+        service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID)
+    )
+    requests = []
+    for sheet in spreadsheet["sheets"]:
+        props = sheet["sheetProperties"]
+        if props["title"] in sheet_names:
+            current = props["gridProperties"]["rowCount"]
+            if current < min_rows:
+                requests.append({
+                    "appendDimension": {
+                        "sheetId": props["sheetId"],
+                        "dimension": "ROWS",
+                        "length": min_rows - current,
+                    }
+                })
+    if requests:
+        execute_with_retry(
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={"requests": requests},
+            )
+        )
+        print(f"Expanded sheets to {min_rows} rows.")
+
+
 def read_sheet(service, range_name):
     """Read values from a sheet range."""
     result = execute_with_retry(
@@ -199,6 +227,8 @@ def main():
 
     print("Authenticating with Google Sheets API...")
     service = get_sheets_service()
+
+    ensure_sheet_capacity(service, ["Sheet1", "Sheet2"])
 
     print("Syncing CSV to Sheet1...")
     sync_csv_to_sheet1(service)

@@ -179,12 +179,12 @@ def sync_csv_to_sheet1(service):
         return
 
     print(f"Adding {len(new_rows)} new words to Sheet1...")
-    next_row = len(sheet1_rows) + 1
     execute_with_retry(
-        service.spreadsheets().values().update(
+        service.spreadsheets().values().append(
             spreadsheetId=SPREADSHEET_ID,
-            range=f"Sheet1!A{next_row}",
+            range="Sheet1!A1",
             valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
             body={"values": new_rows},
         )
     )

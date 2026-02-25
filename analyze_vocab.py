@@ -282,6 +282,7 @@ def main():
 
     if not words_to_process:
         print("Nothing to do!")
+        sort_sheets(service)
         return
 
     # Process each word, writing in batches to preserve progress
@@ -378,6 +379,13 @@ def sort_sheets(service):
     reviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
     pairs = unreviewed + reviewed
 
+    if not pairs:
+        print("No data rows to sort")
+        return
+
+    n_rows = len(pairs)
+    last_row = n_rows + 1  # last data row number (1-indexed, since data starts at row 2)
+
     # Clear a large fixed range to catch any stray rows from previous runs
     execute_with_retry(
         service.spreadsheets().values().clear(
@@ -394,15 +402,6 @@ def sort_sheets(service):
 
     all_s1 = [p[0] for p in pairs]
 
-    # Convert reviewed column (col C, index 2) back to boolean so checkboxes aren't
-    # replaced with literal 'TRUE'/'FALSE' strings when writing with RAW mode.
-    all_s2 = []
-    for s2 in [p[1] for p in pairs]:
-        row = list(s2)
-        if len(row) > 2:
-            row[2] = row[2].strip().upper() == "TRUE"
-        all_s2.append(row)
-
     execute_with_retry(
         service.spreadsheets().values().update(
             spreadsheetId=SPREADSHEET_ID,
@@ -412,12 +411,41 @@ def sort_sheets(service):
         )
     )
 
+    # Build Sheet2 column data separately to handle formulas and checkboxes correctly.
+    # Col A: formula showing "Spanish: English" from Sheet1 cols B and C of the same row.
+    col_a = [[f'=Sheet1!B{r}&": "&Sheet1!C{r}'] for r in range(2, last_row + 1)]
+    col_b = [[p[1][1]] for p in pairs]   # AI analysis (raw text)
+    col_c = [["TRUE" if p[1][2].strip().upper() == "TRUE" else "FALSE"] for p in pairs]  # Reviewed checkbox
+    col_d = [[p[1][3]] for p in pairs]   # review date (raw text)
+    col_e = [[p[1][4]] for p in pairs]   # other translations (raw text)
+
+    # Write col A (formula) and col C (checkbox) with USER_ENTERED so formulas are
+    # evaluated and "TRUE"/"FALSE" strings reliably set checkbox state.
     execute_with_retry(
-        service.spreadsheets().values().update(
+        service.spreadsheets().values().batchUpdate(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet2!A2",
-            valueInputOption="RAW",
-            body={"values": all_s2},
+            body={
+                "valueInputOption": "USER_ENTERED",
+                "data": [
+                    {"range": f"Sheet2!A2:A{last_row}", "values": col_a},
+                    {"range": f"Sheet2!C2:C{last_row}", "values": col_c},
+                ],
+            },
+        )
+    )
+
+    # Write text columns with RAW to avoid misparse of AI-generated content.
+    execute_with_retry(
+        service.spreadsheets().values().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={
+                "valueInputOption": "RAW",
+                "data": [
+                    {"range": f"Sheet2!B2:B{last_row}", "values": col_b},
+                    {"range": f"Sheet2!D2:D{last_row}", "values": col_d},
+                    {"range": f"Sheet2!E2:E{last_row}", "values": col_e},
+                ],
+            },
         )
     )
 

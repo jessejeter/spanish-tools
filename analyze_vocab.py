@@ -306,7 +306,7 @@ def make_analysis_prompt(spanish_word, english=None, sense=None):
     else:
         intro = f"For the Spanish word \"{spanish_word}\", write the following sections:\n\n"
     return (
-        intro
+        intro +
         "Definition: Main definition(s) and usages. Ignore uncommon ones.\n\n"
         "Grammatical context: Note only what actually applies — write "
         "'Grammatical context: none.' if nothing is worth flagging, which is expected "

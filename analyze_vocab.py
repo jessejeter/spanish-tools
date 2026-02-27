@@ -158,8 +158,9 @@ def make_analysis_prompt(spanish_word):
     return (
         f"For the Spanish word \"{spanish_word}\", write the following sections:\n\n"
         "Definition: Main definition(s) and usages. Ignore uncommon ones.\n\n"
-        "Grammatical notes: Note only what actually applies — write 'none' if nothing "
-        "is worth flagging. Cover the following if relevant: unexpected or "
+        "Grammatical context: Note only what actually applies — write "
+        "'Grammatical context: none.' if nothing is worth flagging, which is expected "
+        "most of the time. Cover the following if relevant: unexpected or "
         "meaning-changing gender (e.g. el problema, el/la capital); irregular plural; "
         "invariable adjective (doesn't inflect for gender/number); gustar-type "
         "structure (indirect object + verb); preposition(s) the word takes (verbs "
@@ -181,7 +182,9 @@ def make_analysis_prompt(spanish_word):
         "knowing. Define each in parentheses. Omit the section if none are worth noting.\n\n"
         "IMPORTANT formatting rules: Write in plain text only. No markdown — no bold, "
         "no headers, no bullet points, no numbered lists. Write in flowing prose. "
-        "Be concise. Use short section labels followed by a colon. Separate each "
+        "Be concise. Use section labels: \"Definition:\", \"Grammatical context:\", "
+        "\"Sample sentence:\", \"Root origin:\", \"Related English words:\", "
+        "\"Related Spanish words:\". Separate each "
         "section with a blank line. For the sample sentence, write only the Spanish "
         "sentence — no English translation."
     )

@@ -12,6 +12,7 @@ import os
 import ssl
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -26,6 +27,24 @@ GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 RATE_LIMIT_DELAY = 0.5  # seconds between Gemini calls (paid tier has ~1000 RPM)
 MAX_RETRIES = 5  # retry on rate limit errors
+
+
+def parse_date(date_str):
+    """Parse date string in M/D/YYYY or YYYY-MM-DD format for correct chronological sorting."""
+    if not date_str or not date_str.strip():
+        return datetime.min
+    s = date_str.strip()
+    try:
+        return datetime.strptime(s, "%Y-%m-%d")
+    except ValueError:
+        pass
+    try:
+        parts = s.split("/")
+        if len(parts) == 3:
+            return datetime(int(parts[2]), int(parts[0]), int(parts[1]))
+    except (ValueError, IndexError):
+        pass
+    return datetime.min
 
 
 def get_sheets_service():
@@ -247,10 +266,12 @@ def main():
         return
 
     # Find rows that need generation (skip header at index 0)
+    # Sheet2 has no header row, so Sheet2[i-1] pairs with Sheet1[i].
+    # Sheet2 spreadsheet row number = i (1-indexed, since no header offset).
     words_to_process = []
     for i in range(1, len(sheet1_rows)):
         s1_row = sheet1_rows[i]
-        s2_row = sheet2_rows[i] if i < len(sheet2_rows) else []
+        s2_row = sheet2_rows[i - 1] if i - 1 < len(sheet2_rows) else []
 
         # Pad rows to expected width
         while len(s1_row) < 5:
@@ -270,7 +291,8 @@ def main():
         if need_analysis or need_other:
             words_to_process.append(
                 {
-                    "row": i + 1,  # 1-indexed for Sheets API
+                    "sheet1_row": i + 1,  # 1-indexed Sheet1 row (has header)
+                    "sheet2_row": i,      # 1-indexed Sheet2 row (no header)
                     "spanish": spanish,
                     "english": english,
                     "need_analysis": need_analysis,
@@ -291,7 +313,7 @@ def main():
     total_written = 0
 
     for idx, word in enumerate(words_to_process):
-        row = word["row"]
+        s2_row = word["sheet2_row"]
         spanish = word["spanish"]
         english = word["english"]
 
@@ -300,7 +322,7 @@ def main():
         if word["need_analysis"]:
             try:
                 result = call_gemini(make_analysis_prompt(spanish), gemini_key)
-                pending_updates.append({"range": f"Sheet2!B{row}", "values": [[result]]})
+                pending_updates.append({"range": f"Sheet2!B{s2_row}", "values": [[result]]})
                 print(f"  Analysis generated ({len(result)} chars)")
             except Exception as e:
                 print(f"  Analysis failed: {e}")
@@ -311,7 +333,7 @@ def main():
                 result = call_gemini(
                     make_other_translations_prompt(english), gemini_key
                 )
-                pending_updates.append({"range": f"Sheet2!E{row}", "values": [[result]]})
+                pending_updates.append({"range": f"Sheet2!E{s2_row}", "values": [[result]]})
                 print(f"  Other translations generated ({len(result)} chars)")
             except Exception as e:
                 print(f"  Other translations failed: {e}")
@@ -358,12 +380,13 @@ def sort_sheets(service):
     header1 = sheet1_rows[0]
     header2 = sheet2_rows[0] if sheet2_rows else []
 
-    # Pair data rows, skipping empty rows (no Spanish word in Sheet1 col B)
+    # Pair data rows, skipping empty rows (no Spanish word in Sheet1 col B).
+    # Sheet2 has no header row, so Sheet2[i-1] corresponds to Sheet1[i].
     pairs = []
-    max_rows = max(len(sheet1_rows), len(sheet2_rows))
+    max_rows = max(len(sheet1_rows), len(sheet2_rows) + 1)
     for i in range(1, max_rows):
         s1 = sheet1_rows[i] if i < len(sheet1_rows) else []
-        s2 = sheet2_rows[i] if i < len(sheet2_rows) else []
+        s2 = sheet2_rows[i - 1] if i - 1 < len(sheet2_rows) else []
         while len(s1) < 5:
             s1.append("")
         while len(s2) < 5:
@@ -372,11 +395,12 @@ def sort_sheets(service):
             continue
         pairs.append((s1, s2))
 
-    # Sort: unreviewed first (newest date first), then reviewed (newest date first)
+    # Sort: unreviewed first (newest date first), then reviewed (newest date first).
+    # Use parse_date() to handle both M/D/YYYY and YYYY-MM-DD formats correctly.
     unreviewed = [(s1, s2) for s1, s2 in pairs if s2[2].strip().upper() != "TRUE"]
     reviewed = [(s1, s2) for s1, s2 in pairs if s2[2].strip().upper() == "TRUE"]
-    unreviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
-    reviewed.sort(key=lambda p: p[0][0] or "", reverse=True)
+    unreviewed.sort(key=lambda p: parse_date(p[0][0]), reverse=True)
+    reviewed.sort(key=lambda p: parse_date(p[0][0]), reverse=True)
     pairs = unreviewed + reviewed
 
     if not pairs:
@@ -386,7 +410,8 @@ def sort_sheets(service):
     n_rows = len(pairs)
     last_row = n_rows + 1  # last data row number (1-indexed, since data starts at row 2)
 
-    # Clear a large fixed range to catch any stray rows from previous runs
+    # Clear a large fixed range to catch any stray rows from previous runs.
+    # Sheet2 has no header row, so clear/write from row 1.
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
@@ -396,7 +421,7 @@ def sort_sheets(service):
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet2!A2:E10000",
+            range="Sheet2!A1:E10000",
         )
     )
 
@@ -414,9 +439,10 @@ def sort_sheets(service):
     # Write all Sheet2 columns in one atomic call to prevent partial-write misalignment.
     # Col A formula + col C "TRUE"/"FALSE" need USER_ENTERED so they evaluate correctly.
     # AI text in cols B/D/E is very unlikely to start with "=" so USER_ENTERED is safe.
+    # Sheet2 starts at row 1 (no header). Sheet1 data starts at row 2 (has header).
     all_s2 = [
         [
-            f'=Sheet1!B{i + 2}&": "&Sheet1!C{i + 2}',          # col A: formula
+            f'=Sheet1!B{i + 2}&": "&Sheet1!C{i + 2}',          # col A: formula referencing Sheet1 row i+2
             p[1][1],                                              # col B: AI analysis
             "TRUE" if p[1][2].strip().upper() == "TRUE" else "FALSE",  # col C: checkbox
             p[1][3],                                              # col D: review date
@@ -428,13 +454,31 @@ def sort_sheets(service):
     execute_with_retry(
         service.spreadsheets().values().update(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet2!A2",
+            range="Sheet2!A1",
             valueInputOption="USER_ENTERED",
             body={"values": all_s2},
         )
     )
 
     print(f"Sorted: {len(unreviewed)} unreviewed on top, {len(reviewed)} reviewed below")
+
+
+def full_regenerate():
+    """Clear all Sheet2 col B (analysis) and col E (other translations) and regenerate from scratch.
+
+    Use this after fixing sort_sheets bugs to wipe stale/scrambled AI data and
+    regenerate everything correctly aligned.
+    """
+    service = get_sheets_service()
+    print("Clearing Sheet2 col B (AI analysis) and col E (other translations)...")
+    execute_with_retry(
+        service.spreadsheets().values().batchClear(
+            spreadsheetId=SPREADSHEET_ID,
+            body={"ranges": ["Sheet2!B1:B10000", "Sheet2!E1:E10000"]},
+        )
+    )
+    print("Cleared. Running full regeneration...")
+    main()
 
 
 def repair_sheet2_offset():
@@ -477,8 +521,13 @@ def repair_sheet2_offset():
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "--repair-offset":
-        repair_sheet2_offset()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--repair-offset":
+            repair_sheet2_offset()
+        elif sys.argv[1] == "--full-regenerate":
+            full_regenerate()
+        else:
+            print(f"Unknown argument: {sys.argv[1]}")
+            sys.exit(1)
     else:
         main()

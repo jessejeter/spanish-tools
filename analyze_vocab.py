@@ -29,6 +29,14 @@ RATE_LIMIT_DELAY = 0.5  # seconds between Gemini calls (paid tier has ~1000 RPM)
 MAX_RETRIES = 5  # retry on rate limit errors
 
 
+def normalize_date(date_str):
+    """Convert any supported date format to YYYY-MM-DD. Returns original string if unparseable."""
+    dt = parse_date(date_str)
+    if dt == datetime.min:
+        return date_str
+    return dt.strftime("%Y-%m-%d")
+
+
 def parse_date(date_str):
     """Parse date string in M/D/YYYY or YYYY-MM-DD format for correct chronological sorting."""
     if not date_str or not date_str.strip():
@@ -620,7 +628,7 @@ def sort_sheets(service):
         )
     )
 
-    all_s1 = [p[0] for p in pairs]
+    all_s1 = [[normalize_date(p[0][0])] + p[0][1:] for p in pairs]
 
     execute_with_retry(
         service.spreadsheets().values().update(

@@ -294,10 +294,19 @@ def needs_generation(value):
     return v in ("#ERROR!", "#VALUE!", "#REF!", "#N/A", "#NAME?", "LOADING...")
 
 
-def make_analysis_prompt(spanish_word):
+def make_analysis_prompt(spanish_word, english=None, sense=None):
     """Build the Gemini prompt for AI Analysis (Sheet2 col B)."""
+    if sense:
+        intro = (
+            f"For the Spanish word \"{spanish_word}\" in the \"{sense}\" sense "
+            f"(English: \"{english}\"), write the following sections.\n"
+            f"Important: the Definition and Sample sentence must cover only this "
+            f"specific sense — do not cover unrelated senses.\n\n"
+        )
+    else:
+        intro = f"For the Spanish word \"{spanish_word}\", write the following sections:\n\n"
     return (
-        f"For the Spanish word \"{spanish_word}\", write the following sections:\n\n"
+        intro
         "Definition: Main definition(s) and usages. Ignore uncommon ones.\n\n"
         "Grammatical context: Note only what actually applies — write "
         "'Grammatical context: none.' if nothing is worth flagging, which is expected "
@@ -428,7 +437,7 @@ def main():
     sync_csv_to_sheet1(service)
 
     print("Reading Sheet1...")
-    sheet1_rows = read_sheet(service, "Sheet1!A:E")
+    sheet1_rows = read_sheet(service, "Sheet1!A:F")
 
     print("Reading Sheet2...")
     sheet2_rows = read_sheet(service, "Sheet2!A:E")
@@ -449,13 +458,14 @@ def main():
         s2_row = sheet2_rows[i - 1] if i - 1 < len(sheet2_rows) else []
 
         # Pad rows to expected width
-        while len(s1_row) < 5:
+        while len(s1_row) < 6:
             s1_row.append("")
         while len(s2_row) < 5:
             s2_row.append("")
 
         spanish = s1_row[1]  # Sheet1 col B
         english = s1_row[2]  # Sheet1 col C
+        sense   = s1_row[5]  # Sheet1 col F
 
         if not spanish:
             continue
@@ -470,6 +480,7 @@ def main():
                     "sheet2_row": i,      # 1-indexed Sheet2 row (no header)
                     "spanish": spanish,
                     "english": english,
+                    "sense": sense,
                     "need_analysis": need_analysis,
                     "need_other": need_other,
                 }
@@ -491,12 +502,13 @@ def main():
         s2_row = word["sheet2_row"]
         spanish = word["spanish"]
         english = word["english"]
+        sense   = word["sense"]
 
         print(f"[{idx + 1}/{len(words_to_process)}] Processing: {spanish} ({english})")
 
         if word["need_analysis"]:
             try:
-                result = call_gemini(make_analysis_prompt(spanish), gemini_key)
+                result = call_gemini(make_analysis_prompt(spanish, english, sense), gemini_key)
                 pending_updates.append({"range": f"Sheet2!B{s2_row}", "values": [[result]]})
                 print(f"  Analysis generated ({len(result)} chars)")
             except Exception as e:

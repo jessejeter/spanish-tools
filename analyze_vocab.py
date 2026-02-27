@@ -145,6 +145,136 @@ def call_gemini(prompt, api_key):
     raise Exception("Rate limited after all retries")
 
 
+def find_neodict(obj):
+    """Recursively search a parsed JSON structure for the 'neodict' key."""
+    if isinstance(obj, dict):
+        if "neodict" in obj:
+            return obj["neodict"]
+        for v in obj.values():
+            result = find_neodict(v)
+            if result is not None:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = find_neodict(item)
+            if result is not None:
+                return result
+    return None
+
+
+def scrape_sense(spanish_word, english_translation):
+    """Return the SpanishDict sense label (contextEn) for the given translation.
+
+    Fetches the SpanishDict page, extracts SD_COMPONENT_DATA, and walks
+    neodict → posGroups → senses to find the sense whose translations match
+    the english_translation string.  Returns "" on any error or no match.
+    """
+    try:
+        url = f"https://www.spanishdict.com/translate/{spanish_word}"
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            )
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+
+        marker = "window.SD_COMPONENT_DATA = "
+        idx = resp.text.find(marker)
+        if idx == -1:
+            return ""
+
+        decoder = json.JSONDecoder()
+        data, _ = decoder.raw_decode(resp.text, idx + len(marker))
+
+        neodict = find_neodict(data)
+        if not neodict:
+            return ""
+
+        eng_lower = english_translation.lower().strip()
+        for entry in neodict:
+            for pos_group in entry.get("posGroups", []):
+                for sense in pos_group.get("senses", []):
+                    for trans in sense.get("translations", []):
+                        t = trans.get("translation", "").lower().strip()
+                        if not t:
+                            continue
+                        # 1. Exact match
+                        if t == eng_lower:
+                            return sense.get("contextEn", "")
+                        # 2. Sheet1 english is a prefix of SD translation
+                        if t.startswith(eng_lower):
+                            return sense.get("contextEn", "")
+                        # 3. SD translation is a prefix of Sheet1 english
+                        if eng_lower.startswith(t):
+                            return sense.get("contextEn", "")
+        return ""
+    except Exception:
+        return ""
+
+
+def backfill_senses(service):
+    """Fill Sheet1 col F (Sense) for rows that are missing it."""
+    print("Reading Sheet1 (cols A:F)...")
+    sheet1_rows = read_sheet(service, "Sheet1!A:F")
+
+    if len(sheet1_rows) < 2:
+        print("No data rows found.")
+        return
+
+    data_rows = sheet1_rows[1:]  # skip header
+    total_words = len(data_rows)
+    pending = []
+    filled = 0
+
+    for i, row in enumerate(data_rows):
+        while len(row) < 6:
+            row.append("")
+
+        spanish = row[1]
+        english = row[2]
+        sense = row[5]
+
+        if not spanish or sense:
+            continue  # skip empty or already-filled rows
+
+        sheet_row = i + 2  # 1-indexed; header is row 1, data starts at row 2
+        print(f"[{i + 1}/{total_words}] {spanish} ({english}): ", end="", flush=True)
+
+        result = scrape_sense(spanish, english)
+        print(result if result else "(no match)")
+
+        if result:
+            pending.append({
+                "range": f"Sheet1!F{sheet_row}",
+                "values": [[result]],
+            })
+            filled += 1
+
+        time.sleep(0.5)
+
+        if len(pending) >= 20:
+            execute_with_retry(
+                service.spreadsheets().values().batchUpdate(
+                    spreadsheetId=SPREADSHEET_ID,
+                    body={"valueInputOption": "RAW", "data": pending},
+                )
+            )
+            pending = []
+
+    if pending:
+        execute_with_retry(
+            service.spreadsheets().values().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={"valueInputOption": "RAW", "data": pending},
+            )
+        )
+
+    print(f"\nDone! Filled {filled} senses.")
+
+
 def needs_generation(value):
     """Check if a cell value is empty or contains an error."""
     if not value or not value.strip():
@@ -233,6 +363,9 @@ def sync_csv_to_sheet1(service):
         print("Sheet1 is up to date with CSV")
         return
 
+    # Track where new rows will land (header = row 1, existing data fills rows 2..N)
+    first_new_sheet_row = len(sheet1_rows) + 1  # 1-indexed
+
     print(f"Adding {len(new_rows)} new words to Sheet1...")
     execute_with_retry(
         service.spreadsheets().values().append(
@@ -244,6 +377,29 @@ def sync_csv_to_sheet1(service):
         )
     )
     print(f"Synced {len(new_rows)} new words to Sheet1")
+
+    # Scrape sense labels for newly added rows
+    print("Scraping senses for new words...")
+    sense_updates = []
+    for idx, row in enumerate(new_rows):
+        spanish = row[1] if len(row) > 1 else ""
+        english = row[2] if len(row) > 2 else ""
+        if not spanish or not english:
+            continue
+        sense = scrape_sense(spanish, english)
+        print(f"  {spanish}: {sense if sense else '(no match)'}")
+        if sense:
+            sheet_row = first_new_sheet_row + idx
+            sense_updates.append({"range": f"Sheet1!F{sheet_row}", "values": [[sense]]})
+        time.sleep(0.5)
+
+    if sense_updates:
+        execute_with_retry(
+            service.spreadsheets().values().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={"valueInputOption": "RAW", "data": sense_updates},
+            )
+        )
 
 
 def main():
@@ -388,7 +544,7 @@ def sort_sheets(service):
         if s["properties"]["title"] == "Sheet2"
     )
 
-    sheet1_rows = read_sheet(service, "Sheet1!A:E")
+    sheet1_rows = read_sheet(service, "Sheet1!A:F")
     sheet2_rows = read_sheet(service, "Sheet2!A:E")
 
     if len(sheet1_rows) < 2:
@@ -404,7 +560,7 @@ def sort_sheets(service):
     for i in range(1, max_rows):
         s1 = sheet1_rows[i] if i < len(sheet1_rows) else []
         s2 = sheet2_rows[i - 1] if i - 1 < len(sheet2_rows) else []
-        while len(s1) < 5:
+        while len(s1) < 6:
             s1.append("")
         while len(s2) < 5:
             s2.append("")
@@ -432,7 +588,7 @@ def sort_sheets(service):
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet1!A2:E10000",
+            range="Sheet1!A2:F10000",
         )
     )
     execute_with_retry(
@@ -567,6 +723,8 @@ if __name__ == "__main__":
             repair_sheet2_offset()
         elif sys.argv[1] == "--full-regenerate":
             full_regenerate()
+        elif sys.argv[1] == "--backfill-senses":
+            backfill_senses(get_sheets_service())
         else:
             print(f"Unknown argument: {sys.argv[1]}")
             sys.exit(1)

@@ -194,6 +194,15 @@ body {
   font-style: italic;
 }
 
+.card-sense {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 12px;
+  display: none;
+}
+
 .card-other {
   font-size: 14px;
   line-height: 1.5;
@@ -385,6 +394,7 @@ body {
       <div class="card-face card-back">
         <div class="card-label" id="back-label"></div>
         <div class="card-translation" id="back-word"></div>
+        <div class="card-sense" id="back-sense"></div>
         <div class="card-pos" id="back-pos"></div>
         <div class="card-other" id="back-other"></div>
         <div class="card-analysis" id="back-analysis"></div>
@@ -486,6 +496,7 @@ async function loadData() {
         spanish: s1[i][1] || '',
         english: s1[i][2] || '',
         pos: s1[i][3] || '',
+        sense: s1[i][5] || '',
         analysis: s2[i][1] || '',
         otherTranslations: s2[i][4] || '',
         dateReviewed: s2[i][3] || '',
@@ -724,6 +735,14 @@ function showCard() {
     document.getElementById('front-word').textContent = currentCard.english;
     document.getElementById('back-label').textContent = 'Spanish';
     document.getElementById('back-word').textContent = currentCard.spanish;
+  }
+
+  const senseEl = document.getElementById('back-sense');
+  if (currentCard.sense) {
+    senseEl.textContent = currentCard.sense;
+    senseEl.style.display = 'block';
+  } else {
+    senseEl.style.display = 'none';
   }
 
   document.getElementById('back-pos').textContent = currentCard.pos;

@@ -455,7 +455,7 @@ def main():
     words_to_process = []
     for i in range(1, len(sheet1_rows)):
         s1_row = sheet1_rows[i]
-        s2_row = sheet2_rows[i - 1] if i - 1 < len(sheet2_rows) else []
+        s2_row = sheet2_rows[i] if i < len(sheet2_rows) else []
 
         # Pad rows to expected width
         while len(s1_row) < 6:
@@ -477,7 +477,7 @@ def main():
             words_to_process.append(
                 {
                     "sheet1_row": i + 1,  # 1-indexed Sheet1 row (has header)
-                    "sheet2_row": i,      # 1-indexed Sheet2 row (no header)
+                    "sheet2_row": i + 1,  # 1-indexed Sheet2 row (header at row 1)
                     "spanish": spanish,
                     "english": english,
                     "sense": sense,
@@ -577,12 +577,12 @@ def sort_sheets(service):
     header2 = sheet2_rows[0] if sheet2_rows else []
 
     # Pair data rows, skipping empty rows (no Spanish word in Sheet1 col B).
-    # Sheet2 has no header row, so Sheet2[i-1] corresponds to Sheet1[i].
+    # Both sheets have a header row, so Sheet2[i] corresponds to Sheet1[i].
     pairs = []
-    max_rows = max(len(sheet1_rows), len(sheet2_rows) + 1)
+    max_rows = max(len(sheet1_rows), len(sheet2_rows))
     for i in range(1, max_rows):
         s1 = sheet1_rows[i] if i < len(sheet1_rows) else []
-        s2 = sheet2_rows[i - 1] if i - 1 < len(sheet2_rows) else []
+        s2 = sheet2_rows[i] if i < len(sheet2_rows) else []
         while len(s1) < 6:
             s1.append("")
         while len(s2) < 5:
@@ -606,8 +606,7 @@ def sort_sheets(service):
     n_rows = len(pairs)
     last_row = n_rows + 1  # last data row number (1-indexed, since data starts at row 2)
 
-    # Clear a large fixed range to catch any stray rows from previous runs.
-    # Sheet2 has no header row, so clear/write from row 1.
+    # Clear data rows only (preserve header row 1 in both sheets).
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
@@ -617,7 +616,7 @@ def sort_sheets(service):
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet2!A1:E10000",
+            range="Sheet2!A2:E10000",
         )
     )
 
@@ -635,7 +634,7 @@ def sort_sheets(service):
     # Write all Sheet2 columns in one atomic call to prevent partial-write misalignment.
     # Col A formula + col C "TRUE"/"FALSE" need USER_ENTERED so they evaluate correctly.
     # AI text in cols B/D/E is very unlikely to start with "=" so USER_ENTERED is safe.
-    # Sheet2 starts at row 1 (no header). Sheet1 data starts at row 2 (has header).
+    # Sheet2 data starts at row 2 (has header). Sheet1 data starts at row 2 (has header).
     all_s2 = [
         [
             f'=Sheet1!B{i + 2}&": "&Sheet1!C{i + 2}',          # col A: formula referencing Sheet1 row i+2
@@ -650,7 +649,7 @@ def sort_sheets(service):
     execute_with_retry(
         service.spreadsheets().values().update(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet2!A1",
+            range="Sheet2!A2",
             valueInputOption="USER_ENTERED",
             body={"values": all_s2},
         )
@@ -666,8 +665,8 @@ def sort_sheets(service):
                 "setDataValidation": {
                     "range": {
                         "sheetId": sheet2_id,
-                        "startRowIndex": 0,        # 0-based; Sheet2 has no header
-                        "endRowIndex": n_rows,
+                        "startRowIndex": 1,        # 0-based; row 2 (skip header)
+                        "endRowIndex": n_rows + 1,
                         "startColumnIndex": 2,     # col C
                         "endColumnIndex": 3,
                     },
@@ -694,7 +693,7 @@ def full_regenerate():
     execute_with_retry(
         service.spreadsheets().values().batchClear(
             spreadsheetId=SPREADSHEET_ID,
-            body={"ranges": ["Sheet2!B1:B10000", "Sheet2!E1:E10000"]},
+            body={"ranges": ["Sheet2!B2:B10000", "Sheet2!E2:E10000"]},
         )
     )
     print("Cleared. Running full regeneration...")

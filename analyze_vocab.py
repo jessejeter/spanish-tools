@@ -379,6 +379,15 @@ def main():
 def sort_sheets(service):
     """Sort Sheet1 and Sheet2 together: unreviewed on top (newest first), reviewed below."""
     print("\nSorting sheets...")
+
+    # Get Sheet2's numeric sheetId for data validation requests
+    spreadsheet = execute_with_retry(service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID))
+    sheet2_id = next(
+        s["properties"]["sheetId"]
+        for s in spreadsheet["sheets"]
+        if s["properties"]["title"] == "Sheet2"
+    )
+
     sheet1_rows = read_sheet(service, "Sheet1!A:E")
     sheet2_rows = read_sheet(service, "Sheet2!A:E")
 
@@ -465,6 +474,30 @@ def sort_sheets(service):
             range="Sheet2!A1",
             valueInputOption="USER_ENTERED",
             body={"values": all_s2},
+        )
+    )
+
+    # Re-apply checkbox data validation to Sheet2 col C for all data rows.
+    # Values.clear() and values.update() only affect cell values, not formatting/validation.
+    # After a sort, rows shift positions so validation from old positions no longer matches.
+    execute_with_retry(
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={"requests": [{
+                "setDataValidation": {
+                    "range": {
+                        "sheetId": sheet2_id,
+                        "startRowIndex": 0,        # 0-based; Sheet2 has no header
+                        "endRowIndex": n_rows,
+                        "startColumnIndex": 2,     # col C
+                        "endColumnIndex": 3,
+                    },
+                    "rule": {
+                        "condition": {"type": "BOOLEAN"},
+                        "showCustomUi": True,
+                    },
+                }
+            }]},
         )
     )
 

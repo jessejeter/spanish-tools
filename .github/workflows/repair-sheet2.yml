@@ -1,0 +1,29 @@
+name: Repair Sheet2 Offset
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install google-auth google-api-python-client requests
+
+      - name: Fix 1-row offset in Sheet2
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: python analyze_vocab.py --repair-offset
+
+      - name: Re-run analysis to fill in any blank rows and re-sort
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: python -u analyze_vocab.py

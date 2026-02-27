@@ -411,46 +411,74 @@ def sort_sheets(service):
         )
     )
 
-    # Build Sheet2 column data separately to handle formulas and checkboxes correctly.
-    # Col A: formula showing "Spanish: English" from Sheet1 cols B and C of the same row.
-    col_a = [[f'=Sheet1!B{r}&": "&Sheet1!C{r}'] for r in range(2, last_row + 1)]
-    col_b = [[p[1][1]] for p in pairs]   # AI analysis (raw text)
-    col_c = [["TRUE" if p[1][2].strip().upper() == "TRUE" else "FALSE"] for p in pairs]  # Reviewed checkbox
-    col_d = [[p[1][3]] for p in pairs]   # review date (raw text)
-    col_e = [[p[1][4]] for p in pairs]   # other translations (raw text)
+    # Write all Sheet2 columns in one atomic call to prevent partial-write misalignment.
+    # Col A formula + col C "TRUE"/"FALSE" need USER_ENTERED so they evaluate correctly.
+    # AI text in cols B/D/E is very unlikely to start with "=" so USER_ENTERED is safe.
+    all_s2 = [
+        [
+            f'=Sheet1!B{i + 2}&": "&Sheet1!C{i + 2}',          # col A: formula
+            p[1][1],                                              # col B: AI analysis
+            "TRUE" if p[1][2].strip().upper() == "TRUE" else "FALSE",  # col C: checkbox
+            p[1][3],                                              # col D: review date
+            p[1][4],                                              # col E: other translations
+        ]
+        for i, p in enumerate(pairs)
+    ]
 
-    # Write col A (formula) and col C (checkbox) with USER_ENTERED so formulas are
-    # evaluated and "TRUE"/"FALSE" strings reliably set checkbox state.
     execute_with_retry(
-        service.spreadsheets().values().batchUpdate(
+        service.spreadsheets().values().update(
             spreadsheetId=SPREADSHEET_ID,
-            body={
-                "valueInputOption": "USER_ENTERED",
-                "data": [
-                    {"range": f"Sheet2!A2:A{last_row}", "values": col_a},
-                    {"range": f"Sheet2!C2:C{last_row}", "values": col_c},
-                ],
-            },
-        )
-    )
-
-    # Write text columns with RAW to avoid misparse of AI-generated content.
-    execute_with_retry(
-        service.spreadsheets().values().batchUpdate(
-            spreadsheetId=SPREADSHEET_ID,
-            body={
-                "valueInputOption": "RAW",
-                "data": [
-                    {"range": f"Sheet2!B2:B{last_row}", "values": col_b},
-                    {"range": f"Sheet2!D2:D{last_row}", "values": col_d},
-                    {"range": f"Sheet2!E2:E{last_row}", "values": col_e},
-                ],
-            },
+            range="Sheet2!A2",
+            valueInputOption="USER_ENTERED",
+            body={"values": all_s2},
         )
     )
 
     print(f"Sorted: {len(unreviewed)} unreviewed on top, {len(reviewed)} reviewed below")
 
 
+def repair_sheet2_offset():
+    """Fix the 1-row data offset in Sheet2.
+
+    Sheet2's content columns (B:E) are shifted 1 row up relative to Sheet1.
+    This inserts a blank row at Sheet2 row 2 so every word's data lines up
+    with the correct Sheet1 row again.  Run once, then re-run normally to
+    regenerate the missing analysis for the first word.
+    """
+    service = get_sheets_service()
+
+    # Get Sheet2's numeric sheetId (required for insertDimension)
+    spreadsheet = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+    sheet2_id = next(
+        s['properties']['sheetId']
+        for s in spreadsheet['sheets']
+        if s['properties']['title'] == 'Sheet2'
+    )
+
+    print("Inserting blank row at Sheet2 row 2 to fix 1-row offset...")
+    execute_with_retry(
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={"requests": [{
+                "insertDimension": {
+                    "range": {
+                        "sheetId": sheet2_id,
+                        "dimension": "ROWS",
+                        "startIndex": 1,  # 0-based → inserts before row 2
+                        "endIndex": 2,
+                    },
+                    "inheritFromBefore": False,
+                }
+            }]},
+        )
+    )
+    print("Done. Sheet2 data is now aligned with Sheet1.")
+    print("The first vocabulary word has blank Sheet2 data — run analyze_vocab.py normally to fill it in.")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--repair-offset":
+        repair_sheet2_offset()
+    else:
+        main()

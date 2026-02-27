@@ -444,6 +444,9 @@ def main():
     print("Syncing CSV to Sheet1...")
     sync_csv_to_sheet1(service)
 
+    print("Sorting and formatting Sheet1...")
+    sort_sheets(service)
+
     print("Reading Sheet1...")
     sheet1_rows = read_sheet(service, "Sheet1!A:F")
 
@@ -498,7 +501,6 @@ def main():
 
     if not words_to_process:
         print("Nothing to do!")
-        sort_sheets(service)
         return
 
     # Process each word, writing in batches to preserve progress
@@ -558,9 +560,6 @@ def main():
         total_written += len(pending_updates)
 
     print(f"Done! Wrote {total_written} updates total.")
-
-    # Sort both sheets: unreviewed first (newest date first), then reviewed
-    sort_sheets(service)
 
 
 def sort_sheets(service):
@@ -690,6 +689,17 @@ def sort_sheets(service):
     print(f"Sorted: {len(unreviewed)} unreviewed on top, {len(reviewed)} reviewed below")
 
 
+def sort_only():
+    """Sync CSV to Sheet1, normalize dates, and sort — without touching Sheet2 AI content."""
+    service = get_sheets_service()
+    ensure_sheet_capacity(service, ["Sheet1", "Sheet2"])
+    print("Syncing CSV to Sheet1...")
+    sync_csv_to_sheet1(service)
+    print("Sorting and formatting Sheet1...")
+    sort_sheets(service)
+    print("Done.")
+
+
 def full_regenerate():
     """Clear all Sheet2 col B (analysis) and col E (other translations) and regenerate from scratch.
 
@@ -753,6 +763,8 @@ if __name__ == "__main__":
             repair_sheet2_offset()
         elif sys.argv[1] == "--full-regenerate":
             full_regenerate()
+        elif sys.argv[1] == "--sort-only":
+            sort_only()
         elif sys.argv[1] == "--backfill-senses":
             backfill_senses(get_sheets_service())
         else:

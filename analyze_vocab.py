@@ -217,6 +217,17 @@ def scrape_sense(spanish_word, english_translation):
 
 def backfill_senses(service):
     """Fill Sheet1 col F (Sense) for rows that are missing it."""
+    # Ensure col F has a header
+    execute_with_retry(
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range="Sheet1!F1",
+            valueInputOption="RAW",
+            body={"values": [["Sense"]]},
+        )
+    )
+    print("Wrote 'Sense' header to Sheet1!F1")
+
     print("Reading Sheet1 (cols A:F)...")
     sheet1_rows = read_sheet(service, "Sheet1!A:F")
 

@@ -41,7 +41,7 @@ def parse_date(date_str):
     """Parse date string in M/D/YYYY or YYYY-MM-DD format for correct chronological sorting."""
     if not date_str or not date_str.strip():
         return datetime.min
-    s = date_str.strip()
+    s = date_str.strip().lstrip("'")
     try:
         return datetime.strptime(s, "%Y-%m-%d")
     except ValueError:

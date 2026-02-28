@@ -330,12 +330,12 @@ body {
       <div class="card-face card-front">
         <div class="card-label" id="front-label"></div>
         <div class="card-word" id="front-word"></div>
+        <div class="card-sense" id="front-sense"></div>
         <div class="tap-hint">tap to flip</div>
       </div>
       <div class="card-face card-back">
         <div class="card-label" id="back-label"></div>
         <div class="card-translation" id="back-word"></div>
-        <div class="card-sense" id="back-sense"></div>
         <div class="card-pos" id="back-pos"></div>
         <div class="card-other" id="back-other"></div>
         <div class="card-analysis" id="back-analysis"></div>
@@ -604,7 +604,7 @@ function showCard(card) {
   document.getElementById('back-label').textContent = 'Spanish';
   document.getElementById('back-word').textContent = card.spanish;
 
-  const senseEl = document.getElementById('back-sense');
+  const senseEl = document.getElementById('front-sense');
   if (card.sense) {
     senseEl.textContent = card.sense;
     senseEl.style.display = 'block';

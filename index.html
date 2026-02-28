@@ -364,6 +364,7 @@ const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gvi
 const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
 const STORAGE_KEY = 'spanish-flashcards-v2';
 const TODAY_COUNT_KEY = 'spanish-flashcards-today-count';
+const TODAY_SYNC_KEY = '__today__';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec';
 
 let allCards = [];
@@ -450,6 +451,28 @@ function incrementTodayCount() {
   const count = getTodayCount() + 1;
   localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count }));
   updateCounter();
+  pushTodayCount(count);
+}
+
+function parseTodayCount(entry) {
+  if (!entry?.reviews?.length) return 0;
+  const r = entry.reviews[0];
+  return r.date === todayStr() ? (r.count || 0) : 0;
+}
+
+function setTodayCount(count) {
+  localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count }));
+  updateCounter();
+}
+
+function pushTodayCount(count) {
+  if (!remoteEnabled()) return;
+  pushSRSRemote([{
+    word: TODAY_SYNC_KEY,
+    reviews: [{ date: todayStr(), count }],
+    lastReview: todayStr(),
+    retired: false,
+  }]);
 }
 
 function updateCounter() {
@@ -492,6 +515,14 @@ async function syncRemoteSRS() {
     }
 
     saveSRS(merged);
+
+    const remoteCount = parseTodayCount(remote[TODAY_SYNC_KEY]);
+    const localCount = getTodayCount();
+    if (remoteCount > localCount) {
+      setTodayCount(remoteCount);
+    } else if (localCount > remoteCount) {
+      pushTodayCount(localCount);
+    }
 
     if (localOnly.length > 0) pushSRSRemote(localOnly);
   } catch (e) {

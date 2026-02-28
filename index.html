@@ -487,19 +487,31 @@ async function loadData() {
       syncRemoteSRS(),
     ]);
 
+    // Build a lookup map from Sheet2 using col A's evaluated formula ("spanish: english")
+    // so card data is matched by content rather than row index.
+    const s2Map = {};
+    for (let i = 0; i < s2.length; i++) {
+      const key = (s2[i][0] || '').trim().toLowerCase();
+      if (key) s2Map[key] = s2[i];
+    }
+
     const cards = [];
-    for (let i = 0; i < s1.length && i < s2.length; i++) {
-      const reviewed = (s2[i][2] || '').toUpperCase() === 'TRUE';
+    for (let i = 0; i < s1.length; i++) {
+      const spanish = (s1[i][1] || '').trim();
+      const english = (s1[i][2] || '').trim();
+      if (!spanish) continue;
+      const s2row = s2Map[(spanish + ': ' + english).toLowerCase()] || [];
+      const reviewed = (s2row[2] || '').toUpperCase() === 'TRUE';
       if (!reviewed) continue;
 
       cards.push({
-        spanish: s1[i][1] || '',
-        english: s1[i][2] || '',
+        spanish,
+        english,
         pos: s1[i][3] || '',
         sense: s1[i][5] || '',
-        analysis: s2[i][1] || '',
-        otherTranslations: s2[i][4] || '',
-        dateReviewed: s2[i][3] || '',
+        analysis: s2row[1] || '',
+        otherTranslations: s2row[4] || '',
+        dateReviewed: s2row[3] || '',
       });
     }
 

@@ -95,26 +95,13 @@ body {
 /* Top bar */
 .top-bar {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   font-size: 14px;
   color: var(--text-dim);
 }
 
 .top-bar .count { font-weight: 600; color: var(--text); }
-
-.progress-bar {
-  height: 3px;
-  background: var(--surface);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--green);
-  transition: width 0.3s ease;
-}
 
 /* Card */
 .card-container {
@@ -266,20 +253,13 @@ body {
   font-weight: 600;
   cursor: pointer;
   color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
   transition: transform 0.1s ease, opacity 0.1s ease;
 }
 
 .grade-btn:active { transform: scale(0.95); opacity: 0.8; }
 
-.grade-btn .label { font-size: 12px; opacity: 0.8; }
-
-.btn-again { background: var(--red); }
-.btn-hard { background: #7a6c2a; }
-.btn-easy { background: #2a7a5a; }
+.btn-fail { background: var(--red); }
+.btn-pass { background: #2a7a5a; }
 
 /* Retire button */
 .retire-row {
@@ -309,8 +289,8 @@ body {
 
 .btn-retire:active { transform: scale(0.95); }
 
-/* Done screen */
-#done {
+/* Empty state */
+#empty {
   display: none;
   flex-direction: column;
   align-items: center;
@@ -319,45 +299,10 @@ body {
   gap: 16px;
   padding: 24px;
   text-align: center;
-}
-
-#done h2 { font-size: 28px; margin-bottom: 8px; }
-#done p { color: var(--text-dim); font-size: 16px; }
-
-#done button {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 14px 28px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-/* Stats bar on done screen */
-.stats {
-  display: flex;
-  gap: 24px;
-  margin-top: 8px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stat-num {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.stat-label {
-  font-size: 12px;
   color: var(--text-dim);
 }
+
+#empty h2 { font-size: 24px; color: var(--text); }
 </style>
 </head>
 <body>
@@ -378,10 +323,6 @@ body {
 <div id="app">
   <div class="top-bar">
     <span id="counter" class="count"></span>
-    <span id="due-label"></span>
-  </div>
-  <div class="progress-bar">
-    <div class="progress-fill" id="progress"></div>
   </div>
 
   <div class="card-container" id="card-container">
@@ -403,63 +344,34 @@ body {
   </div>
 
   <div class="grade-buttons" id="grade-buttons">
-    <button class="grade-btn btn-again" onclick="grade('again')">
-      Again
-      <span class="label">&lt;1d</span>
-    </button>
-    <button class="grade-btn btn-hard" onclick="grade('hard')">
-      Hard
-      <span class="label" id="hard-interval"></span>
-    </button>
-    <button class="grade-btn btn-easy" onclick="grade('easy')">
-      Easy
-      <span class="label" id="easy-interval"></span>
-    </button>
+    <button class="grade-btn btn-fail" onclick="grade(false)">Fail</button>
+    <button class="grade-btn btn-pass" onclick="grade(true)">Pass</button>
   </div>
   <div class="retire-row" id="retire-row">
     <button class="btn-retire" onclick="retire()">Retire — I'll never forget this</button>
   </div>
 </div>
 
-<!-- Done -->
-<div id="done">
-  <h2>All done!</h2>
-  <p>You've reviewed all cards for today.</p>
-  <div class="stats">
-    <div class="stat">
-      <span class="stat-num" id="stat-reviewed">0</span>
-      <span class="stat-label">Reviewed</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num" id="stat-new">0</span>
-      <span class="stat-label">New</span>
-    </div>
-  </div>
-  <button onclick="location.reload()">Start New Session</button>
-  <button onclick="startBonusMode()" style="background:#16213e; margin-top:0;">Bonus Mode</button>
-  <button onclick="practiceAll()" style="background:#16213e; margin-top:0;">Practice All Cards</button>
+<!-- Empty state (all cards retired) -->
+<div id="empty">
+  <h2>All cards retired</h2>
+  <p>You've retired every card. Nothing left to review!</p>
 </div>
 
 <script>
 const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
 const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
 const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
-const STORAGE_KEY = 'spanish-flashcards-srs';
-const NEW_CARDS_PER_DAY = 10;
-const NEW_CARDS_TODAY_KEY = 'spanish-flashcards-new-today';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec'; // paste Web app URL after deploying apps-script.js
+const STORAGE_KEY = 'spanish-flashcards-v2';
+const TODAY_COUNT_KEY = 'spanish-flashcards-today-count';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec';
 
 let allCards = [];
-let sessionQueue = [];
-let currentIndex = 0;
 let currentCard = null;
 let isFlipped = false;
-let sessionStats = { reviewed: 0, newCards: 0 };
-let isBonusMode = false;
 
 // ---- Google Visualization JSON Parsing ----
 function parseGvizJson(text) {
-  // Response is: /*O_o*/\ngoogle.visualization.Query.setResponse({...});
   const match = text.match(/google\.visualization\.Query\.setResponse\(({.*})\)/s);
   if (!match) throw new Error('Invalid response from Google Sheets');
   const data = JSON.parse(match[1]);
@@ -467,7 +379,6 @@ function parseGvizJson(text) {
     throw new Error(data.errors?.map(e => e.message).join(', ') || 'Sheet error');
   }
   const table = data.table;
-  // Convert to rows of string arrays (skip header row)
   return table.rows.map(row =>
     row.c.map(cell => (cell && cell.v != null) ? String(cell.v) : '')
   );
@@ -487,8 +398,6 @@ async function loadData() {
       syncRemoteSRS(),
     ]);
 
-    // Build a lookup map from Sheet2 using col A's evaluated formula ("spanish: english")
-    // so card data is matched by content rather than row index.
     const s2Map = {};
     for (let i = 0; i < s2.length; i++) {
       const key = (s2[i][0] || '').trim().toLowerCase();
@@ -520,7 +429,6 @@ async function loadData() {
     }
 
     allCards = cards;
-    buildSession();
     showApp();
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
@@ -529,18 +437,25 @@ async function loadData() {
   }
 }
 
-// ---- Daily New Card Tracking ----
-function getNewCardsToday() {
+// ---- Today Counter ----
+function getTodayCount() {
   try {
-    const data = JSON.parse(localStorage.getItem(NEW_CARDS_TODAY_KEY));
+    const data = JSON.parse(localStorage.getItem(TODAY_COUNT_KEY));
     if (data && data.date === todayStr()) return data.count;
   } catch {}
   return 0;
 }
 
-function incrementNewCardsToday() {
-  const count = getNewCardsToday() + 1;
-  localStorage.setItem(NEW_CARDS_TODAY_KEY, JSON.stringify({ date: todayStr(), count }));
+function incrementTodayCount() {
+  const count = getTodayCount() + 1;
+  localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count }));
+  updateCounter();
+}
+
+function updateCounter() {
+  const count = getTodayCount();
+  document.getElementById('counter').textContent =
+    count === 0 ? 'No cards done yet today' : `${count} done today`;
 }
 
 // ---- SRS Storage ----
@@ -559,8 +474,6 @@ function remoteEnabled() {
   return APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE';
 }
 
-// On load: fetch remote SRS and merge with local (later lastReview wins).
-// Also pushes any local-only entries back so the server stays complete.
 async function syncRemoteSRS() {
   if (!remoteEnabled()) return;
   try {
@@ -569,7 +482,6 @@ async function syncRemoteSRS() {
     const remote = await res.json();
     const local = getSRS();
 
-    // Merge: remote is base, but local entry wins if its lastReview is newer
     const merged = { ...remote };
     const localOnly = [];
     for (const [word, data] of Object.entries(local)) {
@@ -581,15 +493,12 @@ async function syncRemoteSRS() {
 
     saveSRS(merged);
 
-    // Push local-only entries to remote so it stays complete
     if (localOnly.length > 0) pushSRSRemote(localOnly);
   } catch (e) {
     console.warn('SRS remote sync failed, using local data:', e);
   }
 }
 
-// Fire-and-forget: push one or more SRS entries to the server.
-// Uses no-cors POST so there's no preflight and we don't need to read the response.
 function pushSRSRemote(updates) {
   if (!remoteEnabled()) return;
   fetch(APPS_SCRIPT_URL, {
@@ -599,204 +508,92 @@ function pushSRSRemote(updates) {
   }).catch(e => console.warn('SRS remote save failed:', e));
 }
 
-function getCardSRS(word) {
-  const srs = getSRS();
-  return srs[word] || null;
+// ---- Weighting ----
+function getWeight(data) {
+  if (!data || !data.reviews?.length) return 0.6;
+  const daysSince = (Date.now() - new Date(data.lastReview)) / 86400000;
+  const passRate = data.reviews.filter(r => r.passed).length / data.reviews.length;
+  const halfLife = 1 + passRate * 20;
+  return Math.max(0.05, 1 - Math.pow(0.5, daysSince / halfLife));
 }
 
-function updateCardSRS(word, rating) {
+function pickNextCard() {
   const srs = getSRS();
-  const now = todayStr();
-  let card = srs[word] || { interval: 0, easeFactor: 2.5, nextReview: now };
-
-  if (rating === 'again') {
-    card.interval = 1;
-    card.easeFactor = Math.max(1.3, card.easeFactor - 0.2);
-  } else if (rating === 'hard') {
-    card.interval = Math.max(1, Math.round((card.interval || 1) * 1.2));
-    card.easeFactor = Math.max(1.3, card.easeFactor - 0.15);
-  } else { // easy
-    card.interval = Math.max(1, Math.round((card.interval || 1) * card.easeFactor));
-    card.easeFactor += 0.15;
+  const eligible = allCards.filter(c => !srs[c.spanish]?.retired);
+  if (!eligible.length) return null;
+  const weights = eligible.map(c => getWeight(srs[c.spanish]));
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < eligible.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return eligible[i];
   }
+  return eligible[eligible.length - 1];
+}
 
-  const next = new Date();
-  next.setDate(next.getDate() + card.interval);
-  card.nextReview = dateStr(next);
-  card.lastReview = now;
-
-  srs[word] = card;
+// ---- Review Recording ----
+function recordReview(word, passed) {
+  const srs = getSRS();
+  const entry = srs[word] || {};
+  const reviews = entry.reviews || [];
+  reviews.push({ date: todayStr(), passed });
+  if (reviews.length > 5) reviews.shift();
+  srs[word] = { ...entry, reviews, lastReview: todayStr() };
   saveSRS(srs);
-  pushSRSRemote([{ word, ...card }]);
-  return card;
+  pushSRSRemote([{ word, ...srs[word] }]);
 }
 
 // ---- Date Helpers ----
 function todayStr() {
-  return dateStr(new Date());
-}
-
-function dateStr(d) {
-  return d.toISOString().split('T')[0];
-}
-
-function isDue(cardSRS) {
-  if (!cardSRS) return false;
-  return cardSRS.nextReview <= todayStr();
-}
-
-// ---- Session Building ----
-function buildSession() {
-  const srs = getSRS();
-  const due = [];
-  const newCards = [];
-
-  for (const card of allCards) {
-    const data = srs[card.spanish];
-    if (data?.retired) continue;
-    if (!data) {
-      newCards.push(card);
-    } else if (isDue(data)) {
-      due.push(card);
-    }
-  }
-
-  // Shuffle due cards
-  shuffle(due);
-
-  // Limit new cards to daily cap
-  const newToday = getNewCardsToday();
-  const remaining = Math.max(0, NEW_CARDS_PER_DAY - newToday);
-  shuffle(newCards);
-  const newBatch = newCards.slice(0, remaining);
-
-  // Due cards first, then new
-  sessionQueue = [...due, ...newBatch];
-  currentIndex = 0;
-  sessionStats = { reviewed: 0, newCards: 0 };
-  isBonusMode = false;
-}
-
-function startBonusMode() {
-  isBonusMode = true;
-  const srs = getSRS();
-  const today = new Date();
-
-  const scored = allCards
-    .filter(card => !srs[card.spanish]?.retired)
-    .map(card => {
-      const data = srs[card.spanish];
-      if (!data || !data.lastReview || !data.interval) return { card, score: -1 };
-      const daysSince = (today - new Date(data.lastReview)) / 86400000;
-      const retention = Math.pow(0.9, daysSince / data.interval);
-      return { card, score: 1 - retention };
-    })
-    .sort((a, b) => b.score - a.score)
-    .map(({ card }) => card);
-
-  sessionQueue = scored;
-  currentIndex = 0;
-  document.getElementById('done').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  showCard();
-}
-
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
+  return new Date().toISOString().split('T')[0];
 }
 
 // ---- UI ----
 function showApp() {
   document.getElementById('loading').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-
-  if (sessionQueue.length === 0) {
-    showDone();
+  const card = pickNextCard();
+  if (!card) {
+    document.getElementById('empty').style.display = 'flex';
     return;
   }
-
-  showCard();
+  document.getElementById('app').style.display = 'flex';
+  showCard(card);
 }
 
-function showCard() {
-  if (currentIndex >= sessionQueue.length) {
-    showDone();
-    return;
-  }
-
-  currentCard = sessionQueue[currentIndex];
+function showCard(card) {
+  currentCard = card;
   isFlipped = false;
 
-  const card = document.getElementById('card');
-  card.classList.remove('flipped');
+  document.getElementById('card').classList.remove('flipped');
   document.getElementById('grade-buttons').classList.remove('visible');
   document.getElementById('retire-row').classList.remove('visible');
 
-  const showSpanish = false;
-
-  if (showSpanish) {
-    document.getElementById('front-label').textContent = 'Spanish';
-    document.getElementById('front-word').textContent = currentCard.spanish;
-    document.getElementById('back-label').textContent = 'English';
-    document.getElementById('back-word').textContent = currentCard.english;
-  } else {
-    document.getElementById('front-label').textContent = 'English';
-    document.getElementById('front-word').textContent = currentCard.english;
-    document.getElementById('back-label').textContent = 'Spanish';
-    document.getElementById('back-word').textContent = currentCard.spanish;
-  }
+  document.getElementById('front-label').textContent = 'English';
+  document.getElementById('front-word').textContent = card.english;
+  document.getElementById('back-label').textContent = 'Spanish';
+  document.getElementById('back-word').textContent = card.spanish;
 
   const senseEl = document.getElementById('back-sense');
-  if (currentCard.sense) {
-    senseEl.textContent = currentCard.sense;
+  if (card.sense) {
+    senseEl.textContent = card.sense;
     senseEl.style.display = 'block';
   } else {
     senseEl.style.display = 'none';
   }
 
-  document.getElementById('back-pos').textContent = currentCard.pos;
+  document.getElementById('back-pos').textContent = card.pos;
 
-  // Show other translations only for English→Spanish cards
   const otherEl = document.getElementById('back-other');
-  if (!showSpanish && currentCard.otherTranslations) {
+  if (card.otherTranslations) {
     otherEl.style.display = 'block';
     otherEl.innerHTML = '<div class="other-title">Other Translations</div>' +
-      currentCard.otherTranslations.trim();
+      card.otherTranslations.trim();
   } else {
     otherEl.style.display = 'none';
   }
 
-  document.getElementById('back-analysis').textContent = (currentCard.analysis || '').trim();
-
-  // Update counter
-  const remaining = sessionQueue.length - currentIndex;
-  if (isBonusMode) {
-    document.getElementById('counter').textContent = `Bonus Mode: Card ${currentIndex + 1}`;
-    document.getElementById('due-label').textContent = '';
-  } else {
-    document.getElementById('counter').textContent = `Daily Mode: ${currentIndex + 1} of ${sessionQueue.length}`;
-    document.getElementById('due-label').textContent = `${remaining} remaining`;
-  }
-
-  // Progress bar
-  const pct = (currentIndex / sessionQueue.length) * 100;
-  document.getElementById('progress').style.width = pct + '%';
-
-  // Update interval hints
-  const srs = getCardSRS(currentCard.spanish);
-  const interval = srs ? srs.interval || 1 : 1;
-  const ef = srs ? srs.easeFactor || 2.5 : 2.5;
-  document.getElementById('hard-interval').textContent = formatInterval(Math.max(1, Math.round(interval * 1.2)));
-  document.getElementById('easy-interval').textContent = formatInterval(Math.max(1, Math.round(interval * ef)));
-}
-
-function formatInterval(days) {
-  if (days < 30) return days + 'd';
-  if (days < 365) return Math.round(days / 30) + 'mo';
-  return (days / 365).toFixed(1) + 'y';
+  document.getElementById('back-analysis').textContent = (card.analysis || '').trim();
+  updateCounter();
 }
 
 function flipCard() {
@@ -807,75 +604,48 @@ function flipCard() {
   document.getElementById('retire-row').classList.add('visible');
 }
 
+function grade(passed) {
+  if (!currentCard) return;
+  recordReview(currentCard.spanish, passed);
+  incrementTodayCount();
+  const next = pickNextCard();
+  if (!next) {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('empty').style.display = 'flex';
+    return;
+  }
+  showCard(next);
+}
+
 function retire() {
   if (!currentCard) return;
   const srs = getSRS();
-  const cardData = { ...(srs[currentCard.spanish] || {}), retired: true };
-  srs[currentCard.spanish] = cardData;
+  const entry = { ...(srs[currentCard.spanish] || {}), retired: true };
+  srs[currentCard.spanish] = entry;
   saveSRS(srs);
-  pushSRSRemote([{ word: currentCard.spanish, ...cardData }]);
-  currentIndex++;
-  showCard();
-}
-
-function grade(rating) {
-  if (!currentCard) return;
-
-  const srs = getSRS();
-  const isNew = !srs[currentCard.spanish];
-  if (isNew) {
-    sessionStats.newCards++;
-    incrementNewCardsToday();
+  pushSRSRemote([{ word: currentCard.spanish, ...entry }]);
+  const next = pickNextCard();
+  if (!next) {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('empty').style.display = 'flex';
+    return;
   }
-  sessionStats.reviewed++;
-
-  updateCardSRS(currentCard.spanish, rating);
-
-  // If "again", re-add to end of queue
-  if (rating === 'again') {
-    sessionQueue.push(currentCard);
-  }
-
-  currentIndex++;
-  showCard();
-}
-
-function showDone() {
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('done').style.display = 'flex';
-  document.getElementById('stat-reviewed').textContent = sessionStats.reviewed;
-  document.getElementById('stat-new').textContent = sessionStats.newCards;
-
-  // Progress bar full
-  document.getElementById('progress').style.width = '100%';
-}
-
-function practiceAll() {
-  sessionQueue = [...allCards];
-  shuffle(sessionQueue);
-  currentIndex = 0;
-  sessionStats = { reviewed: 0, newCards: 0 };
-  document.getElementById('done').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  showCard();
+  showCard(next);
 }
 
 // ---- Event Listeners ----
 document.getElementById('card-container').addEventListener('click', (e) => {
-  // Don't flip if scrolling analysis text
   if (e.target.closest('.card-back') && isFlipped) return;
   flipCard();
 });
 
-// Keyboard support
 document.addEventListener('keydown', (e) => {
   if (e.key === ' ' || e.key === 'Enter') {
     e.preventDefault();
     if (!isFlipped) flipCard();
   } else if (isFlipped) {
-    if (e.key === '1') grade('again');
-    else if (e.key === '2') grade('hard');
-    else if (e.key === '3') grade('easy');
+    if (e.key === 'f' || e.key === 'F' || e.key === '1') grade(false);
+    else if (e.key === 'p' || e.key === 'P' || e.key === '2') grade(true);
     else if (e.key === 'r' || e.key === 'R') retire();
   }
 });

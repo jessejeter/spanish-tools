@@ -13,6 +13,15 @@
  *   6. Paste it into index.html as APPS_SCRIPT_URL
  *
  * Re-deploying after edits: Deploy > Manage deployments > edit the existing one.
+ *
+ * SRS sheet column layout (v2):
+ *   A: word
+ *   B: reviews (JSON string — array of {date, passed})
+ *   C: lastReview
+ *   D: retired
+ *
+ * NOTE: Clear existing SRS sheet rows before deploying this version,
+ * or old rows will be silently ignored (cards get a fresh start).
  */
 
 const SRS_SHEET_NAME = 'SRS';
@@ -55,18 +64,19 @@ function fmtDate(v) {
 }
 
 // GET — return all SRS data as JSON
+// Col A: word, Col B: reviews JSON, Col C: lastReview, Col D: retired
 function doGet() {
   const sheet = getSheet();
   const rows = sheet.getDataRange().getValues();
   const srs = {};
-  for (const [word, interval, easeFactor, nextReview, lastReview, retired] of rows) {
+  for (const [word, reviewsJson, lastReview, retired] of rows) {
     if (!word) continue;
+    let reviews = [];
+    try { reviews = JSON.parse(reviewsJson) || []; } catch {}
     srs[String(word)] = {
-      interval:    Number(interval)    || 0,
-      easeFactor:  Number(easeFactor)  || 2.5,
-      nextReview:  fmtDate(nextReview),
-      lastReview:  fmtDate(lastReview),
-      retired:     retired === true || String(retired).toUpperCase() === 'TRUE',
+      reviews,
+      lastReview: fmtDate(lastReview),
+      retired: retired === true || String(retired).toUpperCase() === 'TRUE',
     };
   }
   return ContentService
@@ -75,7 +85,7 @@ function doGet() {
 }
 
 // POST — upsert SRS entries
-// Body: JSON array of { word, interval, easeFactor, nextReview, lastReview, retired }
+// Body: JSON array of { word, reviews, lastReview, retired }
 function doPost(e) {
   const updates = JSON.parse(e.postData.contents);
   const sheet = getSheet();
@@ -86,9 +96,9 @@ function doPost(e) {
   rows.forEach((r, i) => { if (r[0]) rowMap[String(r[0])] = i + 1; });
 
   for (const u of updates) {
-    const row = [u.word, u.interval, u.easeFactor, u.nextReview, u.lastReview, u.retired || false];
+    const row = [u.word, JSON.stringify(u.reviews || []), u.lastReview || '', u.retired || false];
     if (rowMap[u.word]) {
-      sheet.getRange(rowMap[u.word], 1, 1, 6).setValues([row]);
+      sheet.getRange(rowMap[u.word], 1, 1, 4).setValues([row]);
     } else {
       sheet.appendRow(row);
       rowMap[u.word] = sheet.getLastRow();

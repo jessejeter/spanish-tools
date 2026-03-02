@@ -43,7 +43,7 @@ function onEdit(e) {
     const english = s1[2] || '';
     const pos     = s1[3] || '';
     const pop     = s1[4] || '';
-    const summary = `${date}\n\n${spanish}: ${english}\n\nPOS: ${pos}\n\nPop: ${pop}`;
+    const summary = `${spanish}: ${english}\n\n${date}\n\nPOS: ${pos}\n\nPop: ${pop}`;
     sheet.getRange(row, 1).setValue(summary);
   } else {
     sheet.getRange(row, 4).clearContent();

@@ -401,7 +401,7 @@ async function loadData() {
 
     const s2Map = {};
     for (let i = 0; i < s2.length; i++) {
-      const key = (s2[i][0] || '').trim().toLowerCase();
+      const key = (s2[i][0] || '').split('\n')[0].trim().toLowerCase();
       if (key) s2Map[key] = s2[i];
     }
 

@@ -59,7 +59,7 @@ function getSheet() {
 // Safely format a value that Google Sheets may have auto-converted to a Date
 function fmtDate(v) {
   if (!v) return '';
-  if (v instanceof Date) return Utilities.formatDate(v, 'UTC', 'yyyy-MM-dd');
+  if (v instanceof Date) return Utilities.formatDate(v, 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'");
   return String(v);
 }
 

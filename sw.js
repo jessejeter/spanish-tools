@@ -16,6 +16,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   // Navigation (HTML): network first so updates apply immediately
   if (e.request.mode === 'navigate') {
     e.respondWith(

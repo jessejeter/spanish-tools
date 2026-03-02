@@ -682,6 +682,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ---- Init ----
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 loadData();
 </script>
 </body>

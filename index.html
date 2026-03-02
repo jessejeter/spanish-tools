@@ -569,7 +569,7 @@ function recordReview(word, passed) {
   const reviews = entry.reviews || [];
   reviews.push({ date: todayStr(), passed });
   if (reviews.length > 5) reviews.shift();
-  srs[word] = { ...entry, reviews, lastReview: todayStr() };
+  srs[word] = { ...entry, reviews, lastReview: new Date().toISOString() };
   saveSRS(srs);
   pushSRSRemote([{ word, ...srs[word] }]);
 }

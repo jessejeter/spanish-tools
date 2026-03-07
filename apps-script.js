@@ -26,6 +26,41 @@
 
 const SRS_SHEET_NAME = 'SRS';
 
+// Runs when the spreadsheet opens — replaces any formula in Sheet2 col A with plain text.
+function onOpen() {
+  populateSheet2ColA();
+}
+
+function populateSheet2ColA() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const s1 = ss.getSheetByName('Sheet1');
+  const s2 = ss.getSheetByName('Sheet2');
+  if (!s1 || !s2) return;
+
+  const numRows = s1.getLastRow() - 1;
+  if (numRows < 1) return;
+
+  const s1Vals = s1.getRange(2, 1, numRows, 6).getValues();
+
+  const newColA = [];
+  for (let i = 0; i < numRows; i++) {
+    const spanish = s1Vals[i][1] || '';
+    const english = s1Vals[i][2] || '';
+    const sense   = s1Vals[i][5] || '';
+    const line1   = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+
+    if (!spanish) { newColA.push(['']); continue; }
+
+    const dateVal = s1Vals[i][0];
+    const date = dateVal ? Utilities.formatDate(new Date(dateVal), Session.getScriptTimeZone(), 'M/d/yyyy') : '';
+    const pos  = s1Vals[i][3] || '';
+    const pop  = s1Vals[i][4] || '';
+    newColA.push([`${line1}\n\n${date}\n\nPOS: ${pos}\n\nPop: ${pop}`]);
+  }
+
+  s2.getRange(2, 1, numRows, 1).setValues(newColA);
+}
+
 // Auto-populate column D with today's date when the Reviewed checkbox (col C) is checked.
 function onEdit(e) {
   const sheet = e.range.getSheet();
@@ -37,17 +72,28 @@ function onEdit(e) {
     sheet.getRange(row, 4).setValue(today);
 
     // Write summary to col A from Sheet1 data
-    const s1 = e.source.getSheetByName('Sheet1').getRange(row, 1, 1, 5).getValues()[0];
+    const s1 = e.source.getSheetByName('Sheet1').getRange(row, 1, 1, 6).getValues()[0];
     const date    = s1[0] ? Utilities.formatDate(new Date(s1[0]), Session.getScriptTimeZone(), 'M/d/yyyy') : '';
     const spanish = s1[1] || '';
     const english = s1[2] || '';
     const pos     = s1[3] || '';
     const pop     = s1[4] || '';
-    const summary = `${spanish}: ${english}\n\n${date}\n\nPOS: ${pos}\n\nPop: ${pop}`;
+    const sense   = s1[5] || '';
+    const line1   = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+    const summary = `${line1}\n\n${date}\n\nPOS: ${pos}\n\nPop: ${pop}`;
     sheet.getRange(row, 1).setValue(summary);
   } else {
     sheet.getRange(row, 4).clearContent();
-    sheet.getRange(row, 1).clearContent();
+    // Restore formatted summary (same format as populateSheet2ColA)
+    const s1u = e.source.getSheetByName('Sheet1').getRange(row, 1, 1, 6).getValues()[0];
+    const dateU    = s1u[0] ? Utilities.formatDate(new Date(s1u[0]), Session.getScriptTimeZone(), 'M/d/yyyy') : '';
+    const spanishU = s1u[1] || '';
+    const englishU = s1u[2] || '';
+    const posU     = s1u[3] || '';
+    const popU     = s1u[4] || '';
+    const senseU   = s1u[5] || '';
+    const line1U   = senseU ? `${spanishU}: ${englishU} (${senseU})` : `${spanishU}: ${englishU}`;
+    sheet.getRange(row, 1).setValue(`${line1U}\n\n${dateU}\n\nPOS: ${posU}\n\nPop: ${popU}`);
   }
 }
 

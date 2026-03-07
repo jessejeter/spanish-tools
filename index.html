@@ -624,11 +624,30 @@ function pickNextCard() {
   const eligible = allCards.filter(c => !srs[c.spanish]?.retired);
   if (!eligible.length) return null;
 
-  // Never-reviewed cards always come first, in sheet order
+  // 1. Never-reviewed cards always come first, in sheet order
   const unreviewed = eligible.filter(c => !srs[c.spanish]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
-  // Weighted random among reviewed cards by overdueness
+  // 2. Retry words next: failed in last 2 days, not yet reviewed today
+  const today = todayStr();
+  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
+  const retryPending = eligible.filter(c => {
+    const reviews = srs[c.spanish]?.reviews || [];
+    return reviews.some(r => !r.passed && r.date >= cutoff) &&
+           !reviews.some(r => r.date === today);
+  });
+  if (retryPending.length) {
+    const weights = retryPending.map(c => getWeight(srs[c.spanish]));
+    const total = weights.reduce((s, w) => s + w, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < retryPending.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return retryPending[i];
+    }
+    return retryPending[retryPending.length - 1];
+  }
+
+  // 3. Weighted random among all eligible cards
   const weights = eligible.map(c => getWeight(srs[c.spanish]));
   const total = weights.reduce((s, w) => s + w, 0);
   let r = Math.random() * total;

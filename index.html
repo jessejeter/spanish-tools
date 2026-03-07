@@ -356,10 +356,10 @@ body {
   </div>
 </div>
 
-<!-- Empty state (all cards retired) -->
+<!-- Empty state -->
 <div id="empty">
-  <h2>All cards retired</h2>
-  <p>You've retired every card. Nothing left to review!</p>
+  <h2 id="empty-title"></h2>
+  <p id="empty-body"></p>
 </div>
 
 <script>
@@ -619,43 +619,41 @@ function getWeight(data) {
   return 1 / (1 + Math.exp(strength));
 }
 
+function weightedRandom(cards, srs) {
+  const weights = cards.map(c => getWeight(srs[c.spanish]));
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < cards.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return cards[i];
+  }
+  return cards[cards.length - 1];
+}
+
 function pickNextCard() {
   const srs = getSRS();
-  const eligible = allCards.filter(c => !srs[c.spanish]?.retired);
+  const today = todayStr();
+
+  // Eligible = not retired, not already reviewed today
+  const eligible = allCards.filter(c => {
+    if (srs[c.spanish]?.retired) return false;
+    return !(srs[c.spanish]?.reviews || []).some(r => r.date === today);
+  });
   if (!eligible.length) return null;
 
-  // 1. Never-reviewed cards always come first, in sheet order
+  // 1. New words first (never reviewed), in sheet order
   const unreviewed = eligible.filter(c => !srs[c.spanish]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
-  // 2. Retry words next: failed in last 2 days, not yet reviewed today
-  const today = todayStr();
+  // 2. Retry words next: failed in last 2 days (already-reviewed-today excluded above)
   const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
-  const retryPending = eligible.filter(c => {
-    const reviews = srs[c.spanish]?.reviews || [];
-    return reviews.some(r => !r.passed && r.date >= cutoff) &&
-           !reviews.some(r => r.date === today);
-  });
-  if (retryPending.length) {
-    const weights = retryPending.map(c => getWeight(srs[c.spanish]));
-    const total = weights.reduce((s, w) => s + w, 0);
-    let r = Math.random() * total;
-    for (let i = 0; i < retryPending.length; i++) {
-      r -= weights[i];
-      if (r <= 0) return retryPending[i];
-    }
-    return retryPending[retryPending.length - 1];
-  }
+  const retryPending = eligible.filter(c =>
+    (srs[c.spanish]?.reviews || []).some(r => !r.passed && r.date >= cutoff)
+  );
+  if (retryPending.length) return weightedRandom(retryPending, srs);
 
-  // 3. Weighted random among all eligible cards
-  const weights = eligible.map(c => getWeight(srs[c.spanish]));
-  const total = weights.reduce((s, w) => s + w, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < eligible.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return eligible[i];
-  }
-  return eligible[eligible.length - 1];
+  // 3. Weighted random among remaining eligible cards
+  return weightedRandom(eligible, srs);
 }
 
 // ---- Review Recording ----
@@ -676,11 +674,25 @@ function todayStr() {
 }
 
 // ---- UI ----
+function showEmpty() {
+  const srs = getSRS();
+  const allRetired = allCards.every(c => srs[c.spanish]?.retired);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('empty').style.display = 'flex';
+  if (allRetired) {
+    document.getElementById('empty-title').textContent = 'All cards retired';
+    document.getElementById('empty-body').textContent = "You've retired every card. Nothing left to review!";
+  } else {
+    document.getElementById('empty-title').textContent = 'All done for today!';
+    document.getElementById('empty-body').textContent = "You've been through every card today. Come back tomorrow!";
+  }
+}
+
 function showApp() {
   document.getElementById('loading').style.display = 'none';
   const card = pickNextCard();
   if (!card) {
-    document.getElementById('empty').style.display = 'flex';
+    showEmpty();
     return;
   }
   document.getElementById('app').style.display = 'flex';
@@ -736,11 +748,7 @@ function grade(passed) {
   recordReview(currentCard.spanish, passed);
   incrementTodayCount();
   const next = pickNextCard();
-  if (!next) {
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('empty').style.display = 'flex';
-    return;
-  }
+  if (!next) { showEmpty(); return; }
   showCard(next);
 }
 
@@ -752,11 +760,7 @@ function retire() {
   saveSRS(srs);
   pushSRSRemote([{ word: currentCard.spanish, ...entry }]);
   const next = pickNextCard();
-  if (!next) {
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('empty').style.display = 'flex';
-    return;
-  }
+  if (!next) { showEmpty(); return; }
   showCard(next);
 }
 

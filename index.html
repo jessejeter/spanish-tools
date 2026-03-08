@@ -428,6 +428,7 @@ async function loadData() {
         analysis: s2row[1] || '',
         otherTranslations: s2row[4] || '',
         dateReviewed: s2row[3] || '',
+        dateAdded: (s1[i][0] || '').trim(),
       });
     }
 
@@ -502,6 +503,7 @@ function computeSessionStats() {
   for (const card of allCards) {
     const data = srs[card.spanish];
     if (data?.retired) continue;
+    if (card.dateAdded === today) continue;
 
     const reviews = data?.reviews || [];
     const firstReviewToday = reviews.length > 0 && reviews.every(r => r.date === today);
@@ -644,9 +646,10 @@ function pickNextCard() {
   const srs = getSRS();
   const today = todayStr();
 
-  // Eligible = not retired, not already reviewed today
+  // Eligible = not retired, not added today, not already reviewed today
   const eligible = allCards.filter(c => {
     if (srs[c.spanish]?.retired) return false;
+    if (c.dateAdded === today) return false;
     return !(srs[c.spanish]?.reviews || []).some(r => r.date === today);
   });
   if (!eligible.length) return null;

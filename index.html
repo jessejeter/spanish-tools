@@ -481,10 +481,20 @@ function pushTodayCount(count) {
   }]);
 }
 
+// A card is retry-eligible if it was missed at least once in the last 2 completed days,
+// UNLESS it was reviewed yesterday and had zero misses that day.
+function isRetryEligible(reviews) {
+  const today = todayStr();
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
+  if (!reviews.some(r => !r.passed && r.date >= cutoff && r.date < today)) return false;
+  const yReviews = reviews.filter(r => r.date === yesterday);
+  return !(yReviews.length > 0 && yReviews.every(r => r.passed));
+}
+
 function computeSessionStats() {
   const srs = getSRS();
   const today = todayStr();
-  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
 
   let newDone = 0, newRemaining = 0;
   let retryDone = 0, retryRemaining = 0;
@@ -502,8 +512,8 @@ function computeSessionStats() {
       newDone++;
     }
 
-    // Retry: not a new word, had a fail within past 2 days
-    if (!firstReviewToday && reviews.length > 0 && reviews.some(r => !r.passed && r.date >= cutoff)) {
+    // Retry: not a new word, eligible under the retry rule
+    if (!firstReviewToday && reviews.length > 0 && isRetryEligible(reviews)) {
       if (reviews.some(r => r.date === today)) {
         retryDone++;
       } else {
@@ -645,11 +655,8 @@ function pickNextCard() {
   const unreviewed = eligible.filter(c => !srs[c.spanish]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
-  // 2. Retry words next: failed in last 2 days (already-reviewed-today excluded above)
-  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
-  const retryPending = eligible.filter(c =>
-    (srs[c.spanish]?.reviews || []).some(r => !r.passed && r.date >= cutoff)
-  );
+  // 2. Retry words next: missed in last 2 days, not excused by a clean pass yesterday
+  const retryPending = eligible.filter(c => isRetryEligible(srs[c.spanish]?.reviews || []));
   if (retryPending.length) return weightedRandom(retryPending, srs);
 
   // 3. Weighted random among remaining eligible cards

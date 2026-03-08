@@ -26,8 +26,11 @@
 
 const SRS_SHEET_NAME = 'SRS';
 
-// Runs when the spreadsheet opens — replaces any formula in Sheet2 col A with plain text.
+// Runs when the spreadsheet opens — adds menu and refreshes Sheet2 col A.
 function onOpen() {
+  SpreadsheetApp.getActiveSpreadsheet().addMenu('Vocab Tools', [
+    { name: 'Refresh Sheet2 after sync', functionName: 'populateSheet2ColA' },
+  ]);
   populateSheet2ColA();
 }
 

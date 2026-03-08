@@ -640,9 +640,18 @@ def sort_sheets(service):
     # Col A formula + col C "TRUE"/"FALSE" need USER_ENTERED so they evaluate correctly.
     # AI text in cols B/D/E is very unlikely to start with "=" so USER_ENTERED is safe.
     # Sheet2 data starts at row 2 (has header). Sheet1 data starts at row 2 (has header).
+    def make_col_a(s1, date_str):
+        spanish = s1[1] if len(s1) > 1 else ''
+        english = s1[2] if len(s1) > 2 else ''
+        pos     = s1[3] if len(s1) > 3 else ''
+        pop     = s1[4] if len(s1) > 4 else ''
+        sense   = s1[5] if len(s1) > 5 else ''
+        line1   = f'{spanish}: {english} ({sense})' if sense else f'{spanish}: {english}'
+        return f'{line1}\n\n{date_str}\n\nPOS: {pos}\n\nPop: {pop}'
+
     all_s2 = [
         [
-            f'=Sheet1!B{i + 2}&": "&Sheet1!C{i + 2}',          # col A: formula referencing Sheet1 row i+2
+            make_col_a(p[0], normalize_date(p[0][0])),           # col A: plain text summary
             p[1][1],                                              # col B: AI analysis
             "TRUE" if p[1][2].strip().upper() == "TRUE" else "FALSE",  # col C: checkbox
             p[1][3],                                              # col D: review date
@@ -655,7 +664,7 @@ def sort_sheets(service):
         service.spreadsheets().values().update(
             spreadsheetId=SPREADSHEET_ID,
             range="Sheet2!A2",
-            valueInputOption="USER_ENTERED",
+            valueInputOption="RAW",
             body={"values": all_s2},
         )
     )

@@ -664,7 +664,7 @@ def sort_sheets(service):
         service.spreadsheets().values().update(
             spreadsheetId=SPREADSHEET_ID,
             range="Sheet2!A2",
-            valueInputOption="RAW",
+            valueInputOption="USER_ENTERED",
             body={"values": all_s2},
         )
     )

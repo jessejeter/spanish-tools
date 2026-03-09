@@ -8,8 +8,11 @@ Scrapes vocabulary words from SpanishDict lists and exports to CSV.
 import csv
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+EASTERN = ZoneInfo('America/New_York')
 
 import requests
 
@@ -97,7 +100,8 @@ def scrape_spanishdict_list(url: str) -> list[dict]:
     for vt in vocab_translations:
         created = vt.get("createdAt", "")
         if created:
-            translation_to_date[vt.get("translationId")] = created[:10]  # "YYYY-MM-DD"
+            dt = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            translation_to_date[vt.get("translationId")] = dt.astimezone(EASTERN).strftime('%Y-%m-%d')
 
     # Build lookup: wordId -> sense data
     word_to_sense = {}

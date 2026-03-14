@@ -430,7 +430,6 @@ async function loadData() {
         dateReviewed: parseMDY(s2row[3] || ''),
         dateAdded: (s1[i][0] || '').trim(),
       });
-      console.log(`[debug] ${spanish} | raw dateReviewed: ${JSON.stringify(s2row[3])} | parsed: ${parseMDY(s2row[3] || '')} | today: ${todayStr()}`);
     }
 
     if (cards.length === 0) {
@@ -505,6 +504,7 @@ function computeSessionStats() {
     const data = srs[card.spanish];
     if (data?.retired) continue;
     if (card.dateAdded === today) continue;
+    if (card.dateReviewed === today) continue;
 
     const reviews = data?.reviews || [];
     const firstReviewToday = reviews.length > 0 && reviews.every(r => r.date === today);

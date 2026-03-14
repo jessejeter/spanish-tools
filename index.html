@@ -427,7 +427,7 @@ async function loadData() {
         sense,
         analysis: s2row[1] || '',
         otherTranslations: s2row[4] || '',
-        dateReviewed: s2row[3] || '',
+        dateReviewed: parseMDY(s2row[3] || ''),
         dateAdded: (s1[i][0] || '').trim(),
       });
     }
@@ -646,10 +646,11 @@ function pickNextCard() {
   const srs = getSRS();
   const today = todayStr();
 
-  // Eligible = not retired, not added today, not already reviewed today
+  // Eligible = not retired, not added today, not marked reviewed in sheet today, not already reviewed today
   const eligible = allCards.filter(c => {
     if (srs[c.spanish]?.retired) return false;
     if (c.dateAdded === today) return false;
+    if (c.dateReviewed === today) return false;
     return !(srs[c.spanish]?.reviews || []).some(r => r.date === today);
   });
   if (!eligible.length) return null;
@@ -679,6 +680,14 @@ function recordReview(word, passed) {
 }
 
 // ---- Date Helpers ----
+// Convert "M/d/yyyy" (Sheet2 col D format) to "YYYY-MM-DD"
+function parseMDY(s) {
+  if (!s) return '';
+  const parts = s.split('/');
+  if (parts.length !== 3) return '';
+  return `${parts[2]}-${String(parts[0]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}`;
+}
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

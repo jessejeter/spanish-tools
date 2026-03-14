@@ -483,23 +483,11 @@ function pushTodayCount(count) {
   }]);
 }
 
-// A card is retry-eligible if it was missed at least once in the last 2 completed days,
-// UNLESS it was reviewed yesterday and had zero misses that day.
-function isRetryEligible(reviews) {
-  const today = todayStr();
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
-  if (!reviews.some(r => !r.passed && r.date >= cutoff && r.date < today)) return false;
-  const yReviews = reviews.filter(r => r.date === yesterday);
-  return !(yReviews.length > 0 && yReviews.every(r => r.passed));
-}
-
 function computeSessionStats() {
   const srs = getSRS();
   const today = todayStr();
 
   let newDone = 0, newRemaining = 0;
-  let retryDone = 0, retryRemaining = 0;
 
   for (const card of allCards) {
     const data = srs[card.spanish];
@@ -515,18 +503,9 @@ function computeSessionStats() {
     } else if (firstReviewToday) {
       newDone++;
     }
-
-    // Retry: not a new word, eligible under the retry rule
-    if (!firstReviewToday && reviews.length > 0 && isRetryEligible(reviews)) {
-      if (reviews.some(r => r.date === today)) {
-        retryDone++;
-      } else {
-        retryRemaining++;
-      }
-    }
   }
 
-  return { newDone, newRemaining, retryDone, retryRemaining };
+  return { newDone, newRemaining };
 }
 
 function updateCounter() {
@@ -534,19 +513,13 @@ function updateCounter() {
   document.getElementById('counter').textContent =
     count === 0 ? 'No cards done yet today' : `${count} done today`;
 
-  const { newDone, newRemaining, retryDone, retryRemaining } = computeSessionStats();
+  const { newDone, newRemaining } = computeSessionStats();
   const parts = [];
 
   if (newDone > 0 || newRemaining > 0) {
     const total = newDone + newRemaining;
     const done = newRemaining === 0;
     parts.push(`<span style="color:${done ? 'var(--green)' : 'inherit'}">New ${newDone}/${total}</span>`);
-  }
-
-  if (retryDone > 0 || retryRemaining > 0) {
-    const total = retryDone + retryRemaining;
-    const done = retryRemaining === 0;
-    parts.push(`<span style="color:${done ? 'var(--green)' : 'inherit'}">Retry ${retryDone}/${total}</span>`);
   }
 
   document.getElementById('session-stats').innerHTML = parts.join(' · ');
@@ -664,11 +637,7 @@ function pickNextCard() {
   const unreviewed = eligible.filter(c => !srs[c.spanish]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
-  // 2. Retry words next: missed in last 2 days, not excused by a clean pass yesterday
-  const retryPending = eligible.filter(c => isRetryEligible(srs[c.spanish]?.reviews || []));
-  if (retryPending.length) return weightedRandom(retryPending, srs);
-
-  // 3. Weighted random among remaining eligible cards
+  // 2. Weighted random by P(recall) — lowest probability shown most often
   return weightedRandom(eligible, srs);
 }
 

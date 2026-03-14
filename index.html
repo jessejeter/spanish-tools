@@ -589,23 +589,32 @@ function pushSRSRemote(updates) {
   }).catch(e => console.warn('SRS remote save failed:', e));
 }
 
-// ---- Half-Life Regression (HLR) ----
-// Based on Duolingo's 2016 paper "A Trainable Spaced Repetition Model for Language Learning".
-// P(recall) = 2^(-Δt / h), where h is memory half-life estimated from review history.
-// Half-life grows with correct reviews and shrinks with incorrect ones (log-linear model).
+// ---- Half-Life Model ----
+// Estimates memory half-life from the *spacing* between reviews, not just pass/fail counts.
+// A correct recall after a long gap → long half-life (strong memory).
+// A failed recall → short half-life (weak memory).
+// P(recall) = 2^(-Δt / h)
 const REVIEW_LOG_CAP = 20;
-const HLR_RIGHT = 1.0;   // log₂ weight for correct reviews
-const HLR_WRONG = -0.5;  // log₂ weight for incorrect reviews
-const HLR_BIAS  = 0.0;   // log₂ initial half-life (2^0 = 1 day for unseen word)
+const HLR_GROWTH = 2.0;  // multiply gap by this on a correct review
+const HLR_DECAY  = 0.5;  // multiply gap by this on an incorrect review
+const HLR_MIN_H  = 0.5;  // minimum half-life in days
+const HLR_INIT   = 1.0;  // assumed gap (days) before the first stored review
 
 function getPRecall(data) {
   if (!data) return 0;
-  const lastReview = data.lastReview || (data.reviews?.length ? data.reviews[data.reviews.length - 1].date : null);
+  const reviews = data.reviews || [];
+  const lastReview = data.lastReview || (reviews.length ? reviews[reviews.length - 1].date : null);
   if (!lastReview) return 0;
-  // Fall back to counting from reviews array if right/wrong weren't migrated
-  const right = data.right || data.reviews?.filter(r => r.passed).length || 0;
-  const wrong = data.wrong || data.reviews?.filter(r => !r.passed).length || 0;
-  const h = Math.pow(2, HLR_BIAS + HLR_RIGHT * Math.log2(right + 1) + HLR_WRONG * Math.log2(wrong + 1));
+
+  let h = HLR_INIT;
+  let prevDate = null;
+  for (const r of reviews) {
+    const rawGap = prevDate ? (new Date(r.date) - new Date(prevDate)) / 86400000 : HLR_INIT;
+    const gap = rawGap > 0 ? rawGap : HLR_INIT;
+    h = Math.max(HLR_MIN_H, gap * (r.passed ? HLR_GROWTH : HLR_DECAY));
+    prevDate = r.date;
+  }
+
   const daysSinceLast = (Date.now() - new Date(lastReview)) / 86400000;
   return Math.pow(2, -daysSinceLast / h);
 }

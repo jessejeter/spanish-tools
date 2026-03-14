@@ -620,8 +620,9 @@ function getPRecall(data) {
 }
 
 function weightedRandom(cards, srs) {
-  // Weight = 1 - P(recall): cards more likely forgotten get picked more often
-  const weights = cards.map(c => 1 - getPRecall(srs[c.spanish]));
+  // Weight = (1 - P(recall))^2: squaring strongly favors low-recall cards.
+  // A 90% card is 81x less likely to be picked than a 10% card.
+  const weights = cards.map(c => Math.pow(1 - getPRecall(srs[c.spanish]), 2));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total === 0) return cards[Math.floor(Math.random() * cards.length)];
   let r = Math.random() * total;

@@ -73,30 +73,8 @@ function onEdit(e) {
     // Write review date to col D
     const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'M/d/yyyy');
     sheet.getRange(row, 4).setValue(today);
-
-    // Write summary to col A from Sheet1 data
-    const s1 = e.source.getSheetByName('Sheet1').getRange(row, 1, 1, 6).getValues()[0];
-    const date    = s1[0] ? Utilities.formatDate(new Date(s1[0]), Session.getScriptTimeZone(), 'M/d/yyyy') : '';
-    const spanish = s1[1] || '';
-    const english = s1[2] || '';
-    const pos     = s1[3] || '';
-    const pop     = s1[4] || '';
-    const sense   = s1[5] || '';
-    const line1   = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
-    const summary = `${line1}\n\n${date}\n\nPOS: ${pos}\n\nPop: ${pop}`;
-    sheet.getRange(row, 1).setValue(summary);
   } else {
     sheet.getRange(row, 4).clearContent();
-    // Restore formatted summary (same format as populateSheet2ColA)
-    const s1u = e.source.getSheetByName('Sheet1').getRange(row, 1, 1, 6).getValues()[0];
-    const dateU    = s1u[0] ? Utilities.formatDate(new Date(s1u[0]), Session.getScriptTimeZone(), 'M/d/yyyy') : '';
-    const spanishU = s1u[1] || '';
-    const englishU = s1u[2] || '';
-    const posU     = s1u[3] || '';
-    const popU     = s1u[4] || '';
-    const senseU   = s1u[5] || '';
-    const line1U   = senseU ? `${spanishU}: ${englishU} (${senseU})` : `${spanishU}: ${englishU}`;
-    sheet.getRange(row, 1).setValue(`${line1U}\n\n${dateU}\n\nPOS: ${posU}\n\nPop: ${popU}`);
   }
 }
 

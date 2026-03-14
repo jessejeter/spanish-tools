@@ -680,9 +680,15 @@ function recordReview(word, passed) {
 }
 
 // ---- Date Helpers ----
-// Convert "M/d/yyyy" (Sheet2 col D format) to "YYYY-MM-DD"
+// Convert sheet date to "YYYY-MM-DD".
+// Handles GViz Date(yyyy,m,d) (0-indexed month) and M/d/yyyy string formats.
 function parseMDY(s) {
   if (!s) return '';
+  const gviz = s.match(/^Date\((\d+),(\d+),(\d+)\)$/);
+  if (gviz) {
+    const [, y, m, d] = gviz;
+    return `${y}-${String(Number(m) + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
   const parts = s.split('/');
   if (parts.length !== 3) return '';
   return `${parts[2]}-${String(parts[0]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}`;

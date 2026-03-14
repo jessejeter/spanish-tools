@@ -650,8 +650,10 @@ function pickNextCard() {
   const unreviewed = eligible.filter(c => !srs[c.spanish]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
-  // 2. Weighted random by P(recall) — lowest probability shown most often
-  return weightedRandom(eligible, srs);
+  // 2. Always pick the card with lowest P(recall)
+  return eligible.reduce((best, c) =>
+    getPRecall(srs[c.spanish]) < getPRecall(srs[best.spanish]) ? c : best
+  );
 }
 
 // ---- Review Recording ----

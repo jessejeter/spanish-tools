@@ -629,7 +629,6 @@ function getPRecall(data) {
   if (!data?.lastReview) return 0;
   const right = data.right || 0;
   const wrong = data.wrong || 0;
-  if (right + wrong === 0) return 0;
   const h = Math.pow(2, HLR_BIAS + HLR_RIGHT * Math.log2(right + 1) + HLR_WRONG * Math.log2(wrong + 1));
   const daysSinceLast = (Date.now() - new Date(data.lastReview)) / 86400000;
   return Math.pow(2, -daysSinceLast / h);

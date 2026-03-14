@@ -14,9 +14,9 @@
  *
  * Re-deploying after edits: Deploy > Manage deployments > edit the existing one.
  *
- * SRS sheet column layout (v2):
+ * SRS sheet column layout (v3):
  *   A: word
- *   B: reviews (JSON string — array of {date, passed})
+ *   B: data (JSON object — {reviews, right, wrong, firstReview})
  *   C: lastReview
  *   D: retired
  *
@@ -91,17 +91,31 @@ function fmtDate(v) {
 }
 
 // GET — return all SRS data as JSON
-// Col A: word, Col B: reviews JSON, Col C: lastReview, Col D: retired
+// Col A: word, Col B: data JSON, Col C: lastReview, Col D: retired
 function doGet() {
   const sheet = getSheet();
   const rows = sheet.getDataRange().getValues();
   const srs = {};
-  for (const [word, reviewsJson, lastReview, retired] of rows) {
+  for (const [word, dataJson, lastReview, retired] of rows) {
     if (!word) continue;
-    let reviews = [];
-    try { reviews = JSON.parse(reviewsJson) || []; } catch {}
+    let reviews = [], right = 0, wrong = 0, firstReview = '';
+    try {
+      const parsed = JSON.parse(dataJson);
+      if (Array.isArray(parsed)) {
+        // old format: col B was just a reviews array
+        reviews = parsed;
+        right = parsed.filter(r => r.passed).length;
+        wrong = parsed.filter(r => !r.passed).length;
+        firstReview = parsed.length > 0 ? (parsed[0].date || '') : '';
+      } else if (parsed) {
+        reviews = parsed.reviews || [];
+        right = parsed.right || 0;
+        wrong = parsed.wrong || 0;
+        firstReview = parsed.firstReview || '';
+      }
+    } catch {}
     srs[String(word)] = {
-      reviews,
+      reviews, right, wrong, firstReview,
       lastReview: fmtDate(lastReview),
       retired: retired === true || String(retired).toUpperCase() === 'TRUE',
     };
@@ -112,7 +126,7 @@ function doGet() {
 }
 
 // POST — upsert SRS entries
-// Body: JSON array of { word, reviews, lastReview, retired }
+// Body: JSON array of { word, reviews, right, wrong, firstReview, lastReview, retired }
 function doPost(e) {
   const updates = JSON.parse(e.postData.contents);
   const sheet = getSheet();
@@ -123,7 +137,13 @@ function doPost(e) {
   rows.forEach((r, i) => { if (r[0]) rowMap[String(r[0])] = i + 1; });
 
   for (const u of updates) {
-    const row = [u.word, JSON.stringify(u.reviews || []), u.lastReview || '', u.retired || false];
+    const dataJson = JSON.stringify({
+      reviews: u.reviews || [],
+      right: u.right || 0,
+      wrong: u.wrong || 0,
+      firstReview: u.firstReview || '',
+    });
+    const row = [u.word, dataJson, u.lastReview || '', u.retired || false];
     if (rowMap[u.word]) {
       sheet.getRange(rowMap[u.word], 1, 1, 4).setValues([row]);
     } else {

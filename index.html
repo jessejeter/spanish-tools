@@ -430,6 +430,7 @@ async function loadData() {
         dateReviewed: parseMDY(s2row[3] || ''),
         dateAdded: (s1[i][0] || '').trim(),
       });
+      console.log(`[debug] ${spanish} | raw dateReviewed: ${JSON.stringify(s2row[3])} | parsed: ${parseMDY(s2row[3] || '')} | today: ${todayStr()}`);
     }
 
     if (cards.length === 0) {

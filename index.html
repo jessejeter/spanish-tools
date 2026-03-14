@@ -336,6 +336,7 @@ body {
         <div class="card-word" id="front-word"></div>
         <div class="card-sense" id="front-sense"></div>
         <div class="tap-hint">tap to flip</div>
+        <div id="front-precall" style="font-size:11px;color:var(--text-dim);margin-top:8px;opacity:0.5;"></div>
       </div>
       <div class="card-face card-back">
         <div class="card-label" id="back-label"></div>
@@ -766,6 +767,12 @@ function showCard(card) {
   }
 
   document.getElementById('back-analysis').textContent = (card.analysis || '').trim();
+
+  const srsData = getSRS()[card.spanish];
+  const p = getPRecall(srsData);
+  const precallEl = document.getElementById('front-precall');
+  precallEl.textContent = srsData?.lastReview ? `P(recall): ${Math.round(p * 100)}%` : 'new';
+
   updateCounter();
 }
 

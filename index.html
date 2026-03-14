@@ -602,8 +602,9 @@ function getPRecall(data) {
   if (!data) return 0;
   const lastReview = data.lastReview || (data.reviews?.length ? data.reviews[data.reviews.length - 1].date : null);
   if (!lastReview) return 0;
-  const right = data.right || 0;
-  const wrong = data.wrong || 0;
+  // Fall back to counting from reviews array if right/wrong weren't migrated
+  const right = data.right || data.reviews?.filter(r => r.passed).length || 0;
+  const wrong = data.wrong || data.reviews?.filter(r => !r.passed).length || 0;
   const h = Math.pow(2, HLR_BIAS + HLR_RIGHT * Math.log2(right + 1) + HLR_WRONG * Math.log2(wrong + 1));
   const daysSinceLast = (Date.now() - new Date(lastReview)) / 86400000;
   return Math.pow(2, -daysSinceLast / h);

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>Spanish Frames</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --card: #0f3460;
+  --card-back: #1a1a40;
+  --text: #e4e4e4;
+  --text-dim: #8888aa;
+  --accent: #e94560;
+  --green: #4ecca3;
+  --yellow: #f0c040;
+  --orange: #e07840;
+  --red: #e94560;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--surface);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#error {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+#error button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#app {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  max-width: 500px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  gap: 16px;
+}
+
+.top-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.top-bar .count { font-weight: 600; color: var(--text); }
+
+.card-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+  cursor: pointer;
+  min-height: 0;
+}
+
+.card {
+  width: 100%;
+  max-height: 100%;
+  min-height: 250px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.4s ease;
+}
+
+.card.flipped { transform: rotateY(180deg); }
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+
+.card-front {
+  background: var(--card);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.card-back {
+  background: var(--card-back);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transform: rotateY(180deg);
+}
+
+.card-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.card-phrase {
+  font-size: clamp(22px, 6vw, 36px);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.tap-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 24px;
+  opacity: 0.6;
+}
+
+/* Live timer on front */
+#live-timer {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+/* Timing result badge on back */
+#timing-badge {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  letter-spacing: 0.5px;
+}
+
+.next-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  text-align: center;
+}
+
+.next-hint.visible {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+#empty {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+#empty h2 { font-size: 24px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Loading frames...</p>
+</div>
+
+<div id="error">
+  <p id="error-msg">Failed to load frames.</p>
+  <button onclick="location.reload()">Retry</button>
+</div>
+
+<div id="app">
+  <div class="top-bar">
+    <span id="counter" class="count"></span>
+  </div>
+
+  <div class="card-container" id="card-container">
+    <div class="card" id="card">
+      <div class="card-face card-front">
+        <div class="card-label">English</div>
+        <div class="card-phrase" id="front-phrase"></div>
+        <div class="tap-hint">tap to reveal</div>
+        <div id="live-timer">0.0s</div>
+      </div>
+      <div class="card-face card-back">
+        <div id="timing-badge"></div>
+        <div class="card-label">Spanish</div>
+        <div class="card-phrase" id="back-phrase"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="next-hint" id="next-hint">tap to continue</div>
+</div>
+
+<div id="empty">
+  <h2>All done!</h2>
+  <p>You've been through every frame today. Come back tomorrow!</p>
+</div>
+
+<script>
+const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
+const FRAMES_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Frames`;
+const STORAGE_KEY = 'frames-srs-v1';
+
+let allFrames = [];
+let currentFrame = null;
+let isFlipped = false;
+let timerStart = null;
+let timerInterval = null;
+let elapsedSeconds = 0;
+let sessionDone = 0, sessionPass = 0, sessionFail = 0;
+
+// ---- GViz parsing (same as vocab app) ----
+function parseGvizJson(text) {
+  const match = text.match(/google\.visualization\.Query\.setResponse\(({.*})\)/s);
+  if (!match) throw new Error('Invalid response from Google Sheets');
+  const data = JSON.parse(match[1]);
+  if (data.status === 'error') {
+    throw new Error(data.errors?.map(e => e.message).join(', ') || 'Sheet error');
+  }
+  return data.table.rows.map(row =>
+    row.c.map(cell => (cell && cell.v != null) ? String(cell.v) : '')
+  );
+}
+
+async function loadData() {
+  try {
+    const res = await fetch(FRAMES_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = parseGvizJson(await res.text());
+
+    const frames = [];
+    for (const row of rows) {
+      const en = (row[0] || '').trim();
+      const es = (row[1] || '').trim();
+      if (!en || !es) continue;
+      // skip header row
+      if (en.toLowerCase() === 'english') continue;
+      frames.push({ en, es });
+    }
+
+    if (frames.length === 0) throw new Error('No frames found in the Frames sheet.');
+    allFrames = frames;
+    showApp();
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'flex';
+    document.getElementById('error-msg').textContent = err.message;
+  }
+}
+
+// ---- SRS ----
+function getSRS() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function saveSRS(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function recordReview(en, passed) {
+  const srs = getSRS();
+  const entry = srs[en] || {};
+  const reviews = entry.reviews || [];
+  reviews.push({ date: todayStr(), passed });
+  if (reviews.length > 20) reviews.shift();
+  srs[en] = {
+    ...entry,
+    reviews,
+    right: (entry.right || 0) + (passed ? 1 : 0),
+    wrong: (entry.wrong || 0) + (passed ? 0 : 1),
+    firstReview: entry.firstReview || todayStr(),
+    lastReview: new Date().toISOString(),
+  };
+  saveSRS(srs);
+}
+
+// ---- Half-Life Model (same as vocab app) ----
+const HLR_GROWTH = 2.0, HLR_DECAY = 0.5, HLR_MIN_H = 0.5, HLR_INIT = 1.0;
+
+function getPRecall(data) {
+  if (!data) return 0;
+  const reviews = data.reviews || [];
+  const lastReview = data.lastReview || (reviews.length ? reviews[reviews.length - 1].date : null);
+  if (!lastReview) return 0;
+  let h = HLR_INIT, prevDate = null;
+  for (const r of reviews) {
+    const rawGap = prevDate ? (new Date(r.date) - new Date(prevDate)) / 86400000 : HLR_INIT;
+    const gap = rawGap > 0 ? rawGap : HLR_INIT;
+    h = Math.max(HLR_MIN_H, gap * (r.passed ? HLR_GROWTH : HLR_DECAY));
+    prevDate = r.date;
+  }
+  const daysSinceLast = (Date.now() - new Date(lastReview)) / 86400000;
+  return Math.pow(2, -daysSinceLast / h);
+}
+
+function pickNextFrame() {
+  const srs = getSRS();
+  const today = todayStr();
+  const eligible = allFrames.filter(f => {
+    const data = srs[f.en];
+    if (data?.retired) return false;
+    return !(data?.reviews || []).some(r => r.date === today);
+  });
+  if (!eligible.length) return null;
+  // New frames first, in sheet order
+  const unreviewed = eligible.filter(f => !srs[f.en]?.reviews?.length);
+  if (unreviewed.length) return unreviewed[0];
+  // Then lowest P(recall)
+  return eligible.reduce((best, f) =>
+    getPRecall(srs[f.en]) < getPRecall(srs[best.en]) ? f : best
+  );
+}
+
+// ---- Timer ----
+function startTimer() {
+  timerStart = performance.now();
+  const liveEl = document.getElementById('live-timer');
+  liveEl.textContent = '0.0s';
+  timerInterval = setInterval(() => {
+    const s = (performance.now() - timerStart) / 1000;
+    liveEl.textContent = s.toFixed(1) + 's';
+  }, 50);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  elapsedSeconds = (performance.now() - timerStart) / 1000;
+  return elapsedSeconds;
+}
+
+function getTimingResult(s) {
+  if (s <= 2) return { label: `${s.toFixed(1)}s — Pass`, color: '#4ecca3', pass: true };
+  if (s <= 4) return { label: `${s.toFixed(1)}s — Fail (too slow)`, color: '#e94560', pass: false };
+  if (s <= 7) return { label: `${s.toFixed(1)}s — Fail (hesitant)`, color: '#e94560', pass: false };
+  return       { label: `${s.toFixed(1)}s — Fail (breakdown)`,      color: '#e94560', pass: false };
+}
+
+// ---- Date Helpers ----
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ---- UI ----
+function updateCounter() {
+  const srs = getSRS();
+  const remaining = allFrames.filter(f => {
+    if (srs[f.en]?.retired) return false;
+    return !(srs[f.en]?.reviews || []).some(r => r.date === todayStr());
+  }).length;
+
+  const parts = [];
+  if (sessionDone > 0) {
+    parts.push(`${sessionDone} done`);
+    parts.push(`<span style="color:var(--green)">${sessionPass} pass</span>`);
+    parts.push(`<span style="color:var(--red)">${sessionFail} fail</span>`);
+  }
+  if (remaining > 0) parts.push(`${remaining} left`);
+
+  document.getElementById('counter').innerHTML = parts.join(' · ') || '&nbsp;';
+}
+
+function showApp() {
+  document.getElementById('loading').style.display = 'none';
+  const frame = pickNextFrame();
+  if (!frame) {
+    showEmpty();
+    return;
+  }
+  document.getElementById('app').style.display = 'flex';
+  showFrame(frame);
+}
+
+function showFrame(frame) {
+  currentFrame = frame;
+  isFlipped = false;
+
+  document.getElementById('card').classList.remove('flipped');
+  document.getElementById('next-hint').classList.remove('visible');
+  document.getElementById('timing-badge').textContent = '';
+  document.getElementById('live-timer').textContent = '0.0s';
+
+  document.getElementById('front-phrase').textContent = frame.en;
+  document.getElementById('back-phrase').textContent = frame.es;
+
+  updateCounter();
+  startTimer();
+}
+
+function flipCard() {
+  if (isFlipped) return;
+  isFlipped = true;
+  const elapsed = stopTimer();
+  const result = getTimingResult(elapsed);
+
+  const badge = document.getElementById('timing-badge');
+  badge.textContent = result.label;
+  badge.style.background = result.color + '22';
+  badge.style.color = result.color;
+  badge.style.border = `1px solid ${result.color}66`;
+
+  recordReview(currentFrame.en, result.pass);
+  sessionDone++;
+  if (result.pass) sessionPass++; else sessionFail++;
+  updateCounter();
+
+  document.getElementById('card').classList.add('flipped');
+  document.getElementById('next-hint').classList.add('visible');
+}
+
+function advance() {
+  if (!isFlipped) return;
+  const next = pickNextFrame();
+  if (!next) { showEmpty(); return; }
+  showFrame(next);
+}
+
+function showEmpty() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('empty').style.display = 'flex';
+}
+
+// ---- Events ----
+document.getElementById('card-container').addEventListener('click', () => {
+  if (!isFlipped) flipCard();
+  else advance();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    if (!isFlipped) flipCard();
+    else advance();
+  }
+});
+
+loadData();
+</script>
+</body>
+</html>

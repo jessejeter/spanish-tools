@@ -521,14 +521,16 @@ function flipCard() {
   badge.style.color = result.color;
   badge.style.border = `1px solid ${result.color}66`;
 
-  // Style pass button based on timing
+  // Style buttons based on timing
   const passBtn = document.getElementById('btn-pass');
   if (result.pass) {
     passBtn.textContent = 'Pass';
     passBtn.className = 'grade-btn btn-pass-fast';
+    passBtn.onclick = () => grade(true);
   } else {
-    passBtn.textContent = 'Pass (slow)';
+    passBtn.textContent = 'Got it';
     passBtn.className = 'grade-btn btn-pass-slow';
+    passBtn.onclick = () => grade(false);
   }
 
   document.getElementById('card').classList.add('flipped');
@@ -561,7 +563,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     if (!isFlipped) flipCard();
   } else if (isFlipped) {
-    if (e.key === 'p' || e.key === 'P' || e.key === '2') grade(true);
+    if (e.key === 'p' || e.key === 'P' || e.key === '2') document.getElementById('btn-pass').click();
     else if (e.key === 'f' || e.key === 'F' || e.key === '1') grade(false);
   }
 });

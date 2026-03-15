@@ -95,6 +95,7 @@ function fmtDate(v) {
 // Col A: word, Col B: data JSON, Col C: lastReview, Col D: retired
 function doGet(e) {
   const sheet = getSheet(e && e.parameter && e.parameter.sheet);
+  if (sheet.getLastRow() === 0) return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);
   const rows = sheet.getDataRange().getValues();
   const srs = {};
   for (const [word, dataJson, lastReview, retired] of rows) {
@@ -130,18 +131,14 @@ function doGet(e) {
 // Body: either a JSON array (vocab, uses SRS sheet)
 //   or { sheet: 'FramesSRS', updates: [...] } for a named sheet
 function doPost(e) {
-  Logger.log('doPost body: ' + (e.postData ? e.postData.contents : 'NO BODY'));
   const payload = JSON.parse(e.postData.contents);
-  Logger.log('payload: ' + JSON.stringify(payload));
   const sheetName = (!Array.isArray(payload) && payload.sheet) || (e.parameter && e.parameter.sheet) || SRS_SHEET_NAME;
   const updates = Array.isArray(payload) ? payload : (payload.updates || []);
-  Logger.log('sheetName: ' + sheetName + ', updates count: ' + updates.length);
   const sheet = getSheet(sheetName);
-  const rows = sheet.getDataRange().getValues();
-
-  // Build word → 1-indexed row map
   const rowMap = {};
-  rows.forEach((r, i) => { if (r[0]) rowMap[String(r[0])] = i + 1; });
+  if (sheet.getLastRow() > 0) {
+    sheet.getDataRange().getValues().forEach((r, i) => { if (r[0]) rowMap[String(r[0])] = i + 1; });
+  }
 
   for (const u of updates) {
     const dataJson = JSON.stringify({

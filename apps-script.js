@@ -78,9 +78,10 @@ function onEdit(e) {
   }
 }
 
-function getSheet() {
+function getSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(SRS_SHEET_NAME) || ss.insertSheet(SRS_SHEET_NAME);
+  const sheetName = name || SRS_SHEET_NAME;
+  return ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
 }
 
 // Safely format a value that Google Sheets may have auto-converted to a Date
@@ -92,8 +93,8 @@ function fmtDate(v) {
 
 // GET — return all SRS data as JSON
 // Col A: word, Col B: data JSON, Col C: lastReview, Col D: retired
-function doGet() {
-  const sheet = getSheet();
+function doGet(e) {
+  const sheet = getSheet(e && e.parameter && e.parameter.sheet);
   const rows = sheet.getDataRange().getValues();
   const srs = {};
   for (const [word, dataJson, lastReview, retired] of rows) {
@@ -127,9 +128,10 @@ function doGet() {
 
 // POST — upsert SRS entries
 // Body: JSON array of { word, reviews, right, wrong, firstReview, lastReview, retired }
+// Optional query param: ?sheet=FramesSRS
 function doPost(e) {
   const updates = JSON.parse(e.postData.contents);
-  const sheet = getSheet();
+  const sheet = getSheet(e.parameter && e.parameter.sheet);
   const rows = sheet.getDataRange().getValues();
 
   // Build word → 1-indexed row map

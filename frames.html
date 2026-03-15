@@ -238,6 +238,7 @@ body {
         <div class="card-phrase" id="front-phrase"></div>
         <div class="tap-hint">tap to reveal</div>
         <div id="live-timer">0.0s</div>
+        <div id="front-precall" style="font-size:11px;color:var(--text-dim);margin-top:8px;opacity:0.5;"></div>
       </div>
       <div class="card-face card-back">
         <div id="timing-badge"></div>
@@ -257,8 +258,10 @@ body {
 
 <script>
 const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
-const FRAMES_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Frames`;
+const FRAMES_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Frames&headers=1`;
 const STORAGE_KEY = 'frames-srs-v1';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec';
+const APPS_SCRIPT_FRAMES_URL = APPS_SCRIPT_URL + '?sheet=FramesSRS';
 
 let allFrames = [];
 let currentFrame = null;
@@ -283,7 +286,10 @@ function parseGvizJson(text) {
 
 async function loadData() {
   try {
-    const res = await fetch(FRAMES_URL);
+    const [res] = await Promise.all([
+      fetch(FRAMES_URL),
+      syncRemoteSRS(),
+    ]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const rows = parseGvizJson(await res.text());
 
@@ -292,8 +298,6 @@ async function loadData() {
       const en = (row[0] || '').trim();
       const es = (row[1] || '').trim();
       if (!en || !es) continue;
-      // skip header row
-      if (en.toLowerCase() === 'english') continue;
       frames.push({ en, es });
     }
 
@@ -332,6 +336,37 @@ function recordReview(en, passed) {
     lastReview: new Date().toISOString(),
   };
   saveSRS(srs);
+  pushSRSRemote([{ word: en, ...srs[en] }]);
+}
+
+// ---- Remote Sync ----
+async function syncRemoteSRS() {
+  try {
+    const res = await fetch(APPS_SCRIPT_FRAMES_URL);
+    if (!res.ok) return;
+    const remote = await res.json();
+    const local = getSRS();
+    const merged = { ...remote };
+    const localOnly = [];
+    for (const [word, data] of Object.entries(local)) {
+      if (!merged[word] || (data.lastReview || '') > (merged[word].lastReview || '')) {
+        merged[word] = data;
+      }
+      if (!remote[word]) localOnly.push({ word, ...data });
+    }
+    saveSRS(merged);
+    if (localOnly.length > 0) pushSRSRemote(localOnly);
+  } catch (e) {
+    console.warn('Frames SRS remote sync failed, using local data:', e);
+  }
+}
+
+function pushSRSRemote(updates) {
+  fetch(APPS_SCRIPT_FRAMES_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify(updates),
+  }).catch(e => console.warn('Frames SRS remote save failed:', e));
 }
 
 // ---- Half-Life Model (same as vocab app) ----
@@ -442,6 +477,11 @@ function showFrame(frame) {
 
   document.getElementById('front-phrase').textContent = frame.en;
   document.getElementById('back-phrase').textContent = frame.es;
+
+  const srsData = getSRS()[frame.en];
+  const p = getPRecall(srsData);
+  const precallEl = document.getElementById('front-precall');
+  precallEl.textContent = srsData?.lastReview ? `P(recall): ${Math.round(p * 100)}%` : 'new';
 
   updateCounter();
   startTimer();

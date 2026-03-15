@@ -312,6 +312,9 @@ async function loadData() {
 }
 
 // ---- SRS ----
+// All frame keys are prefixed with "frame:" so doPost can route them to FramesSRS.
+function frameKey(en) { return 'frame:' + en; }
+
 function getSRS() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
   catch { return {}; }
@@ -322,12 +325,13 @@ function saveSRS(data) {
 }
 
 function recordReview(en, passed) {
+  const key = frameKey(en);
   const srs = getSRS();
-  const entry = srs[en] || {};
+  const entry = srs[key] || {};
   const reviews = entry.reviews || [];
   reviews.push({ date: todayStr(), passed });
   if (reviews.length > 20) reviews.shift();
-  srs[en] = {
+  srs[key] = {
     ...entry,
     reviews,
     right: (entry.right || 0) + (passed ? 1 : 0),
@@ -336,7 +340,7 @@ function recordReview(en, passed) {
     lastReview: new Date().toISOString(),
   };
   saveSRS(srs);
-  pushSRSRemote([{ word: en, ...srs[en] }]);
+  pushSRSRemote([{ word: key, ...srs[key] }]);
 }
 
 // ---- Remote Sync ----
@@ -365,7 +369,7 @@ function pushSRSRemote(updates) {
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
-    body: JSON.stringify({ sheet: 'FramesSRS', updates }),
+    body: JSON.stringify(updates),
   }).catch(e => console.warn('Frames SRS remote save failed:', e));
 }
 
@@ -392,17 +396,17 @@ function pickNextFrame() {
   const srs = getSRS();
   const today = todayStr();
   const eligible = allFrames.filter(f => {
-    const data = srs[f.en];
+    const data = srs[frameKey(f.en)];
     if (data?.retired) return false;
     return !(data?.reviews || []).some(r => r.date === today);
   });
   if (!eligible.length) return null;
   // New frames first, in sheet order
-  const unreviewed = eligible.filter(f => !srs[f.en]?.reviews?.length);
+  const unreviewed = eligible.filter(f => !srs[frameKey(f.en)]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
   // Then lowest P(recall)
   return eligible.reduce((best, f) =>
-    getPRecall(srs[f.en]) < getPRecall(srs[best.en]) ? f : best
+    getPRecall(srs[frameKey(f.en)]) < getPRecall(srs[frameKey(best.en)]) ? f : best
   );
 }
 
@@ -439,8 +443,8 @@ function todayStr() {
 function updateCounter() {
   const srs = getSRS();
   const remaining = allFrames.filter(f => {
-    if (srs[f.en]?.retired) return false;
-    return !(srs[f.en]?.reviews || []).some(r => r.date === todayStr());
+    if (srs[frameKey(f.en)]?.retired) return false;
+    return !(srs[frameKey(f.en)]?.reviews || []).some(r => r.date === todayStr());
   }).length;
 
   const parts = [];
@@ -477,7 +481,7 @@ function showFrame(frame) {
   document.getElementById('front-phrase').textContent = frame.en;
   document.getElementById('back-phrase').textContent = frame.es;
 
-  const srsData = getSRS()[frame.en];
+  const srsData = getSRS()[frameKey(frame.en)];
   const p = getPRecall(srsData);
   const precallEl = document.getElementById('front-precall');
   precallEl.textContent = srsData?.lastReview ? `P(recall): ${Math.round(p * 100)}%` : 'new';

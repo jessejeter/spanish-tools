@@ -92,10 +92,12 @@ function fmtDate(v) {
 }
 
 // GET — return all SRS data as JSON
-// Col A: word, Col B: data JSON, Col C: lastReview, Col D: retired
+// Optional query param ?sheet=FramesSRS to read from a different sheet
 function doGet(e) {
   const sheet = getSheet(e && e.parameter && e.parameter.sheet);
-  if (sheet.getLastRow() === 0) return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);
+  if (sheet.getLastRow() === 0) {
+    return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);
+  }
   const rows = sheet.getDataRange().getValues();
   const srs = {};
   for (const [word, dataJson, lastReview, retired] of rows) {
@@ -104,7 +106,6 @@ function doGet(e) {
     try {
       const parsed = JSON.parse(dataJson);
       if (Array.isArray(parsed)) {
-        // old format: col B was just a reviews array
         reviews = parsed;
         right = parsed.filter(r => r.passed).length;
         wrong = parsed.filter(r => !r.passed).length;
@@ -128,18 +129,32 @@ function doGet(e) {
 }
 
 // POST — upsert SRS entries
-// Body: either a JSON array (vocab, uses SRS sheet)
-//   or { sheet: 'FramesSRS', updates: [...] } for a named sheet
+// Body: JSON array of { word, reviews, right, wrong, firstReview, lastReview, retired }
+// Words prefixed with "frame:" are routed to the FramesSRS sheet automatically.
 function doPost(e) {
-  const payload = JSON.parse(e.postData.contents);
-  const sheetName = (!Array.isArray(payload) && payload.sheet) || (e.parameter && e.parameter.sheet) || SRS_SHEET_NAME;
-  const updates = Array.isArray(payload) ? payload : (payload.updates || []);
-  const sheet = getSheet(sheetName);
+  const updates = JSON.parse(e.postData.contents);
+
+  // Group updates by destination sheet based on word prefix
+  const bySheet = {};
+  for (const u of updates) {
+    const sheetName = String(u.word).startsWith('frame:') ? 'FramesSRS' : SRS_SHEET_NAME;
+    (bySheet[sheetName] = bySheet[sheetName] || []).push(u);
+  }
+
+  for (const [sheetName, sheetUpdates] of Object.entries(bySheet)) {
+    upsertRows(getSheet(sheetName), sheetUpdates);
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function upsertRows(sheet, updates) {
   const rowMap = {};
   if (sheet.getLastRow() > 0) {
     sheet.getDataRange().getValues().forEach((r, i) => { if (r[0]) rowMap[String(r[0])] = i + 1; });
   }
-
   for (const u of updates) {
     const dataJson = JSON.stringify({
       reviews: u.reviews || [],
@@ -155,8 +170,4 @@ function doPost(e) {
       rowMap[u.word] = sheet.getLastRow();
     }
   }
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
 }

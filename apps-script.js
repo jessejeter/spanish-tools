@@ -130,9 +130,12 @@ function doGet(e) {
 // Body: either a JSON array (vocab, uses SRS sheet)
 //   or { sheet: 'FramesSRS', updates: [...] } for a named sheet
 function doPost(e) {
+  Logger.log('doPost body: ' + (e.postData ? e.postData.contents : 'NO BODY'));
   const payload = JSON.parse(e.postData.contents);
+  Logger.log('payload: ' + JSON.stringify(payload));
   const sheetName = (!Array.isArray(payload) && payload.sheet) || (e.parameter && e.parameter.sheet) || SRS_SHEET_NAME;
   const updates = Array.isArray(payload) ? payload : (payload.updates || []);
+  Logger.log('sheetName: ' + sheetName + ', updates count: ' + updates.length);
   const sheet = getSheet(sheetName);
   const rows = sheet.getDataRange().getValues();
 

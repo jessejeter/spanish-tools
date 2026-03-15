@@ -184,20 +184,36 @@ body {
   letter-spacing: 0.5px;
 }
 
-.next-hint {
-  font-size: 12px;
-  color: var(--text-dim);
+.grade-buttons {
+  display: flex;
+  gap: 12px;
   padding-bottom: env(safe-area-inset-bottom, 8px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
-  text-align: center;
 }
 
-.next-hint.visible {
-  opacity: 0.6;
+.grade-buttons.visible {
+  opacity: 1;
   pointer-events: auto;
 }
+
+.grade-btn {
+  flex: 1;
+  padding: 16px 8px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.grade-btn:active { transform: scale(0.95); opacity: 0.8; }
+.btn-fail { background: var(--red); }
+.btn-pass-fast { background: #2a7a5a; }
+.btn-pass-slow { background: #8a6a10; }
 
 #empty {
   display: none;
@@ -248,7 +264,10 @@ body {
     </div>
   </div>
 
-  <div class="next-hint" id="next-hint">tap to continue</div>
+  <div class="grade-buttons" id="grade-buttons">
+    <button class="grade-btn btn-fail" onclick="grade(false)">Fail</button>
+    <button class="grade-btn btn-pass-fast" id="btn-pass" onclick="grade(true)">Pass</button>
+  </div>
 </div>
 
 <div id="empty">
@@ -474,7 +493,7 @@ function showFrame(frame) {
   isFlipped = false;
 
   document.getElementById('card').classList.remove('flipped');
-  document.getElementById('next-hint').classList.remove('visible');
+  document.getElementById('grade-buttons').classList.remove('visible');
   document.getElementById('timing-badge').textContent = '';
   document.getElementById('live-timer').textContent = '0.0s';
 
@@ -502,17 +521,26 @@ function flipCard() {
   badge.style.color = result.color;
   badge.style.border = `1px solid ${result.color}66`;
 
-  recordReview(currentFrame.en, result.pass);
-  sessionDone++;
-  if (result.pass) sessionPass++; else sessionFail++;
-  updateCounter();
+  // Style pass button based on timing
+  const passBtn = document.getElementById('btn-pass');
+  if (result.pass) {
+    passBtn.textContent = 'Pass';
+    passBtn.className = 'grade-btn btn-pass-fast';
+  } else {
+    passBtn.textContent = 'Pass (slow)';
+    passBtn.className = 'grade-btn btn-pass-slow';
+  }
 
   document.getElementById('card').classList.add('flipped');
-  document.getElementById('next-hint').classList.add('visible');
+  document.getElementById('grade-buttons').classList.add('visible');
 }
 
-function advance() {
-  if (!isFlipped) return;
+function grade(passed) {
+  if (!currentFrame) return;
+  recordReview(currentFrame.en, passed);
+  sessionDone++;
+  if (passed) sessionPass++; else sessionFail++;
+  updateCounter();
   const next = pickNextFrame();
   if (!next) { showEmpty(); return; }
   showFrame(next);
@@ -526,14 +554,15 @@ function showEmpty() {
 // ---- Events ----
 document.getElementById('card-container').addEventListener('click', () => {
   if (!isFlipped) flipCard();
-  else advance();
 });
 
 document.addEventListener('keydown', e => {
   if (e.key === ' ' || e.key === 'Enter') {
     e.preventDefault();
     if (!isFlipped) flipCard();
-    else advance();
+  } else if (isFlipped) {
+    if (e.key === 'p' || e.key === 'P' || e.key === '2') grade(true);
+    else if (e.key === 'f' || e.key === 'F' || e.key === '1') grade(false);
   }
 });
 

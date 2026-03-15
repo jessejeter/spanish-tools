@@ -362,10 +362,10 @@ async function syncRemoteSRS() {
 }
 
 function pushSRSRemote(updates) {
-  fetch(APPS_SCRIPT_FRAMES_URL, {
+  fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
-    body: JSON.stringify(updates),
+    body: JSON.stringify({ sheet: 'FramesSRS', updates }),
   }).catch(e => console.warn('Frames SRS remote save failed:', e));
 }
 

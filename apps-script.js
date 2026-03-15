@@ -127,11 +127,13 @@ function doGet(e) {
 }
 
 // POST — upsert SRS entries
-// Body: JSON array of { word, reviews, right, wrong, firstReview, lastReview, retired }
-// Optional query param: ?sheet=FramesSRS
+// Body: either a JSON array (vocab, uses SRS sheet)
+//   or { sheet: 'FramesSRS', updates: [...] } for a named sheet
 function doPost(e) {
-  const updates = JSON.parse(e.postData.contents);
-  const sheet = getSheet(e.parameter && e.parameter.sheet);
+  const payload = JSON.parse(e.postData.contents);
+  const sheetName = (!Array.isArray(payload) && payload.sheet) || (e.parameter && e.parameter.sheet) || SRS_SHEET_NAME;
+  const updates = Array.isArray(payload) ? payload : (payload.updates || []);
+  const sheet = getSheet(sheetName);
   const rows = sheet.getDataRange().getValues();
 
   // Build word → 1-indexed row map

@@ -416,8 +416,6 @@ const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
 const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
 const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
 const STORAGE_KEY = 'spanish-flashcards-v2';
-const TODAY_COUNT_KEY = 'spanish-flashcards-today-count';
-const TODAY_SYNC_KEY = '__today__';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec';
 
 let allCards = [];
@@ -496,40 +494,17 @@ async function loadData() {
 }
 
 // ---- Today Counter ----
+// Derived directly from SRS data so it survives refreshes and syncs correctly.
 function getTodayCount() {
-  try {
-    const data = JSON.parse(localStorage.getItem(TODAY_COUNT_KEY));
-    if (data && data.date === todayStr()) return data.count;
-  } catch {}
-  return 0;
+  const srs = getSRS();
+  const today = todayStr();
+  return Object.values(srs).filter(entry =>
+    (entry.reviews || []).some(r => r.date === today)
+  ).length;
 }
 
 function incrementTodayCount() {
-  const count = getTodayCount() + 1;
-  localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count }));
   updateCounter();
-  pushTodayCount(count);
-}
-
-function parseTodayCount(entry) {
-  if (!entry?.reviews?.length) return 0;
-  const r = entry.reviews[0];
-  return r.date === todayStr() ? (r.count || 0) : 0;
-}
-
-function setTodayCount(count) {
-  localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count }));
-  updateCounter();
-}
-
-function pushTodayCount(count) {
-  if (!remoteEnabled()) return;
-  pushSRSRemote([{
-    word: TODAY_SYNC_KEY,
-    reviews: [{ date: todayStr(), count }],
-    lastReview: todayStr(),
-    retired: false,
-  }]);
 }
 
 function computeSessionStats() {
@@ -614,14 +589,6 @@ async function syncRemoteSRS() {
     }
 
     saveSRS(merged);
-
-    const remoteCount = parseTodayCount(remote[TODAY_SYNC_KEY]);
-    const localCount = getTodayCount();
-    if (remoteCount > localCount) {
-      setTodayCount(remoteCount);
-    } else if (localCount > remoteCount) {
-      pushTodayCount(localCount);
-    }
 
     if (localOnly.length > 0) pushSRSRemote(localOnly);
   } catch (e) {
@@ -830,7 +797,6 @@ function grade(passed) {
   lastUndo = {
     card: currentCard,
     srsEntry: srs[currentCard.spanish] ? JSON.parse(JSON.stringify(srs[currentCard.spanish])) : null,
-    todayCount: getTodayCount(),
   };
   recordReview(currentCard.spanish, passed);
   incrementTodayCount();
@@ -842,7 +808,7 @@ function grade(passed) {
 
 function undoLast() {
   if (!lastUndo) return;
-  const { card, srsEntry, todayCount } = lastUndo;
+  const { card, srsEntry } = lastUndo;
   lastUndo = null;
   const srs = getSRS();
   if (srsEntry === null) {
@@ -852,8 +818,6 @@ function undoLast() {
   }
   saveSRS(srs);
   pushSRSRemote([{ word: card.spanish, ...(srsEntry || { reviews: [], retired: false }) }]);
-  localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count: todayCount }));
-  pushTodayCount(todayCount);
   document.getElementById('undo-row').classList.remove('visible');
   showCard(card);
 }

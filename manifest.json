@@ -2,7 +2,7 @@
   "name": "Spanish Flashcards",
   "short_name": "Español",
   "description": "Spaced repetition Spanish vocabulary flashcards",
-  "start_url": ".",
+  "start_url": "home.html",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#1a1a2e",

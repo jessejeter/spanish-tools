@@ -292,6 +292,34 @@ body {
 
 .btn-retire:active { transform: scale(0.95); }
 
+/* Undo row */
+.undo-row {
+  display: flex;
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom, 4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.undo-row.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.btn-undo {
+  background: transparent;
+  border: 1px solid #444466;
+  color: #666688;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.btn-undo:active { transform: scale(0.95); }
+
 /* Empty state */
 #empty {
   display: none;
@@ -355,6 +383,9 @@ body {
   <div class="retire-row" id="retire-row">
     <button class="btn-retire" onclick="retire()">Retire — I'll never forget this</button>
   </div>
+  <div class="undo-row" id="undo-row">
+    <button class="btn-undo" onclick="undoLast()">Undo last card</button>
+  </div>
 </div>
 
 <!-- Empty state -->
@@ -375,6 +406,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXL
 let allCards = [];
 let currentCard = null;
 let isFlipped = false;
+let lastUndo = null;
 
 // ---- Google Visualization JSON Parsing ----
 function parseGvizJson(text) {
@@ -769,11 +801,36 @@ function flipCard() {
 
 function grade(passed) {
   if (!currentCard) return;
+  const srs = getSRS();
+  lastUndo = {
+    card: currentCard,
+    srsEntry: srs[currentCard.spanish] ? JSON.parse(JSON.stringify(srs[currentCard.spanish])) : null,
+    todayCount: getTodayCount(),
+  };
   recordReview(currentCard.spanish, passed);
   incrementTodayCount();
   const next = pickNextCard();
   if (!next) { showEmpty(); return; }
   showCard(next);
+  document.getElementById('undo-row').classList.add('visible');
+}
+
+function undoLast() {
+  if (!lastUndo) return;
+  const { card, srsEntry, todayCount } = lastUndo;
+  lastUndo = null;
+  const srs = getSRS();
+  if (srsEntry === null) {
+    delete srs[card.spanish];
+  } else {
+    srs[card.spanish] = srsEntry;
+  }
+  saveSRS(srs);
+  pushSRSRemote([{ word: card.spanish, ...(srsEntry || { reviews: [], retired: false }) }]);
+  localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count: todayCount }));
+  pushTodayCount(todayCount);
+  document.getElementById('undo-row').classList.remove('visible');
+  showCard(card);
 }
 
 function retire() {

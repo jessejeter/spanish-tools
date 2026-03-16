@@ -215,6 +215,33 @@ body {
 .btn-pass-fast { background: #2a7a5a; }
 .btn-pass-slow { background: #8a6a10; }
 
+.undo-row {
+  display: flex;
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom, 4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.undo-row.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.btn-undo {
+  background: transparent;
+  border: 1px solid #444466;
+  color: #666688;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.btn-undo:active { transform: scale(0.95); }
+
 #empty {
   display: none;
   flex-direction: column;
@@ -268,6 +295,9 @@ body {
     <button class="grade-btn btn-fail" onclick="grade(false)">Fail</button>
     <button class="grade-btn btn-pass-fast" id="btn-pass" onclick="grade(true)">Pass</button>
   </div>
+  <div class="undo-row" id="undo-row">
+    <button class="btn-undo" onclick="undoLast()">Undo last card</button>
+  </div>
 </div>
 
 <div id="empty">
@@ -289,6 +319,7 @@ let timerStart = null;
 let timerInterval = null;
 let elapsedSeconds = 0;
 let sessionDone = 0, sessionPass = 0, sessionFail = 0;
+let lastUndo = null;
 
 // ---- GViz parsing (same as vocab app) ----
 function parseGvizJson(text) {
@@ -539,6 +570,15 @@ function flipCard() {
 
 function grade(passed) {
   if (!currentFrame) return;
+  const srs = getSRS();
+  const key = frameKey(currentFrame.en);
+  lastUndo = {
+    frame: currentFrame,
+    srsEntry: srs[key] ? JSON.parse(JSON.stringify(srs[key])) : null,
+    done: sessionDone,
+    pass: sessionPass,
+    fail: sessionFail,
+  };
   recordReview(currentFrame.en, passed);
   sessionDone++;
   if (passed) sessionPass++; else sessionFail++;
@@ -546,6 +586,27 @@ function grade(passed) {
   const next = pickNextFrame();
   if (!next) { showEmpty(); return; }
   showFrame(next);
+  document.getElementById('undo-row').classList.add('visible');
+}
+
+function undoLast() {
+  if (!lastUndo) return;
+  const { frame, srsEntry, done, pass, fail } = lastUndo;
+  lastUndo = null;
+  const srs = getSRS();
+  const key = frameKey(frame.en);
+  if (srsEntry === null) {
+    delete srs[key];
+  } else {
+    srs[key] = srsEntry;
+  }
+  saveSRS(srs);
+  pushSRSRemote([{ word: key, ...(srsEntry || { reviews: [], retired: false }) }]);
+  sessionDone = done;
+  sessionPass = pass;
+  sessionFail = fail;
+  document.getElementById('undo-row').classList.remove('visible');
+  showFrame(frame);
 }
 
 function showEmpty() {

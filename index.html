@@ -292,6 +292,22 @@ body {
 
 .btn-retire:active { transform: scale(0.95); }
 
+/* Flip-back button inside card */
+.btn-flip-back {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  opacity: 0.4;
+  line-height: 1;
+}
+.btn-flip-back:active { opacity: 0.8; }
+
 /* Undo row */
 .undo-row {
   display: flex;
@@ -372,6 +388,7 @@ body {
         <div class="card-pos" id="back-pos"></div>
         <div class="card-other" id="back-other"></div>
         <div class="card-analysis" id="back-analysis"></div>
+        <button class="btn-flip-back" onclick="event.stopPropagation(); flipToFront();">↩</button>
       </div>
     </div>
   </div>
@@ -797,6 +814,14 @@ function flipCard() {
   document.getElementById('card').classList.add('flipped');
   document.getElementById('grade-buttons').classList.add('visible');
   document.getElementById('retire-row').classList.add('visible');
+}
+
+function flipToFront() {
+  if (!isFlipped) return;
+  isFlipped = false;
+  document.getElementById('card').classList.remove('flipped');
+  document.getElementById('grade-buttons').classList.remove('visible');
+  document.getElementById('retire-row').classList.remove('visible');
 }
 
 function grade(passed) {

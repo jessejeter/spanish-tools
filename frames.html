@@ -242,6 +242,22 @@ body {
 
 .btn-undo:active { transform: scale(0.95); }
 
+/* Flip-back button inside card */
+.btn-flip-back {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  opacity: 0.4;
+  line-height: 1;
+}
+.btn-flip-back:active { opacity: 0.8; }
+
 #empty {
   display: none;
   flex-direction: column;
@@ -287,6 +303,7 @@ body {
         <div id="timing-badge"></div>
         <div class="card-label">Spanish</div>
         <div class="card-phrase" id="back-phrase"></div>
+        <button class="btn-flip-back" onclick="event.stopPropagation(); flipToFront();">↩</button>
       </div>
     </div>
   </div>
@@ -315,6 +332,7 @@ const APPS_SCRIPT_FRAMES_URL = APPS_SCRIPT_URL + '?sheet=FramesSRS';
 let allFrames = [];
 let currentFrame = null;
 let isFlipped = false;
+let hasBeenRevealed = false;
 let timerStart = null;
 let timerInterval = null;
 let elapsedSeconds = 0;
@@ -522,6 +540,7 @@ function showApp() {
 function showFrame(frame) {
   currentFrame = frame;
   isFlipped = false;
+  hasBeenRevealed = false;
 
   document.getElementById('card').classList.remove('flipped');
   document.getElementById('grade-buttons').classList.remove('visible');
@@ -543,29 +562,39 @@ function showFrame(frame) {
 function flipCard() {
   if (isFlipped) return;
   isFlipped = true;
-  const elapsed = stopTimer();
-  const result = getTimingResult(elapsed);
 
-  const badge = document.getElementById('timing-badge');
-  badge.textContent = result.label;
-  badge.style.background = result.color + '22';
-  badge.style.color = result.color;
-  badge.style.border = `1px solid ${result.color}66`;
+  if (!hasBeenRevealed) {
+    hasBeenRevealed = true;
+    const elapsed = stopTimer();
+    const result = getTimingResult(elapsed);
 
-  // Style buttons based on timing
-  const passBtn = document.getElementById('btn-pass');
-  if (result.pass) {
-    passBtn.textContent = 'Pass';
-    passBtn.className = 'grade-btn btn-pass-fast';
-    passBtn.onclick = () => grade(true);
-  } else {
-    passBtn.textContent = 'Got it';
-    passBtn.className = 'grade-btn btn-pass-slow';
-    passBtn.onclick = () => grade(false);
+    const badge = document.getElementById('timing-badge');
+    badge.textContent = result.label;
+    badge.style.background = result.color + '22';
+    badge.style.color = result.color;
+    badge.style.border = `1px solid ${result.color}66`;
+
+    const passBtn = document.getElementById('btn-pass');
+    if (result.pass) {
+      passBtn.textContent = 'Pass';
+      passBtn.className = 'grade-btn btn-pass-fast';
+      passBtn.onclick = () => grade(true);
+    } else {
+      passBtn.textContent = 'Got it';
+      passBtn.className = 'grade-btn btn-pass-slow';
+      passBtn.onclick = () => grade(false);
+    }
   }
 
   document.getElementById('card').classList.add('flipped');
   document.getElementById('grade-buttons').classList.add('visible');
+}
+
+function flipToFront() {
+  if (!isFlipped) return;
+  isFlipped = false;
+  document.getElementById('card').classList.remove('flipped');
+  document.getElementById('grade-buttons').classList.remove('visible');
 }
 
 function grade(passed) {

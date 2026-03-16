@@ -460,22 +460,40 @@ function getPRecall(data) {
   return Math.pow(2, -daysSinceLast / h);
 }
 
+function weightedRandom(frames, srs) {
+  const weights = frames.map(f => Math.pow(1 - getPRecall(srs[frameKey(f.en)]), 2));
+  const total = weights.reduce((s, w) => s + w, 0);
+  if (total === 0) return frames[Math.floor(Math.random() * frames.length)];
+  let r = Math.random() * total;
+  for (let i = 0; i < frames.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return frames[i];
+  }
+  return frames[frames.length - 1];
+}
+
 function pickNextFrame() {
   const srs = getSRS();
-  const today = todayStr();
-  const eligible = allFrames.filter(f => {
-    const data = srs[frameKey(f.en)];
-    if (data?.retired) return false;
-    return !(data?.reviews || []).some(r => r.date === today);
-  });
-  if (!eligible.length) return null;
-  // New frames first, in sheet order
-  const unreviewed = eligible.filter(f => !srs[frameKey(f.en)]?.reviews?.length);
+
+  // New frames first (never reviewed), in sheet order
+  const unreviewed = allFrames.filter(f => !srs[frameKey(f.en)]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
-  // Then lowest P(recall)
-  return eligible.reduce((best, f) =>
-    getPRecall(srs[frameKey(f.en)]) < getPRecall(srs[frameKey(best.en)]) ? f : best
-  );
+
+  // Then weighted random from all reviewed, non-retired frames
+  // Exclude the just-graded frame to avoid immediate repeats
+  const pool = allFrames.filter(f => {
+    if (srs[frameKey(f.en)]?.retired) return false;
+    if (f.en === currentFrame?.en) return false;
+    return (srs[frameKey(f.en)]?.reviews?.length || 0) > 0;
+  });
+
+  if (!pool.length) {
+    // Edge case: only one frame exists and it's not retired
+    const any = allFrames.find(f => !srs[frameKey(f.en)]?.retired);
+    return any || null;
+  }
+
+  return weightedRandom(pool, srs);
 }
 
 // ---- Timer ----
@@ -510,10 +528,7 @@ function todayStr() {
 // ---- UI ----
 function updateCounter() {
   const srs = getSRS();
-  const remaining = allFrames.filter(f => {
-    if (srs[frameKey(f.en)]?.retired) return false;
-    return !(srs[frameKey(f.en)]?.reviews || []).some(r => r.date === todayStr());
-  }).length;
+  const newCount = allFrames.filter(f => !srs[frameKey(f.en)]?.reviews?.length).length;
 
   const parts = [];
   if (sessionDone > 0) {
@@ -521,7 +536,7 @@ function updateCounter() {
     parts.push(`<span style="color:var(--green)">${sessionPass} pass</span>`);
     parts.push(`<span style="color:var(--red)">${sessionFail} fail</span>`);
   }
-  if (remaining > 0) parts.push(`${remaining} left`);
+  if (newCount > 0) parts.push(`${newCount} new`);
 
   document.getElementById('counter').innerHTML = parts.join(' · ') || '&nbsp;';
 }
@@ -641,6 +656,8 @@ function undoLast() {
 function showEmpty() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('empty').style.display = 'flex';
+  document.getElementById('empty').querySelector('h2').textContent = 'All frames retired';
+  document.getElementById('empty').querySelector('p').textContent = "You've retired every frame. Nothing left!";
 }
 
 // ---- Events ----

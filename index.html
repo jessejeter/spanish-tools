@@ -422,6 +422,7 @@ let allCards = [];
 let currentCard = null;
 let isFlipped = false;
 let lastUndo = null;
+let todayCount = 0;
 
 // ---- Google Visualization JSON Parsing ----
 function parseGvizJson(text) {
@@ -494,16 +495,21 @@ async function loadData() {
 }
 
 // ---- Today Counter ----
-// Derived directly from SRS data so it survives refreshes and syncs correctly.
-function getTodayCount() {
+// todayCount is initialized once from SRS after sync, then tracked in memory.
+// This avoids the SRS merge clobbering it (Apps Script strips ms from timestamps,
+// making remote.lastReview string-compare > local, so remote can win the merge).
+function initTodayCount() {
   const srs = getSRS();
   const today = todayStr();
-  return Object.values(srs).filter(entry =>
+  todayCount = Object.values(srs).filter(entry =>
     (entry.reviews || []).some(r => r.date === today)
   ).length;
 }
 
+function getTodayCount() { return todayCount; }
+
 function incrementTodayCount() {
+  todayCount++;
   updateCounter();
 }
 
@@ -724,6 +730,7 @@ function showEmpty() {
 
 function showApp() {
   document.getElementById('loading').style.display = 'none';
+  initTodayCount();
   const card = pickNextCard();
   if (!card) {
     showEmpty();
@@ -818,6 +825,7 @@ function undoLast() {
   }
   saveSRS(srs);
   pushSRSRemote([{ word: card.spanish, ...(srsEntry || { reviews: [], retired: false }) }]);
+  todayCount = Math.max(0, todayCount - 1);
   document.getElementById('undo-row').classList.remove('visible');
   showCard(card);
 }

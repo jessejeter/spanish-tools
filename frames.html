@@ -514,7 +514,7 @@ function stopTimer() {
 }
 
 function getTimingResult(s) {
-  if (s <= 4) return { label: `${s.toFixed(1)}s — Pass`, color: '#4ecca3', pass: true };
+  if (s <= 5) return { label: `${s.toFixed(1)}s — Pass`, color: '#4ecca3', pass: true };
   if (s <= 7) return { label: `${s.toFixed(1)}s — Fail (hesitant)`, color: '#e94560', pass: false };
   return       { label: `${s.toFixed(1)}s — Fail (breakdown)`,      color: '#e94560', pass: false };
 }

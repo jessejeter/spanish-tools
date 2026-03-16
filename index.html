@@ -615,7 +615,6 @@ function pushSRSRemote(updates) {
   if (!remoteEnabled()) return;
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
-    mode: 'no-cors',
     body: JSON.stringify(updates),
   }).catch(e => console.warn('SRS remote save failed:', e));
 }

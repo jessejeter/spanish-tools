@@ -495,14 +495,22 @@ async function loadData() {
 }
 
 // ---- Today Counter ----
-// todayCount is initialized once from SRS after sync, then tracked in memory.
-// This avoids the SRS merge clobbering it (Apps Script strips ms from timestamps,
-// making remote.lastReview string-compare > local, so remote can win the merge).
+// Two-layer approach:
+//   1. sessionStorage survives browser refresh (same tab, same session)
+//   2. SRS scan is the fallback when the app is truly closed and reopened
 function initTodayCount() {
-  const srs = getSRS();
   const today = todayStr();
-  todayCount = Object.values(srs).filter(entry =>
-    (entry.reviews || []).some(r => r.date === today)
+  try {
+    const sess = JSON.parse(sessionStorage.getItem('spanish-today-count'));
+    if (sess && sess.date === today) {
+      todayCount = sess.count;
+      return;
+    }
+  } catch {}
+  // Fall back: count cards with a today review in SRS (populated by remote sync)
+  const srs = getSRS();
+  todayCount = allCards.filter(c =>
+    (srs[c.spanish]?.reviews || []).some(r => r.date === today)
   ).length;
 }
 
@@ -510,6 +518,7 @@ function getTodayCount() { return todayCount; }
 
 function incrementTodayCount() {
   todayCount++;
+  sessionStorage.setItem('spanish-today-count', JSON.stringify({ date: todayStr(), count: todayCount }));
   updateCounter();
 }
 
@@ -826,6 +835,7 @@ function undoLast() {
   saveSRS(srs);
   pushSRSRemote([{ word: card.spanish, ...(srsEntry || { reviews: [], retired: false }) }]);
   todayCount = Math.max(0, todayCount - 1);
+  sessionStorage.setItem('spanish-today-count', JSON.stringify({ date: todayStr(), count: todayCount }));
   document.getElementById('undo-row').classList.remove('visible');
   showCard(card);
 }

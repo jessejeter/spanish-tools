@@ -555,7 +555,7 @@ function pickNextFrame() {
   const unreviewed = allFrames.filter(f => !srs[frameKey(f.en)]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
-  // Then weighted random from all reviewed, non-retired frames
+  // Pick lowest P(recall) from all reviewed, non-retired frames
   // Exclude the just-graded frame to avoid immediate repeats
   const pool = allFrames.filter(f => {
     if (srs[frameKey(f.en)]?.retired) return false;
@@ -569,7 +569,9 @@ function pickNextFrame() {
     return any || null;
   }
 
-  return weightedRandom(pool, srs);
+  return pool.reduce((best, f) =>
+    getPRecall(srs[frameKey(f.en)]) < getPRecall(srs[frameKey(best.en)]) ? f : best
+  );
 }
 
 // ---- Timer ----

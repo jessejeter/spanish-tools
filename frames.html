@@ -99,6 +99,18 @@ body {
 
 .top-bar .count { font-weight: 600; color: var(--text); }
 
+.btn-home {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  font-size: 18px;
+  color: var(--text-dim);
+  opacity: 0.35;
+  text-decoration: none;
+  line-height: 1;
+}
+.btn-home:hover { opacity: 0.7; }
+
 .card-container {
   flex: 1;
   display: flex;
@@ -284,6 +296,8 @@ body {
   <p id="error-msg">Failed to load frames.</p>
   <button onclick="location.reload()">Retry</button>
 </div>
+
+<a class="btn-home" href="home.html" title="Home">⌂</a>
 
 <div id="app">
   <div class="top-bar">

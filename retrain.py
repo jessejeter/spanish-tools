@@ -71,6 +71,8 @@ N_FEATURES = 6
 def build_dataset(srs: dict) -> list[tuple[list[float], int]]:
     rows = []
     for word, data in srs.items():
+        if data.get("retired"):
+            continue
         reviews = data.get("reviews", [])
         if len(reviews) < 2:
             continue

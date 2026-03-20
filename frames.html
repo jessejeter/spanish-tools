@@ -374,11 +374,31 @@ async function loadData() {
 
     if (frames.length === 0) throw new Error('No frames found in the Frames sheet.');
     allFrames = frames;
+    pruneRemovedFrames();
     showApp();
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('error').style.display = 'flex';
     document.getElementById('error-msg').textContent = err.message;
+  }
+}
+
+// Retire SRS entries for frames that no longer exist in the sheet.
+function pruneRemovedFrames() {
+  const validKeys = new Set(allFrames.map(f => frameKey(f.en)));
+  const srs = getSRS();
+  const toRetire = [];
+  for (const key of Object.keys(srs)) {
+    if (!key.startsWith('frame:') || key === TODAY_SYNC_KEY) continue;
+    if (!validKeys.has(key) && !srs[key].retired) {
+      srs[key] = { ...srs[key], retired: true };
+      toRetire.push({ word: key, ...srs[key] });
+    }
+  }
+  if (toRetire.length > 0) {
+    saveSRS(srs);
+    pushSRSRemote(toRetire);
+    console.log(`Retired ${toRetire.length} removed frame(s):`, toRetire.map(e => e.word));
   }
 }
 

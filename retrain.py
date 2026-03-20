@@ -37,12 +37,6 @@ APPS_SCRIPT_URL = (
 
 OUTPUT_DIR = Path(__file__).parent
 
-# (name, fetch_url, output_file)
-JOBS = [
-    ("vocab",  APPS_SCRIPT_URL,                        OUTPUT_DIR / "vocab_model.json"),
-    ("frames", APPS_SCRIPT_URL + "?sheet=FramesSRS",   OUTPUT_DIR / "frames_model.json"),
-]
-
 MIN_SAMPLES = 30  # skip training if fewer rows than this
 
 
@@ -170,18 +164,28 @@ def main():
     print(f"Running at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
 
+    # All data lives in the SRS sheet; frame entries are prefixed with "frame:"
+    print("\nFetching SRS data...")
+    try:
+        all_srs = fetch_srs(APPS_SCRIPT_URL)
+        print(f"  fetched {len(all_srs)} entries total")
+    except Exception as e:
+        print(f"  ERROR fetching: {e}")
+        sys.exit(1)
+
+    vocab_srs  = {k: v for k, v in all_srs.items() if not k.startswith("frame:")}
+    frames_srs = {k: v for k, v in all_srs.items() if k.startswith("frame:")}
+    print(f"  vocab: {len(vocab_srs)}  frames: {len(frames_srs)}")
+
+    jobs = [
+        ("vocab",  vocab_srs,  OUTPUT_DIR / "vocab_model.json"),
+        ("frames", frames_srs, OUTPUT_DIR / "frames_model.json"),
+    ]
+
     failed = False
 
-    for name, url, output_path in JOBS:
+    for name, srs, output_path in jobs:
         print(f"\n--- {name} ---")
-
-        try:
-            srs = fetch_srs(url)
-            print(f"  fetched {len(srs)} words")
-        except Exception as e:
-            print(f"  ERROR fetching: {e}")
-            failed = True
-            continue
 
         rows = build_dataset(srs)
         print(f"  built {len(rows)} training rows")

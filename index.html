@@ -451,6 +451,7 @@ async function loadData() {
     const [[s1, s2]] = await Promise.all([
       Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
       syncRemoteSRS(),
+      loadSRSModel(),
     ]);
 
     const s2Map = {};
@@ -637,16 +638,37 @@ function pushSRSRemote(updates) {
   }).catch(e => console.warn('SRS remote save failed:', e));
 }
 
-// ---- Half-Life Model ----
-// Estimates memory half-life from the *spacing* between reviews, not just pass/fail counts.
-// A correct recall after a long gap → long half-life (strong memory).
-// A failed recall → short half-life (weak memory).
-// P(recall) = 2^(-Δt / h)
+// ---- Neural Net Model ----
+// Loaded from vocab_model.json (written nightly by retrain.py).
+// Falls back to HLR heuristic if the file hasn't been generated yet.
 const REVIEW_LOG_CAP = 20;
-const HLR_GROWTH = 2.0;  // multiply gap by this on a correct review
-const HLR_DECAY  = 0.5;  // multiply gap by this on an incorrect review
-const HLR_MIN_H  = 0.5;  // minimum half-life in days
-const HLR_INIT   = 1.0;  // assumed gap (days) before the first stored review
+let srsModel = null;
+
+async function loadSRSModel() {
+  try {
+    const res = await fetch('vocab_model.json');
+    if (res.ok) {
+      srsModel = await res.json();
+      console.log(`SRS model loaded (${srsModel.n_samples} training samples, trained ${srsModel.trained_at})`);
+    }
+  } catch (e) {
+    console.warn('Could not load vocab_model.json, using HLR fallback:', e);
+  }
+}
+
+// Forward pass through the stored MLP weights.
+// weights[l] has shape [in, out]; biases[l] has shape [out].
+function nnForward(features, model) {
+  let a = features.map((v, i) => (v - model.scaler_mean[i]) / model.scaler_std[i]);
+  for (let l = 0; l < model.weights.length; l++) {
+    const W = model.weights[l], b = model.biases[l];
+    const z = b.map((bi, j) => bi + a.reduce((s, ai, k) => s + ai * W[k][j], 0));
+    a = l < model.weights.length - 1
+      ? z.map(v => Math.max(0, v))                              // ReLU hidden
+      : z.map(v => 1 / (1 + Math.exp(-Math.max(-20, Math.min(20, v)))));  // sigmoid output
+  }
+  return a[0];
+}
 
 function getPRecall(data) {
   if (!data) return 0;
@@ -654,16 +676,32 @@ function getPRecall(data) {
   const lastReview = data.lastReview || (reviews.length ? reviews[reviews.length - 1].date : null);
   if (!lastReview) return 0;
 
-  let h = HLR_INIT;
-  let prevDate = null;
-  for (const r of reviews) {
-    const rawGap = prevDate ? (new Date(r.date) - new Date(prevDate)) / 86400000 : HLR_INIT;
-    const gap = rawGap > 0 ? rawGap : HLR_INIT;
-    h = Math.max(HLR_MIN_H, gap * (r.passed ? HLR_GROWTH : HLR_DECAY));
-    prevDate = r.date;
+  const daysSinceLast = Math.max((Date.now() - new Date(lastReview)) / 86400000, 0.01);
+
+  if (srsModel && reviews.length >= 1) {
+    const n_correct = reviews.filter(r => r.passed).length;
+    const n_wrong   = reviews.filter(r => !r.passed).length;
+    const accuracy  = n_correct / reviews.length;
+    const daysSinceFirst = Math.max((Date.now() - new Date(reviews[0].date)) / 86400000, 0.01);
+    const features = [
+      Math.log1p(daysSinceLast),
+      n_correct,
+      n_wrong,
+      accuracy,
+      Math.log1p(reviews.length),
+      Math.log1p(daysSinceFirst),
+    ];
+    return nnForward(features, srsModel);
   }
 
-  const daysSinceLast = (Date.now() - new Date(lastReview)) / 86400000;
+  // HLR fallback
+  let h = 1.0, prevDate = null;
+  for (const r of reviews) {
+    const rawGap = prevDate ? (new Date(r.date) - new Date(prevDate)) / 86400000 : 1.0;
+    const gap = rawGap > 0 ? rawGap : 1.0;
+    h = Math.max(0.5, gap * (r.passed ? 2.0 : 0.5));
+    prevDate = r.date;
+  }
   return Math.pow(2, -daysSinceLast / h);
 }
 

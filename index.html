@@ -546,7 +546,7 @@ function computeSessionStats() {
     if (card.dateReviewed === today) continue;
 
     const reviews = data?.reviews || [];
-    const firstReviewToday = reviews.length > 0 && reviews.every(r => r.date === today);
+    const firstReviewToday = reviews.length > 0 && reviews.every(r => r.date.startsWith(today));
 
     if (reviews.length === 0) {
       newRemaining++;
@@ -728,7 +728,7 @@ function pickNextCard() {
     if (srs[c.spanish]?.retired) return false;
     if (c.dateAdded === today) return false;
     if (c.dateReviewed === today) return false;
-    return !(srs[c.spanish]?.reviews || []).some(r => r.date === today);
+    return !(srs[c.spanish]?.reviews || []).some(r => r.date.startsWith(today));
   });
   if (!eligible.length) return null;
 
@@ -747,11 +747,11 @@ function recordReview(word, passed) {
   const srs = getSRS();
   const entry = srs[word] || {};
   const reviews = entry.reviews || [];
-  reviews.push({ date: todayStr(), passed });
+  reviews.push({ date: nowStr(), passed });
   if (reviews.length > REVIEW_LOG_CAP) reviews.shift();
   const right = (entry.right || 0) + (passed ? 1 : 0);
   const wrong = (entry.wrong || 0) + (passed ? 0 : 1);
-  const firstReview = entry.firstReview || todayStr();
+  const firstReview = entry.firstReview || nowStr();
   srs[word] = { ...entry, reviews, right, wrong, firstReview, lastReview: new Date().toISOString() };
   saveSRS(srs);
   pushSRSRemote([{ word, ...srs[word] }]);
@@ -775,6 +775,11 @@ function parseMDY(s) {
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function nowStr() {
+  const d = new Date();
+  return `${todayStr()}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
 // ---- UI ----

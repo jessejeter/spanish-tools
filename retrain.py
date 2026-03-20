@@ -80,14 +80,14 @@ def build_dataset(srs: dict) -> list[tuple[list[float], int]]:
             curr = reviews[i]
 
             try:
-                curr_date  = datetime.fromisoformat(curr["date"][:10])
-                prev_date  = datetime.fromisoformat(prev[-1]["date"][:10])
-                first_date = datetime.fromisoformat(prev[0]["date"][:10])
+                curr_date  = datetime.fromisoformat(curr["date"])
+                prev_date  = datetime.fromisoformat(prev[-1]["date"])
+                first_date = datetime.fromisoformat(prev[0]["date"])
             except (KeyError, ValueError):
                 continue
 
-            dt_days         = max((curr_date - prev_date).days,  0.01)
-            days_since_first = max((curr_date - first_date).days, 0.01)
+            dt_days          = max((curr_date - prev_date).total_seconds()  / 86400, 0.01)
+            days_since_first = max((curr_date - first_date).total_seconds() / 86400, 0.01)
             n_correct = sum(1 for r in prev if r.get("passed"))
             n_wrong   = sum(1 for r in prev if not r.get("passed"))
             n_total   = len(prev)

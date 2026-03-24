@@ -360,7 +360,10 @@ function buildCumulative(items, getDate, startDate = null) {
   const today = todayStr();
   const start = startDate || (Object.keys(counts).sort()[0] ?? today);
   const allDates = dateRange(start, today);
-  let cum = 0;
+  // Seed cumulative with any counts that fall before the start date
+  let cum = Object.entries(counts)
+    .filter(([d]) => d < start)
+    .reduce((s, [, v]) => s + v, 0);
   const data = allDates.map(d => { cum += counts[d] || 0; return cum; });
   return { labels: allDates, data };
 }

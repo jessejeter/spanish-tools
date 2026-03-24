@@ -351,21 +351,25 @@ function dateRange(startStr, endStr) {
   return dates;
 }
 
-function buildCumulative(items, getDate, startDate = null) {
+function buildCumulative(items, getDate) {
   const counts = {};
   for (const item of items) {
     const d = getDate(item);
     if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) counts[d] = (counts[d] || 0) + 1;
   }
+  if (!Object.keys(counts).length) return { labels: [], data: [] };
   const today = todayStr();
-  const start = startDate || (Object.keys(counts).sort()[0] ?? today);
-  const allDates = dateRange(start, today);
-  // Seed cumulative with any counts that fall before the start date
-  let cum = Object.entries(counts)
-    .filter(([d]) => d < start)
-    .reduce((s, [, v]) => s + v, 0);
+  const allDates = dateRange(Object.keys(counts).sort()[0], today);
+  let cum = 0;
   const data = allDates.map(d => { cum += counts[d] || 0; return cum; });
   return { labels: allDates, data };
+}
+
+// Trim labels/data to start no earlier than startDate.
+function clipToStart(labels, data, startDate) {
+  const idx = labels.findIndex(l => l >= startDate);
+  if (idx <= 0) return { labels, data };
+  return { labels: labels.slice(idx), data: data.slice(idx) };
 }
 
 function gaussianSmooth(labels, countsByDate, bandwidth = 7) {
@@ -566,7 +570,8 @@ async function main() {
       .sort()[0] ?? today;
 
     // ---- Chart 1: Cumulative cards ----
-    const { labels: cardLabels, data: cardData } = buildCumulative(reviewed, c => c.dateReviewed || c.dateAdded, globalStart);
+    const card0 = buildCumulative(reviewed, c => c.dateReviewed || c.dateAdded);
+    const { labels: cardLabels, data: cardData } = clipToStart(card0.labels, card0.data, globalStart);
     makeCumulativeChart('chart-cards', cardLabels, '#4ecca3', 'rgba(78,204,163,0.12)', [{
       data: cardData,
       borderColor: '#4ecca3',
@@ -578,7 +583,8 @@ async function main() {
     }]);
 
     // ---- Chart 2: Cumulative pending words ----
-    const { labels: pendLabels, data: pendData } = buildCumulative(pending, c => c.dateAdded, globalStart);
+    const pend0 = buildCumulative(pending, c => c.dateAdded);
+    const { labels: pendLabels, data: pendData } = clipToStart(pend0.labels, pend0.data, globalStart);
     makeCumulativeChart('chart-pending', pendLabels, '#f0c040', 'rgba(240,192,64,0.12)', [{
       data: pendData,
       borderColor: '#f0c040',

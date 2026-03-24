@@ -210,6 +210,7 @@ body {
   <div class="chart-section">
     <div class="chart-title">Pending Words Added (not yet reviewed)</div>
     <div class="chart-wrap"><canvas id="chart-pending" height="160"></canvas></div>
+    <p id="pend-debug" style="font-size:11px;color:#8888aa;margin-top:6px;"></p>
   </div>
 
   <div class="chart-section">
@@ -587,6 +588,8 @@ async function main() {
     // ---- Chart 2: Cumulative pending words ----
     const pend0 = buildCumulative(pending, c => c.dateAdded);
     const { labels: pendLabels, data: pendData } = clipToStart(pend0.labels, pend0.data, globalStart);
+    document.getElementById('pend-debug').textContent =
+      `debug — pending:${pending.length} pend0.labels:${pend0.labels.length} first:${pend0.labels[0]} firstVal:${pend0.data[0]} lastVal:${pend0.data[pend0.data.length-1]} globalStart:${globalStart} clippedLabels:${pendLabels.length} clippedFirst:${pendData[0]}`;
     makeCumulativeChart('chart-pending', pendLabels, '#f0c040', 'rgba(240,192,64,0.12)', [{
       data: pendData,
       borderColor: '#f0c040',

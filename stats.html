@@ -213,6 +213,11 @@ body {
   </div>
 
   <div class="chart-section">
+    <div class="chart-title">Words Newly Reviewed Per Day</div>
+    <div class="chart-wrap"><canvas id="chart-words-per-day" height="160"></canvas></div>
+  </div>
+
+  <div class="chart-section">
     <div class="chart-title">Daily Reviews</div>
     <div class="chart-wrap"><canvas id="chart-reviews" height="180"></canvas></div>
   </div>
@@ -550,7 +555,34 @@ async function main() {
       }),
     });
 
-    // ---- Chart 3: Daily reviews + Gaussian smooth ----
+    // ---- Chart 3: Words newly reviewed per day ----
+    const wordsPerDay = {};
+    for (const c of reviewed) {
+      const d = c.dateReviewed;
+      if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) wordsPerDay[d] = (wordsPerDay[d] || 0) + 1;
+    }
+    if (Object.keys(wordsPerDay).length > 0) {
+      const wpLabels = dateRange(Object.keys(wordsPerDay).sort()[0], today);
+      const wpCounts = wpLabels.map(d => wordsPerDay[d] || 0);
+      new Chart(document.getElementById('chart-words-per-day'), {
+        type: 'bar',
+        data: {
+          labels: wpLabels,
+          datasets: [{
+            data: wpCounts,
+            backgroundColor: 'rgba(240,192,64,0.4)',
+            borderColor: 'rgba(240,192,64,0.7)',
+            borderWidth: 1,
+            borderRadius: 2,
+          }],
+        },
+        options: deepMerge(CHART_OPTS_BASE, {
+          scales: { x: { ticks: { callback(v, i) { return wpLabels[i]?.slice(0,7) || ''; } } } },
+        }),
+      });
+    }
+
+    // ---- Chart 4: Daily reviews + Gaussian smooth ----
     if (Object.keys(reviewsByDate).length > 0) {
       const revDates = Object.keys(reviewsByDate).sort();
       const revLabels = dateRange(revDates[0], today);

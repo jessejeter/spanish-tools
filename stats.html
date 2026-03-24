@@ -351,15 +351,15 @@ function dateRange(startStr, endStr) {
   return dates;
 }
 
-function buildCumulative(items, getDate) {
+function buildCumulative(items, getDate, startDate = null) {
   const counts = {};
   for (const item of items) {
     const d = getDate(item);
     if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) counts[d] = (counts[d] || 0) + 1;
   }
-  if (!Object.keys(counts).length) return { labels: [], data: [] };
   const today = todayStr();
-  const allDates = dateRange(Object.keys(counts).sort()[0], today);
+  const start = startDate || (Object.keys(counts).sort()[0] ?? today);
+  const allDates = dateRange(start, today);
   let cum = 0;
   const data = allDates.map(d => { cum += counts[d] || 0; return cum; });
   return { labels: allDates, data };
@@ -556,8 +556,14 @@ async function main() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('stats').style.display = 'block';
 
+    // Global x-axis start = earliest dateReviewed across all reviewed cards
+    const globalStart = reviewed
+      .map(c => c.dateReviewed)
+      .filter(d => d && d.match(/^\d{4}-\d{2}-\d{2}$/))
+      .sort()[0] ?? today;
+
     // ---- Chart 1: Cumulative cards ----
-    const { labels: cardLabels, data: cardData } = buildCumulative(reviewed, c => c.dateReviewed || c.dateAdded);
+    const { labels: cardLabels, data: cardData } = buildCumulative(reviewed, c => c.dateReviewed || c.dateAdded, globalStart);
     makeCumulativeChart('chart-cards', cardLabels, '#4ecca3', 'rgba(78,204,163,0.12)', [{
       data: cardData,
       borderColor: '#4ecca3',
@@ -569,7 +575,7 @@ async function main() {
     }]);
 
     // ---- Chart 2: Cumulative pending words ----
-    const { labels: pendLabels, data: pendData } = buildCumulative(pending, c => c.dateAdded);
+    const { labels: pendLabels, data: pendData } = buildCumulative(pending, c => c.dateAdded, globalStart);
     makeCumulativeChart('chart-pending', pendLabels, '#f0c040', 'rgba(240,192,64,0.12)', [{
       data: pendData,
       borderColor: '#f0c040',
@@ -587,7 +593,7 @@ async function main() {
       if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) wordsPerDay[d] = (wordsPerDay[d] || 0) + 1;
     }
     if (Object.keys(wordsPerDay).length > 0) {
-      const wpLabels = dateRange(Object.keys(wordsPerDay).sort()[0], today);
+      const wpLabels = dateRange(globalStart, today);
       const wpCounts = wpLabels.map(d => wordsPerDay[d] || 0);
       new Chart(document.getElementById('chart-words-per-day'), {
         type: 'bar',
@@ -609,8 +615,7 @@ async function main() {
 
     // ---- Chart 4: Daily reviews + Gaussian smooth ----
     if (Object.keys(reviewsByDate).length > 0) {
-      const revDates = Object.keys(reviewsByDate).sort();
-      const revLabels = dateRange(revDates[0], today);
+      const revLabels = dateRange(globalStart, today);
       const revCounts = revLabels.map(d => reviewsByDate[d] || 0);
       const smoothed  = gaussianSmooth(revLabels, reviewsByDate, 7);
 

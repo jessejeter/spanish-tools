@@ -516,7 +516,7 @@ function nnForward(features, model) {
   return a[0];
 }
 
-function getPRecall(data) {
+function getPRecall(data, displayOnly = false) {
   if (!data) return 0;
   const reviews = data.reviews || [];
   const lastReview = data.lastReview || (reviews.length ? reviews[reviews.length - 1].date : null);
@@ -524,10 +524,10 @@ function getPRecall(data) {
 
   const daysSinceLast = Math.max((Date.now() - new Date(lastReview)) / 86400000, 0.01);
 
-  // If the last review was a fail within the last hour, cap P(recall) low.
   const lastResult = reviews[reviews.length - 1];
-  if (lastResult && !lastResult.passed && daysSinceLast < 1/24) return 0;
+  const recentFail = lastResult && !lastResult.passed && daysSinceLast < 1/24;
 
+  let p;
   if (srsModel && reviews.length >= 1) {
     const n_correct = reviews.filter(r => r.passed).length;
     const n_wrong   = reviews.filter(r => !r.passed).length;
@@ -541,18 +541,21 @@ function getPRecall(data) {
       Math.log1p(reviews.length),
       Math.log1p(daysSinceFirst),
     ];
-    return nnForward(features, srsModel);
+    p = nnForward(features, srsModel);
+  } else {
+    // HLR fallback
+    let h = 1.0, prevDate = null;
+    for (const r of reviews) {
+      const rawGap = prevDate ? (new Date(r.date) - new Date(prevDate)) / 86400000 : 1.0;
+      const gap = rawGap > 0 ? rawGap : 1.0;
+      h = Math.max(0.5, gap * (r.passed ? 2.0 : 0.5));
+      prevDate = r.date;
+    }
+    p = Math.pow(2, -daysSinceLast / h);
   }
 
-  // HLR fallback
-  let h = 1.0, prevDate = null;
-  for (const r of reviews) {
-    const rawGap = prevDate ? (new Date(r.date) - new Date(prevDate)) / 86400000 : 1.0;
-    const gap = rawGap > 0 ? rawGap : 1.0;
-    h = Math.max(0.5, gap * (r.passed ? 2.0 : 0.5));
-    prevDate = r.date;
-  }
-  return Math.pow(2, -daysSinceLast / h);
+  if (recentFail && !displayOnly) return 0;
+  return p;
 }
 
 function weightedRandom(frames, srs) {
@@ -706,9 +709,16 @@ function showFrame(frame) {
   document.getElementById('back-phrase').textContent = frame.es;
 
   const srsData = getSRS()[frameKey(frame.en)];
-  const p = getPRecall(srsData);
+  const p = getPRecall(srsData, true);
   const precallEl = document.getElementById('front-precall');
-  precallEl.textContent = srsData?.lastReview ? `P(recall): ${Math.round(p * 100)}%` : 'new';
+  const isRecentFail = getPRecall(srsData) === 0;
+  if (!srsData?.lastReview) {
+    precallEl.textContent = 'new';
+  } else if (isRecentFail) {
+    precallEl.textContent = `P(recall): ${Math.round(p * 100)}% · recent fail`;
+  } else {
+    precallEl.textContent = `P(recall): ${Math.round(p * 100)}%`;
+  }
 
   updateCounter();
   startTimer();

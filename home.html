@@ -99,7 +99,8 @@ fetch('version.json?t=' + Date.now())
   .catch(() => {});
 
 function hardRefresh() {
-  fetch(location.href + '?t=' + Date.now(), { cache: 'reload' })
+  navigator.serviceWorker.getRegistrations()
+    .then(regs => Promise.all(regs.map(r => r.unregister())))
     .then(() => location.reload());
 }
 </script>

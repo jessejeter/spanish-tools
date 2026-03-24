@@ -351,6 +351,7 @@ let isFlipped = false;
 let hasBeenRevealed = false;
 let timerStart = null;
 let timerInterval = null;
+const recentFails = {}; // frameKey → timestamp of most recent fail
 let elapsedSeconds = 0;
 let sessionPass = 0, sessionFail = 0;
 let lastUndo = null;
@@ -525,7 +526,7 @@ function getPRecall(data) {
 
   // If the last review was a fail within the last hour, cap P(recall) low.
   const lastResult = reviews[reviews.length - 1];
-  if (lastResult && !lastResult.passed && daysSinceLast < 1/24) return 0.1;
+  if (lastResult && !lastResult.passed && daysSinceLast < 1/24) return 0;
 
   if (srsModel && reviews.length >= 1) {
     const n_correct = reviews.filter(r => r.passed).length;
@@ -573,11 +574,14 @@ function pickNextFrame() {
   const unreviewed = allFrames.filter(f => !srs[frameKey(f.en)]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
+  const FAIL_HOLDOUT_MS = 2 * 60 * 1000; // 2 minutes
+
   // Pick lowest P(recall) from all reviewed, non-retired frames
-  // Exclude the just-graded frame to avoid immediate repeats
+  // Exclude the just-graded frame and anything in the 2-minute fail holdout
   const pool = allFrames.filter(f => {
     if (srs[frameKey(f.en)]?.retired) return false;
     if (f.en === currentFrame?.en) return false;
+    if (recentFails[frameKey(f.en)] && Date.now() - recentFails[frameKey(f.en)] < FAIL_HOLDOUT_MS) return false;
     return (srs[frameKey(f.en)]?.reviews?.length || 0) > 0;
   });
 
@@ -760,6 +764,8 @@ function grade(passed) {
     fail: sessionFail,
   };
   recordReview(currentFrame.en, passed);
+  if (!passed) recentFails[frameKey(currentFrame.en)] = Date.now();
+  else delete recentFails[frameKey(currentFrame.en)];
   incrementTodayCount();
   if (passed) sessionPass++; else sessionFail++;
   updateCounter();

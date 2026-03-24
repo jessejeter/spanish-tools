@@ -437,6 +437,7 @@ let allCards = [];
 let currentCard = null;
 let isFlipped = false;
 let lastUndo = null;
+const recentFails = {}; // word → timestamp of most recent fail
 
 // ---- Google Visualization JSON Parsing ----
 function parseGvizJson(text) {
@@ -694,7 +695,7 @@ function getPRecall(data) {
   // If the last review was a fail within the last hour, cap P(recall) low.
   // The model is trained on day-scale data and can't reliably score sub-hour gaps yet.
   const lastResult = reviews[reviews.length - 1];
-  if (lastResult && !lastResult.passed && daysSinceLast < 1/24) return 0.1;
+  if (lastResult && !lastResult.passed && daysSinceLast < 1/24) return 0;
 
   if (srsModel && reviews.length >= 1) {
     const n_correct = reviews.filter(r => r.passed).length;
@@ -741,12 +742,16 @@ function pickNextCard() {
   const srs = getSRS();
   const today = todayStr();
 
-  // Eligible = not retired, not added today, not marked reviewed in sheet today, not the just-graded card
+  const FAIL_HOLDOUT_MS = 2 * 60 * 1000; // 2 minutes
+
+  // Eligible = not retired, not added today, not marked reviewed in sheet today,
+  // not the just-graded card, not in the 2-minute fail holdout
   const eligible = allCards.filter(c => {
     if (srs[c.spanish]?.retired) return false;
     if (c.dateAdded === today) return false;
     if (c.dateReviewed === today) return false;
     if (c.spanish === currentCard?.spanish) return false;
+    if (recentFails[c.spanish] && Date.now() - recentFails[c.spanish] < FAIL_HOLDOUT_MS) return false;
     return true;
   });
   if (!eligible.length) return null;
@@ -894,6 +899,8 @@ function grade(passed) {
     todayCount: getTodayCount(),
   };
   recordReview(currentCard.spanish, passed);
+  if (!passed) recentFails[currentCard.spanish] = Date.now();
+  else delete recentFails[currentCard.spanish];
   incrementTodayCount();
   const next = pickNextCard();
   if (!next) { showEmpty(); return; }

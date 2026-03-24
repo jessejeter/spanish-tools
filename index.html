@@ -401,6 +401,7 @@ body {
         <div class="card-pos" id="back-pos"></div>
         <div class="card-other" id="back-other"></div>
         <div class="card-analysis" id="back-analysis"></div>
+        <div id="back-dates" style="font-size:11px;color:var(--text-dim);opacity:0.5;margin-top:10px;line-height:1.8;"></div>
         <button class="btn-flip-back" onclick="event.stopPropagation(); flipToFront();">↩</button>
       </div>
     </div>
@@ -865,6 +866,12 @@ function showCard(card) {
   }
 
   document.getElementById('back-analysis').textContent = (card.analysis || '').trim();
+
+  const datesEl = document.getElementById('back-dates');
+  const parts = [];
+  if (card.dateAdded) parts.push('Added: ' + card.dateAdded);
+  if (card.dateReviewed) parts.push('Reviewed: ' + card.dateReviewed);
+  datesEl.textContent = parts.join('   ·   ');
 
   const srsData = getSRS()[card.spanish];
   const p = getPRecall(srsData);

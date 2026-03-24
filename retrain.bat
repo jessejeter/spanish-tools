@@ -17,8 +17,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Updating version timestamp...
+python -c "import json; from datetime import datetime; d=datetime.now(); open('version.json','w').write(json.dumps({'updated': d.strftime('%%b') + ' ' + str(d.day) + ', ' + d.strftime('%%Y') + ' ' + str(d.hour %% 12 or 12) + ':' + d.strftime('%%M') + ' ' + ('AM' if d.hour < 12 else 'PM')}))"
+
 echo Committing model weights...
-git add vocab_model.json frames_model.json
+git add vocab_model.json frames_model.json version.json
 
 REM Only commit if there are actual changes
 git diff --staged --quiet

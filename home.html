@@ -90,8 +90,19 @@ h1 {
   <div class="btn-sub">English → Spanish phrases</div>
 </a>
 
-<p class="updated">Updated Mar 24, 2026 3:04 PM</p>
-<button onclick="location.reload(true)" style="background:none;border:none;color:#e4e4e4;opacity:0.3;font-size:12px;cursor:pointer;padding:4px;">↺ force refresh</button>
+<p class="updated" id="updated">Updated …</p>
+<button onclick="hardRefresh()" style="background:none;border:none;color:#e4e4e4;opacity:0.3;font-size:12px;cursor:pointer;padding:4px;">↺ force refresh</button>
+<script>
+fetch('version.json?t=' + Date.now())
+  .then(r => r.json())
+  .then(d => document.getElementById('updated').textContent = 'Updated ' + d.updated)
+  .catch(() => {});
+
+function hardRefresh() {
+  fetch(location.href + '?t=' + Date.now(), { cache: 'reload' })
+    .then(() => location.reload());
+}
+</script>
 
 </body>
 </html>

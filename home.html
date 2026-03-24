@@ -101,7 +101,7 @@ fetch('version.json', { cache: 'no-store' })
 function hardRefresh() {
   navigator.serviceWorker.getRegistrations()
     .then(regs => Promise.all(regs.map(r => r.unregister())))
-    .then(() => location.reload());
+    .then(() => { location.href = location.pathname + '?v=' + Date.now(); });
 }
 </script>
 

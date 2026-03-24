@@ -17,6 +17,11 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Never cache version.json — always fetch fresh
+  if (e.request.url.includes('version.json')) {
+    e.respondWith(fetch(e.request, { cache: 'no-store' }));
+    return;
+  }
   // Navigation (HTML): network first so updates apply immediately
   if (e.request.mode === 'navigate') {
     e.respondWith(

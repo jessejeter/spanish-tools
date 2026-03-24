@@ -93,7 +93,7 @@ h1 {
 <p class="updated" id="updated">Updated …</p>
 <button onclick="hardRefresh()" style="background:none;border:none;color:#e4e4e4;opacity:0.3;font-size:12px;cursor:pointer;padding:4px;">↺ force refresh</button>
 <script>
-fetch('version.json', { cache: 'no-store' })
+fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
   .then(r => r.json())
   .then(d => document.getElementById('updated').textContent = 'Updated ' + d.updated)
   .catch(() => {});

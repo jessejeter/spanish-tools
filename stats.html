@@ -563,11 +563,13 @@ async function main() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('stats').style.display = 'block';
 
-    // Global x-axis start = earliest dateReviewed across all reviewed cards
-    const globalStart = reviewed
-      .map(c => c.dateReviewed)
-      .filter(d => d && d.match(/^\d{4}-\d{2}-\d{2}$/))
-      .sort()[0] ?? today;
+    // Global x-axis start = earliest date across all data
+    const allDates = [
+      ...reviewed.map(c => c.dateReviewed),
+      ...reviewed.map(c => c.dateAdded),
+      ...pending.map(c => c.dateAdded),
+    ].filter(d => d && d.match(/^\d{4}-\d{2}-\d{2}$/));
+    const globalStart = allDates.sort()[0] ?? today;
 
     // ---- Chart 1: Cumulative cards ----
     const card0 = buildCumulative(reviewed, c => c.dateReviewed || c.dateAdded);

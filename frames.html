@@ -523,6 +523,10 @@ function getPRecall(data) {
 
   const daysSinceLast = Math.max((Date.now() - new Date(lastReview)) / 86400000, 0.01);
 
+  // If the last review was a fail within the last hour, force to top of queue.
+  const lastResult = reviews[reviews.length - 1];
+  if (lastResult && !lastResult.passed && daysSinceLast < 1/24) return 0;
+
   if (srsModel && reviews.length >= 1) {
     const n_correct = reviews.filter(r => r.passed).length;
     const n_wrong   = reviews.filter(r => !r.passed).length;

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<title>Vocab Stats</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --card: #0f3460;
+  --text: #e4e4e4;
+  --text-dim: #8888aa;
+  --accent: #e94560;
+  --green: #4ecca3;
+  --yellow: #f0c040;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  padding-bottom: 32px;
+}
+
+#loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  gap: 16px;
+}
+
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--surface);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#error {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+#error button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#stats { display: none; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 8px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.page-header a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.page-header a:hover { opacity: 1; }
+
+.page-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 12px 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.stat-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.stat-value {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-value.warn { color: var(--yellow); }
+.stat-value.good { color: var(--green); }
+.stat-value.dim  { color: var(--text-dim); }
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.chart-section {
+  padding: 20px 16px 0;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.chart-title {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+.chart-wrap {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px 12px 12px;
+  position: relative;
+}
+
+.chart-wrap canvas { display: block; }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Loading stats…</p>
+</div>
+
+<div id="error">
+  <p id="error-msg">Failed to load data.</p>
+  <button onclick="location.reload()">Retry</button>
+</div>
+
+<div id="stats">
+  <div class="page-header">
+    <a href="home.html">⌂</a>
+    <h1>Vocab Stats</h1>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value good" id="s-cards">—</div>
+      <div class="stat-label">Total Cards</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value dim" id="s-pending">—</div>
+      <div class="stat-label">Pending Review</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value warn" id="s-low-recall">—</div>
+      <div class="stat-label">P(recall) &lt; 90%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="s-total-reviews">—</div>
+      <div class="stat-label">All-Time Reviews</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value dim" id="s-retired">—</div>
+      <div class="stat-label">Retired</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="s-avg7">—</div>
+      <div class="stat-label">Avg Reviews / Day (7d)</div>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-title">Cumulative Cards Added</div>
+    <div class="chart-wrap"><canvas id="chart-cards" height="160"></canvas></div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-title">Pending Words Added (not yet reviewed)</div>
+    <div class="chart-wrap"><canvas id="chart-pending" height="160"></canvas></div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-title">Daily Reviews</div>
+    <div class="chart-wrap"><canvas id="chart-reviews" height="180"></canvas></div>
+  </div>
+</div>
+
+<script>
+const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
+const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
+const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec';
+const STORAGE_KEY = 'spanish-flashcards-v2';
+const TODAY_SYNC_KEY = '__today__';
+
+// ---- Helpers ----
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function parseMDY(s) {
+  if (!s) return '';
+  const gviz = s.match(/^Date\((\d+),(\d+),(\d+)\)$/);
+  if (gviz) {
+    const [, y, m, d] = gviz;
+    return `${y}-${String(Number(m)+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  const parts = s.split('/');
+  if (parts.length !== 3) return '';
+  return `${parts[2]}-${String(parts[0]).padStart(2,'0')}-${String(parts[1]).padStart(2,'0')}`;
+}
+
+function parseGvizJson(text) {
+  const match = text.match(/google\.visualization\.Query\.setResponse\(({.*})\)/s);
+  if (!match) throw new Error('Invalid response from Google Sheets');
+  const data = JSON.parse(match[1]);
+  if (data.status === 'error')
+    throw new Error(data.errors?.map(e => e.message).join(', ') || 'Sheet error');
+  return data.table.rows.map(row =>
+    row.c.map(cell => (cell && cell.v != null) ? String(cell.v) : '')
+  );
+}
+
+async function fetchSheet(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseGvizJson(await res.text());
+}
+
+// ---- SRS model ----
+let srsModel = null;
+
+async function loadSRSModel() {
+  try {
+    const res = await fetch('vocab_model.json');
+    if (res.ok) srsModel = await res.json();
+  } catch {}
+}
+
+function nnForward(features, model) {
+  let a = features.map((v, i) => (v - model.scaler_mean[i]) / model.scaler_std[i]);
+  for (let l = 0; l < model.weights.length; l++) {
+    const W = model.weights[l], b = model.biases[l];
+    const z = b.map((bi, j) => bi + a.reduce((s, ai, k) => s + ai * W[k][j], 0));
+    a = l < model.weights.length - 1
+      ? z.map(v => Math.max(0, v))
+      : z.map(v => 1 / (1 + Math.exp(-Math.max(-20, Math.min(20, v)))));
+  }
+  return a[0];
+}
+
+function getPRecall(data) {
+  if (!data) return null;
+  const reviews = data.reviews || [];
+  const lastReview = data.lastReview || (reviews.length ? reviews[reviews.length-1].date : null);
+  if (!lastReview) return null;
+  const daysSinceLast = Math.max((Date.now() - new Date(lastReview)) / 86400000, 0.01);
+
+  if (srsModel && reviews.length >= 1) {
+    const n_correct = reviews.filter(r => r.passed).length;
+    const n_wrong   = reviews.filter(r => !r.passed).length;
+    const accuracy  = n_correct / reviews.length;
+    const daysSinceFirst = Math.max((Date.now() - new Date(reviews[0].date)) / 86400000, 0.01);
+    return nnForward([
+      Math.log1p(daysSinceLast), n_correct, n_wrong, accuracy,
+      Math.log1p(reviews.length), Math.log1p(daysSinceFirst),
+    ], srsModel);
+  }
+
+  // HLR fallback
+  let h = 1.0, prevDate = null;
+  for (const r of reviews) {
+    const rawGap = prevDate ? (new Date(r.date) - new Date(prevDate)) / 86400000 : 1.0;
+    const gap = rawGap > 0 ? rawGap : 1.0;
+    h = Math.max(0.5, gap * (r.passed ? 2.0 : 0.5));
+    prevDate = r.date;
+  }
+  return Math.pow(2, -daysSinceLast / h);
+}
+
+// ---- Load SRS ----
+async function loadSRS() {
+  if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
+    try {
+      const res = await fetch(APPS_SCRIPT_URL);
+      if (res.ok) {
+        const remote = await res.json();
+        // merge with local so we don't miss anything
+        let local = {};
+        try { local = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch {}
+        const merged = { ...remote };
+        for (const [w, d] of Object.entries(local)) {
+          if (!merged[w] || (d.lastReview || '') > (merged[w].lastReview || ''))
+            merged[w] = d;
+        }
+        return merged;
+      }
+    } catch {}
+  }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+
+// ---- Chart helpers ----
+function dateRange(startStr, endStr) {
+  const dates = [];
+  const cur = new Date(startStr);
+  const end = new Date(endStr);
+  while (cur <= end) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+function buildCumulative(items, getDate) {
+  const counts = {};
+  for (const item of items) {
+    const d = getDate(item);
+    if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) counts[d] = (counts[d] || 0) + 1;
+  }
+  if (!Object.keys(counts).length) return { labels: [], data: [] };
+  const today = todayStr();
+  const allDates = dateRange(Object.keys(counts).sort()[0], today);
+  let cum = 0;
+  const data = allDates.map(d => { cum += counts[d] || 0; return cum; });
+  return { labels: allDates, data };
+}
+
+function gaussianSmooth(labels, countsByDate, bandwidth = 7) {
+  return labels.map(d => {
+    const td = new Date(d).getTime();
+    let sumW = 0, sumV = 0;
+    for (const [d2, v] of Object.entries(countsByDate)) {
+      const diff = (td - new Date(d2).getTime()) / 86400000;
+      const w = Math.exp(-(diff * diff) / (2 * bandwidth * bandwidth));
+      sumW += w;
+      sumV += w * v;
+    }
+    return sumW > 0 ? sumV / sumW : 0;
+  });
+}
+
+// Reduce label density: only show labels ~30 days apart
+function sparseLabels(labels, maxLabels = 10) {
+  if (labels.length <= maxLabels) return labels;
+  const step = Math.ceil(labels.length / maxLabels);
+  return labels.map((l, i) => (i % step === 0 || i === labels.length - 1) ? l.slice(0, 7) : '');
+}
+
+// ---- Chart defaults ----
+Chart.defaults.color = '#8888aa';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+const CHART_OPTS_BASE = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#0f3460',
+      titleColor: '#8888aa',
+      bodyColor: '#e4e4e4',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+    },
+  },
+  scales: {
+    x: {
+      grid: { color: 'rgba(255,255,255,0.04)' },
+      ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+    },
+    y: {
+      grid: { color: 'rgba(255,255,255,0.04)' },
+      beginAtZero: true,
+      ticks: { maxTicksLimit: 5 },
+    },
+  },
+};
+
+function deepMerge(a, b) {
+  const out = { ...a };
+  for (const k of Object.keys(b)) {
+    if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]))
+      out[k] = deepMerge(a[k] || {}, b[k]);
+    else
+      out[k] = b[k];
+  }
+  return out;
+}
+
+// ---- Main ----
+async function main() {
+  try {
+    const [[s1, s2], srs] = await Promise.all([
+      Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
+      loadSRS(),
+      loadSRSModel(),
+    ]);
+
+    // Build s2Map (same logic as index.html)
+    const s2Map = {};
+    for (const row of s2) {
+      const key = (row[0] || '').split('\n')[0].trim().toLowerCase();
+      if (key) s2Map[key] = row;
+    }
+
+    // Classify Sheet1 rows
+    const reviewed = [];   // { spanish, dateAdded, dateReviewed }
+    const pending  = [];   // { spanish, dateAdded }
+
+    for (const row of s1) {
+      const spanish = (row[1] || '').trim();
+      const english = (row[2] || '').trim();
+      const sense   = (row[5] || '').trim();
+      const dateAdded = (row[0] || '').trim();
+      if (!spanish) continue;
+
+      const lookupKey = sense
+        ? `${spanish}: ${english} (${sense})`
+        : `${spanish}: ${english}`;
+      const s2row = s2Map[lookupKey.toLowerCase()] || [];
+      const isReviewed = (s2row[2] || '').toUpperCase() === 'TRUE';
+
+      if (isReviewed) {
+        reviewed.push({ spanish, dateAdded, dateReviewed: parseMDY(s2row[3] || '') });
+      } else {
+        pending.push({ spanish, dateAdded });
+      }
+    }
+
+    // ---- Stats ----
+    const totalCards = reviewed.length;
+    const totalPending = pending.length;
+
+    let lowRecall = 0, totalReviews = 0, retiredCount = 0;
+    for (const [word, data] of Object.entries(srs)) {
+      if (word === TODAY_SYNC_KEY) continue;
+      if (data.retired) { retiredCount++; continue; }
+      totalReviews += (data.right || 0) + (data.wrong || 0);
+      const p = getPRecall(data);
+      if (p !== null && p < 0.9) lowRecall++;
+    }
+
+    // 7-day avg reviews
+    const reviewsByDate = {};
+    for (const [word, data] of Object.entries(srs)) {
+      if (word === TODAY_SYNC_KEY) continue;
+      for (const r of data.reviews || []) {
+        const d = r.date.slice(0, 10);
+        reviewsByDate[d] = (reviewsByDate[d] || 0) + 1;
+      }
+    }
+    const today = todayStr();
+    let sum7 = 0, count7 = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      if (reviewsByDate[ds] !== undefined) { sum7 += reviewsByDate[ds]; count7++; }
+    }
+    const avg7 = count7 > 0 ? Math.round(sum7 / 7) : 0;
+
+    // ---- Render stats ----
+    document.getElementById('s-cards').textContent = totalCards;
+    document.getElementById('s-pending').textContent = totalPending;
+    document.getElementById('s-low-recall').textContent = lowRecall;
+    document.getElementById('s-total-reviews').textContent = totalReviews.toLocaleString();
+    document.getElementById('s-retired').textContent = retiredCount;
+    document.getElementById('s-avg7').textContent = avg7;
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('stats').style.display = 'block';
+
+    // ---- Chart 1: Cumulative cards ----
+    const { labels: cardLabels, data: cardData } = buildCumulative(reviewed, c => c.dateReviewed || c.dateAdded);
+    new Chart(document.getElementById('chart-cards'), {
+      type: 'line',
+      data: {
+        labels: cardLabels,
+        datasets: [{
+          data: cardData,
+          borderColor: '#4ecca3',
+          backgroundColor: 'rgba(78,204,163,0.12)',
+          borderWidth: 2,
+          fill: true,
+          pointRadius: 0,
+          tension: 0.3,
+        }],
+      },
+      options: deepMerge(CHART_OPTS_BASE, {
+        scales: { x: { ticks: { callback(v, i) { return cardLabels[i]?.slice(0,7) || ''; } } } },
+      }),
+    });
+
+    // ---- Chart 2: Cumulative pending words ----
+    const { labels: pendLabels, data: pendData } = buildCumulative(pending, c => c.dateAdded);
+    new Chart(document.getElementById('chart-pending'), {
+      type: 'line',
+      data: {
+        labels: pendLabels,
+        datasets: [{
+          data: pendData,
+          borderColor: '#f0c040',
+          backgroundColor: 'rgba(240,192,64,0.12)',
+          borderWidth: 2,
+          fill: true,
+          pointRadius: 0,
+          tension: 0.3,
+        }],
+      },
+      options: deepMerge(CHART_OPTS_BASE, {
+        scales: { x: { ticks: { callback(v, i) { return pendLabels[i]?.slice(0,7) || ''; } } } },
+      }),
+    });
+
+    // ---- Chart 3: Daily reviews + Gaussian smooth ----
+    if (Object.keys(reviewsByDate).length > 0) {
+      const revDates = Object.keys(reviewsByDate).sort();
+      const revLabels = dateRange(revDates[0], today);
+      const revCounts = revLabels.map(d => reviewsByDate[d] || 0);
+      const smoothed  = gaussianSmooth(revLabels, reviewsByDate, 7);
+
+      new Chart(document.getElementById('chart-reviews'), {
+        type: 'bar',
+        data: {
+          labels: revLabels,
+          datasets: [
+            {
+              type: 'bar',
+              data: revCounts,
+              backgroundColor: 'rgba(78,204,163,0.35)',
+              borderColor: 'rgba(78,204,163,0.6)',
+              borderWidth: 1,
+              borderRadius: 2,
+              label: 'Reviews',
+            },
+            {
+              type: 'line',
+              data: smoothed,
+              borderColor: '#e94560',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.4,
+              label: '7d avg',
+            },
+          ],
+        },
+        options: deepMerge(CHART_OPTS_BASE, {
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 12,
+                padding: 8,
+                color: '#8888aa',
+                font: { size: 10 },
+              },
+            },
+          },
+          scales: {
+            x: { ticks: { callback(v, i) { return revLabels[i]?.slice(0,7) || ''; } } },
+          },
+        }),
+      });
+    } else {
+      document.getElementById('chart-reviews').parentElement.insertAdjacentHTML(
+        'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No review history yet.</p>'
+      );
+    }
+
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'flex';
+    document.getElementById('error-msg').textContent = err.message;
+  }
+}
+
+main();
+</script>
+</body>
+</html>

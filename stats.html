@@ -210,7 +210,6 @@ body {
   <div class="chart-section">
     <div class="chart-title">Pending Words Added (not yet reviewed)</div>
     <div class="chart-wrap"><canvas id="chart-pending" height="160"></canvas></div>
-    <p id="pend-debug" style="font-size:11px;color:#8888aa;margin-top:6px;"></p>
   </div>
 
   <div class="chart-section">
@@ -585,13 +584,28 @@ async function main() {
       tension: 0.3,
     }]);
 
-    // ---- Chart 2: Cumulative pending words ----
-    const pend0 = buildCumulative(pending, c => c.dateAdded);
-    const { labels: pendLabels, data: pendData } = clipToStart(pend0.labels, pend0.data, globalStart);
-    document.getElementById('pend-debug').textContent =
-      `debug — pending:${pending.length} pend0.labels:${pend0.labels.length} first:${pend0.labels[0]} firstVal:${pend0.data[0]} lastVal:${pend0.data[pend0.data.length-1]} globalStart:${globalStart} clippedLabels:${pendLabels.length} clippedFirst:${pendData[0]}`;
+    // ---- Chart 2: Pending backlog over time = cumulative added − cumulative reviewed ----
+    // Build per-date counts for all words added and all words reviewed
+    const addedCounts = {};
+    for (const c of [...reviewed, ...pending]) {
+      const d = c.dateAdded;
+      if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) addedCounts[d] = (addedCounts[d] || 0) + 1;
+    }
+    const reviewedCounts = {};
+    for (const c of reviewed) {
+      const d = c.dateReviewed;
+      if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) reviewedCounts[d] = (reviewedCounts[d] || 0) + 1;
+    }
+    const pendAllLabels = dateRange(Object.keys(addedCounts).sort()[0], today);
+    let cumAdded = 0, cumReviewed = 0;
+    const pendData = pendAllLabels.map(d => {
+      cumAdded    += addedCounts[d]    || 0;
+      cumReviewed += reviewedCounts[d] || 0;
+      return cumAdded - cumReviewed;
+    });
+    const { labels: pendLabels, data: pendDataClipped } = clipToStart(pendAllLabels, pendData, globalStart);
     makeCumulativeChart('chart-pending', pendLabels, '#f0c040', 'rgba(240,192,64,0.12)', [{
-      data: pendData,
+      data: pendDataClipped,
       borderColor: '#f0c040',
       backgroundColor: 'rgba(240,192,64,0.12)',
       borderWidth: 2,

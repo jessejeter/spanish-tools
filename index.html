@@ -439,6 +439,7 @@ let currentCard = null;
 let isFlipped = false;
 let lastUndo = null;
 const recentFails = {}; // word → timestamp of most recent fail
+let randomCardCounter = 0; // counts picks since last random sample (post-new-cards phase)
 
 // ---- Google Visualization JSON Parsing ----
 function parseGvizJson(text) {
@@ -763,7 +764,14 @@ function pickNextCard() {
   const unreviewed = eligible.filter(c => !srs[c.spanish]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
-  // 2. Always pick the card with lowest P(recall)
+  // 2. Every 5th card: random sample from full eligible set (forces broad data collection)
+  randomCardCounter++;
+  if (randomCardCounter >= 5) {
+    randomCardCounter = 0;
+    return eligible[Math.floor(Math.random() * eligible.length)];
+  }
+
+  // 3. Otherwise pick the card with lowest P(recall)
   return eligible.reduce((best, c) =>
     getPRecall(srs[c.spanish]) < getPRecall(srs[best.spanish]) ? c : best
   );

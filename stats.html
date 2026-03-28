@@ -203,13 +203,8 @@ body {
   </div>
 
   <div class="chart-section">
-    <div class="chart-title">Cumulative Cards Added</div>
-    <div class="chart-wrap"><canvas id="chart-cards" height="160"></canvas></div>
-  </div>
-
-  <div class="chart-section">
-    <div class="chart-title">Pending Words Added (not yet reviewed)</div>
-    <div class="chart-wrap"><canvas id="chart-pending" height="160"></canvas></div>
+    <div class="chart-title">Cumulative Vocab</div>
+    <div class="chart-wrap"><canvas id="chart-cumulative" height="180"></canvas></div>
   </div>
 
   <div class="chart-section">
@@ -571,21 +566,7 @@ async function main() {
     ].filter(d => d && d.match(/^\d{4}-\d{2}-\d{2}$/));
     const globalStart = allDates.sort()[0] ?? today;
 
-    // ---- Chart 1: Cumulative cards ----
-    const card0 = buildCumulative(reviewed, c => c.dateReviewed || c.dateAdded);
-    const { labels: cardLabels, data: cardData } = clipToStart(card0.labels, card0.data, globalStart);
-    makeCumulativeChart('chart-cards', cardLabels, '#4ecca3', 'rgba(78,204,163,0.12)', [{
-      data: cardData,
-      borderColor: '#4ecca3',
-      backgroundColor: 'rgba(78,204,163,0.12)',
-      borderWidth: 2,
-      fill: true,
-      pointRadius: 0,
-      tension: 0.3,
-    }]);
-
-    // ---- Chart 2: Pending backlog over time = cumulative added − cumulative reviewed ----
-    // Build per-date counts for all words added and all words reviewed
+    // ---- Chart 1: Combined cumulative (Added / Reviewed / Pending) ----
     const addedCounts = {};
     for (const c of [...reviewed, ...pending]) {
       const d = c.dateAdded;
@@ -596,23 +577,47 @@ async function main() {
       const d = c.dateReviewed;
       if (d && d.match(/^\d{4}-\d{2}-\d{2}$/)) reviewedCounts[d] = (reviewedCounts[d] || 0) + 1;
     }
-    const pendAllLabels = dateRange(Object.keys(addedCounts).sort()[0], today);
+    const cumLabels = dateRange(globalStart, today);
     let cumAdded = 0, cumReviewed = 0;
-    const pendData = pendAllLabels.map(d => {
+    const cumAddedData = [], cumReviewedData = [], cumPendingData = [];
+    for (const d of cumLabels) {
       cumAdded    += addedCounts[d]    || 0;
       cumReviewed += reviewedCounts[d] || 0;
-      return cumAdded - cumReviewed;
+      cumAddedData.push(cumAdded);
+      cumReviewedData.push(cumReviewed);
+      cumPendingData.push(cumAdded - cumReviewed);
+    }
+    const cumCanvas = document.getElementById('chart-cumulative');
+    cumCanvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    new Chart(cumCanvas, {
+      type: 'line',
+      data: {
+        labels: cumLabels,
+        datasets: [
+          { label: 'Added',    data: cumAddedData,    borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+          { label: 'Reviewed', data: cumReviewedData, borderColor: '#e94560', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+          { label: 'Pending',  data: cumPendingData,  borderColor: '#f0c040', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+        ],
+      },
+      options: deepMerge(CHART_OPTS_BASE, {
+        interaction: { mode: 'index', intersect: false },
+        scales: { x: { ticks: { callback(v, i) { return cumLabels[i]?.slice(0, 7) || ''; } } } },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: { boxWidth: 12, padding: 12, color: '#8888aa', font: { size: 11 } },
+          },
+          tooltip: {
+            callbacks: {
+              title: items => items[0]?.label || '',
+              label: item => ` ${item.dataset.label}: ${item.raw.toLocaleString()}`,
+            },
+          },
+        },
+      }),
+      plugins: [crosshairPlugin],
     });
-    const { labels: pendLabels, data: pendDataClipped } = clipToStart(pendAllLabels, pendData, globalStart);
-    makeCumulativeChart('chart-pending', pendLabels, '#f0c040', 'rgba(240,192,64,0.12)', [{
-      data: pendDataClipped,
-      borderColor: '#f0c040',
-      backgroundColor: 'rgba(240,192,64,0.12)',
-      borderWidth: 2,
-      fill: true,
-      pointRadius: 0,
-      tension: 0.3,
-    }]);
 
     // ---- Chart 3: Words newly reviewed per day ----
     const wordsPerDay = {};

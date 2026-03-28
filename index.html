@@ -588,6 +588,10 @@ function updateCounter() {
     parts.push(`<span style="color:${done ? 'var(--green)' : 'inherit'}">New ${newDone}/${total}</span>`);
   }
 
+  const srs = getSRS();
+  const under90 = allCards.filter(c => !srs[c.spanish]?.retired && getPRecall(srs[c.spanish]) < 0.9).length;
+  parts.push(`<90%: ${under90}`);
+
   document.getElementById('session-stats').innerHTML = parts.join(' · ');
 }
 

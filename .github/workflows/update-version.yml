@@ -12,7 +12,7 @@ jobs:
 
       - name: Write version.json
         run: |
-          echo "{\"updated\": \"$(date -u '+%b %-d, %Y %-I:%M %p UTC')\"}" > version.json
+          echo "{\"updated\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\"}" > version.json
 
       - name: Commit and push if changed
         run: |

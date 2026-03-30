@@ -589,7 +589,7 @@ function updateCounter() {
   }
 
   const srs = getSRS();
-  const under90 = allCards.filter(c => !srs[c.spanish]?.retired && c.dateReviewed !== todayStr() && getPRecall(srs[c.spanish]) < 0.9).length;
+  const under90 = allCards.filter(c => !srs[c.spanish]?.retired && c.dateReviewed !== todayStr() && srs[c.spanish]?.reviews?.length > 0 && getPRecall(srs[c.spanish]) < 0.9).length;
   parts.push(`<90%: ${under90}`);
 
   document.getElementById('session-stats').innerHTML = parts.join(' · ');

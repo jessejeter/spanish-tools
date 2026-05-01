@@ -597,7 +597,7 @@ function updateCounter() {
     c.dateReviewed !== todayStr() &&
     srs[c.spanish]?.reviews?.length > 0 &&
     !(recentFails[c.spanish] && now - recentFails[c.spanish] < FAIL_HOLDOUT_MS) &&
-    getPRecall(srs[c.spanish], true) < 0.9
+    getPRecall(srs[c.spanish]) < 0.9
   ).length;
   parts.push(`<90%: ${under90}`);
   if (holdout > 0) parts.push(`Holdout: ${holdout}`);

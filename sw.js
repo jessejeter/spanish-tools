@@ -17,8 +17,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  // Never cache version.json — always fetch fresh
-  if (e.request.url.includes('version.json')) {
+  // Never cache these — always fetch fresh
+  if (e.request.url.includes('version.json') || e.request.url.includes('vocab_model.json')) {
     e.respondWith(fetch(e.request, { cache: 'no-store' }));
     return;
   }

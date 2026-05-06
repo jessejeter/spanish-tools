@@ -319,6 +319,7 @@ def backfill_trans_context(service):
     total_words = len(data_rows)
     pending = []
     filled = 0
+    words_processed = 0
 
     for i, row in enumerate(data_rows):
         while len(row) < 7:
@@ -342,8 +343,11 @@ def backfill_trans_context(service):
             filled += 1
 
         time.sleep(0.5)
+        words_processed += 1
 
-        if len(pending) >= 20:
+        # Write immediately after the first result, then every 10
+        if pending and (words_processed == 1 or len(pending) >= 10):
+            print(f"  Writing batch of {len(pending)} updates...")
             execute_with_retry(
                 service.spreadsheets().values().batchUpdate(
                     spreadsheetId=SPREADSHEET_ID,
@@ -353,6 +357,7 @@ def backfill_trans_context(service):
             pending = []
 
     if pending:
+        print(f"  Writing final batch of {len(pending)} updates...")
         execute_with_retry(
             service.spreadsheets().values().batchUpdate(
                 spreadsheetId=SPREADSHEET_ID,

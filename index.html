@@ -978,8 +978,9 @@ function showCard(card) {
   const otherEl = document.getElementById('back-other');
   if (card.otherTranslations) {
     otherEl.style.display = 'block';
-    otherEl.innerHTML = '<div class="other-title">Other Translations</div>' +
-      card.otherTranslations.trim();
+    const normalizedOther = card.otherTranslations.trim()
+      .split('\n').map(l => l.trim()).filter(l => l).join('\n\n');
+    otherEl.innerHTML = '<div class="other-title">Other Translations</div>' + normalizedOther;
   } else {
     otherEl.style.display = 'none';
   }

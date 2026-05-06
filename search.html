@@ -501,10 +501,39 @@ function daysUntilCross(reviews, now, threshold) {
 }
 
 // Effective half-life: time from now for P to drop to currentP / 2.
+// If the crossing happens within 60d, return exact binary-search value.
+// Otherwise, fit log(P) = a + b*t to the 60-day curve and extrapolate.
 function estimateHalfLife(reviews, now) {
   const currentP = computeP(reviews, now);
   if (currentP === null) return null;
-  return daysUntilCross(reviews, now, currentP / 2);
+
+  // Try exact crossing first
+  const exact = daysUntilCross(reviews, now, currentP / 2);
+  if (exact !== null) return { days: exact, extrapolated: false };
+
+  // Fit exponential decay to 60-day sampled projection
+  const STEP_MS = 6 * 3600000; // 6-hour steps
+  const MAX_MS  = 60 * 86400000;
+  const xs = [], ys = [];
+  for (let t = now; t <= now + MAX_MS; t += STEP_MS) {
+    const p = computeP(reviews, t);
+    if (p !== null && p > 0) {
+      xs.push((t - now) / 86400000);
+      ys.push(Math.log(p));
+    }
+  }
+  if (xs.length < 4) return null;
+
+  // OLS: log(P) = a + b*t  →  half-life = ln(2) / -b
+  const n = xs.length;
+  const sumX  = xs.reduce((s, x) => s + x, 0);
+  const sumY  = ys.reduce((s, y) => s + y, 0);
+  const sumXX = xs.reduce((s, x) => s + x * x, 0);
+  const sumXY = xs.reduce((s, x, i) => s + x * ys[i], 0);
+  const b = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+
+  if (b >= -1e-9) return null; // flat / increasing — can't estimate
+  return { days: Math.LN2 / (-b), extrapolated: true };
 }
 
 function fmtDays(days) {
@@ -555,9 +584,10 @@ function showDetail(card) {
     }
 
     if (hl === null) {
-      html += `<span class="stat-pill">½-life: <strong>&gt;60d</strong></span>`;
+      html += `<span class="stat-pill">½-life: <strong>unknown</strong></span>`;
     } else {
-      html += `<span class="stat-pill">½-life: <strong>~${fmtDays(hl)}</strong></span>`;
+      const hlLabel = hl.extrapolated ? `~${fmtDays(hl.days)}*` : `~${fmtDays(hl.days)}`;
+      html += `<span class="stat-pill" title="${hl.extrapolated ? 'Extrapolated via exponential fit to 60-day projection' : 'Exact crossing within 60 days'}">½-life: <strong>${hlLabel}</strong></span>`;
     }
 
     statsEl.innerHTML = html;

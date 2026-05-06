@@ -43,14 +43,16 @@ function populateSheet2ColA() {
   const numRows = s1.getLastRow() - 1;
   if (numRows < 1) return;
 
-  const s1Vals = s1.getRange(2, 1, numRows, 6).getValues();
+  const s1Vals = s1.getRange(2, 1, numRows, 7).getValues();
 
   const newColA = [];
   for (let i = 0; i < numRows; i++) {
-    const spanish = s1Vals[i][1] || '';
-    const english = s1Vals[i][2] || '';
-    const sense   = s1Vals[i][5] || '';
-    const line1   = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+    const spanish   = s1Vals[i][1] || '';
+    const english   = s1Vals[i][2] || '';
+    const sense     = s1Vals[i][5] || '';
+    const transCtx  = s1Vals[i][6] || '';
+    let line1       = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+    if (transCtx) line1 += ` [${transCtx}]`;
 
     if (!spanish) { newColA.push(['']); continue; }
 

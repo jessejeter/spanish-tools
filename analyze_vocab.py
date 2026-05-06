@@ -719,8 +719,11 @@ def sort_sheets(service):
         english = s1[2] if len(s1) > 2 else ''
         pos     = s1[3] if len(s1) > 3 else ''
         pop     = s1[4] if len(s1) > 4 else ''
-        sense   = s1[5] if len(s1) > 5 else ''
-        line1   = f'{spanish}: {english} ({sense})' if sense else f'{spanish}: {english}'
+        sense     = s1[5] if len(s1) > 5 else ''
+        trans_ctx = s1[6] if len(s1) > 6 else ''
+        line1     = f'{spanish}: {english} ({sense})' if sense else f'{spanish}: {english}'
+        if trans_ctx:
+            line1 += f' [{trans_ctx}]'
         return f'{line1}\n\n{date_str}\n\nPOS: {pos}\n\nPop: {pop}'
 
     all_s2 = [

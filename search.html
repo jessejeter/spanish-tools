@@ -413,15 +413,17 @@ async function loadData() {
     const english  = (row[2] || '').trim();
     const pos      = (row[3] || '').trim();
     const sense    = (row[5] || '').trim();
+    const transCtx = (row[6] || '').trim();
     const dateAdded = (row[0] || '').trim();
     if (!spanish) continue;
 
-    const lookupKey = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+    let lookupKey = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+    if (transCtx) lookupKey += ` [${transCtx}]`;
     const s2row = s2Map[lookupKey.toLowerCase()] || [];
     if ((s2row[2] || '').toUpperCase() !== 'TRUE') continue;
 
     cards.push({
-      spanish, english, pos, sense, dateAdded,
+      spanish, english, pos, sense, transCtx, dateAdded,
       dateReviewed: parseMDY(s2row[3] || ''),
       analysis: (s2row[1] || '').trim(),
       otherTranslations: (s2row[4] || '').trim(),

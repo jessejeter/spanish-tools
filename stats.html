@@ -522,13 +522,13 @@ async function main() {
     for (const row of s1) {
       const spanish = (row[1] || '').trim();
       const english = (row[2] || '').trim();
-      const sense   = (row[5] || '').trim();
+      const sense    = (row[5] || '').trim();
+      const transCtx = (row[6] || '').trim();
       const dateAdded = (row[0] || '').trim();
       if (!spanish) continue;
 
-      const lookupKey = sense
-        ? `${spanish}: ${english} (${sense})`
-        : `${spanish}: ${english}`;
+      let lookupKey = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+      if (transCtx) lookupKey += ` [${transCtx}]`;
       const s2row = s2Map[lookupKey.toLowerCase()] || [];
       const isReviewed = (s2row[2] || '').toUpperCase() === 'TRUE';
 

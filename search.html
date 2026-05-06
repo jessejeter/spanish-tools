@@ -102,12 +102,13 @@ body {
   z-index: 10;
   padding-top: 8px;
 }
+#search-wrap-inner { position: relative; }
 #search-input {
   width: 100%;
   background: var(--surface);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 12px;
-  padding: 12px 16px;
+  padding: 12px 40px 12px 16px;
   color: var(--text);
   font-size: 16px;
   outline: none;
@@ -115,6 +116,36 @@ body {
 }
 #search-input:focus { border-color: rgba(255,255,255,0.3); }
 #search-input::placeholder { color: var(--text-dim); opacity: 0.5; }
+#search-clear {
+  display: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.12);
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+#search-clear:active { background: rgba(255,255,255,0.22); }
+
+.stat-pill {
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+.stat-pill strong { color: var(--text); font-weight: 600; }
 
 /* Results */
 #results { max-width: 500px; margin: 0 auto; padding: 0 16px; }
@@ -216,8 +247,11 @@ body {
   </div>
 
   <div id="search-wrap">
-    <input id="search-input" type="search" placeholder="Search Spanish or English…"
-      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div id="search-wrap-inner">
+      <input id="search-input" type="search" placeholder="Search Spanish or English…"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <button id="search-clear" onclick="clearSearch()">×</button>
+    </div>
   </div>
 
   <div id="results"></div>
@@ -228,6 +262,7 @@ body {
     <div class="detail-english" id="d-english"></div>
     <div class="detail-pos"   id="d-pos"></div>
     <div class="detail-prob"  id="d-prob"></div>
+    <div id="d-stats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;margin-top:-2px;"></div>
     <div class="detail-meta"  id="d-meta"></div>
     <div class="section-title">P(Recall) Over Time</div>
     <div class="chart-wrap"><canvas id="prob-chart" height="220"></canvas></div>
@@ -438,6 +473,45 @@ function renderResults(query) {
   }
 }
 
+// ---- Future-decay stats ----
+// Binary-search the future projection for when P first crosses a threshold.
+// Returns days from now, 0 if already below, null if never within 60d.
+function daysUntilCross(reviews, now, threshold) {
+  const currentP = computeP(reviews, now);
+  if (currentP === null) return null;
+  if (currentP < threshold) return 0;
+
+  const MAX_MS  = 60 * 86400000;
+  const STEP_MS = 4 * 3600000; // 4-hour coarse scan
+  let prevT = now;
+  for (let t = now + STEP_MS; t <= now + MAX_MS; t += STEP_MS) {
+    const p = computeP(reviews, t);
+    if (p !== null && p < threshold) {
+      // Refine with binary search
+      let lo = prevT, hi = t;
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (computeP(reviews, mid) < threshold) hi = mid; else lo = mid;
+      }
+      return (hi - now) / 86400000;
+    }
+    prevT = t;
+  }
+  return null; // doesn't cross within 60 days
+}
+
+// Effective half-life: time from now for P to drop to currentP / 2.
+function estimateHalfLife(reviews, now) {
+  const currentP = computeP(reviews, now);
+  if (currentP === null) return null;
+  return daysUntilCross(reviews, now, currentP / 2);
+}
+
+function fmtDays(days) {
+  if (days < 1) return `${(days * 24).toFixed(1)}h`;
+  return `${days.toFixed(1)}d`;
+}
+
 // ---- Results / Detail toggle ----
 function showResults() {
   document.getElementById('detail').style.display = 'none';
@@ -463,6 +537,35 @@ function showDetail(card) {
   const probEl = document.getElementById('d-prob');
   probEl.textContent  = p !== null ? `${Math.round(p * 100)}%` : 'New';
   probEl.style.color  = pColor(p);
+
+  // Forecast stats
+  const statsEl = document.getElementById('d-stats');
+  if (reviews.length >= 1) {
+    const days90 = daysUntilCross(reviews, now, 0.9);
+    const hl     = estimateHalfLife(reviews, now);
+
+    let html = '';
+
+    if (p !== null && p < 0.9) {
+      html += `<span class="stat-pill" style="color:var(--accent)">Already &lt;90%</span>`;
+    } else if (days90 === null) {
+      html += `<span class="stat-pill">↓90%: <strong>&gt;60d</strong></span>`;
+    } else {
+      html += `<span class="stat-pill">↓90% in <strong>${fmtDays(days90)}</strong></span>`;
+    }
+
+    if (hl === null) {
+      html += `<span class="stat-pill">½-life: <strong>&gt;60d</strong></span>`;
+    } else {
+      html += `<span class="stat-pill">½-life: <strong>~${fmtDays(hl)}</strong></span>`;
+    }
+
+    statsEl.innerHTML = html;
+    statsEl.style.display = 'flex';
+  } else {
+    statsEl.innerHTML = '';
+    statsEl.style.display = 'none';
+  }
 
   const metaParts = [];
   if (card.dateAdded)  metaParts.push(`Added: ${card.dateAdded}`);
@@ -525,7 +628,7 @@ function buildProbChart(data) {
 
   const now      = Date.now();
   const firstTime = new Date(reviews[0].date).getTime();
-  const futureEnd = now + 30 * 24 * 3600000;
+  const futureEnd = now + 60 * 24 * 3600000;
   const HOUR      = 3600000;
 
   // Sample times: hourly + tight samples around each review event
@@ -713,6 +816,15 @@ function buildProbChart(data) {
   });
 }
 
+// ---- Clear search ----
+function clearSearch() {
+  const input = document.getElementById('search-input');
+  input.value = '';
+  input.focus();
+  renderResults('');
+  document.getElementById('search-clear').style.display = 'none';
+}
+
 // ---- Main ----
 async function main() {
   try {
@@ -723,7 +835,12 @@ async function main() {
     renderResults('');
 
     const input = document.getElementById('search-input');
-    input.addEventListener('input', () => renderResults(input.value));
+    const clearBtn = document.getElementById('search-clear');
+
+    function updateClearBtn() {
+      clearBtn.style.display = input.value ? 'flex' : 'none';
+    }
+    input.addEventListener('input', () => { renderResults(input.value); updateClearBtn(); });
     input.focus();
   } catch (err) {
     document.getElementById('loading').style.display = 'none';

@@ -418,16 +418,30 @@ def make_analysis_prompt(spanish_word, english=None, sense=None):
     )
 
 
-def make_other_translations_prompt(english_word):
-    """Build the Gemini prompt for Other Translations (Sheet2 col E)."""
+def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
+    """Build the Gemini prompt for Synonyms (Sheet2 col E)."""
+    # Build sense context string
+    if sense and trans_ctx:
+        sense_str = f' in the "{sense}" sense ({trans_ctx})'
+    elif sense:
+        sense_str = f' in the "{sense}" sense'
+    elif trans_ctx:
+        sense_str = f' in the "{trans_ctx}" context'
+    else:
+        sense_str = ''
+
     return (
-        f"{english_word} What are the main spanish translations of this word? "
-        "List all *very* common ones. Omit infrequent ones. Also give the sense "
-        "of the translation in parentheses.\n\n"
-        "IMPORTANT formatting rules: Write in plain text only. Do NOT use markdown "
-        "formatting — no bold, no headers, no numbered lists. Use a simple list with "
-        "dashes. Keep each entry to one line: the Spanish word followed by the sense "
-        "in parentheses. Do NOT include example sentences. Be concise."
+        f"For the Spanish word \"{spanish}\" (meaning \"{english}\"{sense_str}), "
+        f"list the 2 to 4 most useful Spanish synonyms — words a learner might reach for "
+        f"when trying to express the same idea. Focus strictly on this specific sense; "
+        f"do not include synonyms for unrelated meanings of \"{spanish}\".\n\n"
+        f"For each synonym, write one or two sentences explaining when you would choose "
+        f"that word over \"{spanish}\". Cover any meaningful differences in register, "
+        f"region, connotation, or typical context. If two words are truly interchangeable, "
+        f"say so explicitly. If the difference is purely regional, say which regions prefer which.\n\n"
+        "IMPORTANT formatting rules: Write in plain text only. No markdown — no bold, "
+        "no headers. Use a simple list with dashes, one synonym per line in the format: "
+        "\"- word: explanation\". Be concise. Omit obscure synonyms."
     )
 
 
@@ -546,9 +560,10 @@ def main():
         while len(s2_row) < 5:
             s2_row.append("")
 
-        spanish = s1_row[1]  # Sheet1 col B
-        english = s1_row[2]  # Sheet1 col C
-        sense   = s1_row[5]  # Sheet1 col F
+        spanish   = s1_row[1]  # Sheet1 col B
+        english   = s1_row[2]  # Sheet1 col C
+        sense     = s1_row[5]  # Sheet1 col F
+        trans_ctx = s1_row[6]  # Sheet1 col G
 
         if not spanish:
             continue
@@ -564,6 +579,7 @@ def main():
                     "spanish": spanish,
                     "english": english,
                     "sense": sense,
+                    "trans_ctx": trans_ctx,
                     "need_analysis": need_analysis,
                     "need_other": need_other,
                 }
@@ -581,10 +597,11 @@ def main():
     total_written = 0
 
     for idx, word in enumerate(words_to_process):
-        s2_row = word["sheet2_row"]
-        spanish = word["spanish"]
-        english = word["english"]
-        sense   = word["sense"]
+        s2_row    = word["sheet2_row"]
+        spanish   = word["spanish"]
+        english   = word["english"]
+        sense     = word["sense"]
+        trans_ctx = word.get("trans_ctx", "")
 
         print(f"[{idx + 1}/{len(words_to_process)}] Processing: {spanish} ({english})")
 
@@ -600,7 +617,7 @@ def main():
         if word["need_other"]:
             try:
                 result = call_gemini(
-                    make_other_translations_prompt(english), gemini_key
+                    make_other_translations_prompt(spanish, english, sense, trans_ctx), gemini_key
                 )
                 pending_updates.append({"range": f"Sheet2!E{s2_row}", "values": [[result]]})
                 print(f"  Other translations generated ({len(result)} chars)")
@@ -784,6 +801,21 @@ def sort_only():
     print("Done.")
 
 
+def regenerate_synonyms():
+    """Clear Sheet2 col E (synonyms) and regenerate with the improved prompt."""
+    service = get_sheets_service()
+    print("Clearing Sheet2 col E (synonyms)...")
+    execute_with_retry(
+        service.spreadsheets().values().clear(
+            spreadsheetId=SPREADSHEET_ID,
+            body={},
+            range="Sheet2!E2:E10000",
+        )
+    )
+    print("Cleared. Running regeneration...")
+    main()
+
+
 def full_regenerate():
     """Clear all Sheet2 col B (analysis) and col E (other translations) and regenerate from scratch.
 
@@ -853,6 +885,8 @@ if __name__ == "__main__":
             backfill_senses(get_sheets_service())
         elif sys.argv[1] == "--backfill-trans-context":
             backfill_trans_context(get_sheets_service())
+        elif sys.argv[1] == "--regenerate-synonyms":
+            regenerate_synonyms()
         else:
             print(f"Unknown argument: {sys.argv[1]}")
             sys.exit(1)

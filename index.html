@@ -401,7 +401,8 @@ body {
         <div class="card-label" id="back-label"></div>
         <div class="card-translation" id="back-word"></div>
         <div class="card-pos" id="back-pos"></div>
-        <div id="review-timeline" style="width:100%;margin:10px 0 2px;"></div>
+        <div id="review-timeline" style="width:100%;margin:10px 0 0;"></div>
+        <div id="timeline-stats" style="width:100%;font-size:11px;color:var(--text-dim);opacity:0.6;margin-bottom:2px;text-align:right;"></div>
         <div id="back-dates" style="font-size:11px;color:var(--text-dim);opacity:0.5;margin-top:4px;line-height:1.8;"></div>
         <div class="card-other" id="back-other"></div>
         <div class="card-analysis" id="back-analysis"></div>
@@ -945,11 +946,7 @@ function renderTimeline(srsData) {
   }
 
   svg += '</svg>';
-
-  const passes = reviews.filter(r => r.passed).length;
-  svg += `<div style="font-size:11px;color:var(--text-dim);opacity:0.6;margin-top:2px;text-align:right;">${passes} / ${reviews.length} correct</div>`;
-
-  return svg;
+  return { svg, passes: reviews.filter(r => r.passed).length, total: reviews.length };
 }
 
 function showCard(card) {
@@ -993,7 +990,9 @@ function showCard(card) {
   datesEl.textContent = parts.join('   ·   ');
 
   const srsData = getSRS()[card.spanish];
-  document.getElementById('review-timeline').innerHTML = renderTimeline(srsData);
+  const timeline = renderTimeline(srsData);
+  document.getElementById('review-timeline').innerHTML = timeline ? timeline.svg : '';
+  document.getElementById('timeline-stats').textContent = timeline ? `${timeline.passes} / ${timeline.total} correct` : '';
   const p = getPRecall(srsData, true);
   const precallEl = document.getElementById('front-precall');
   const isRecentFail = getPRecall(srsData) === 0;

@@ -171,11 +171,11 @@ def find_neodict(obj):
 
 
 def scrape_sense(spanish_word, english_translation):
-    """Return the SpanishDict sense label (contextEn) for the given translation.
+    """Return (sense_ctx, trans_ctx) for the given translation.
 
-    Fetches the SpanishDict page, extracts SD_COMPONENT_DATA, and walks
-    neodict → posGroups → senses to find the sense whose translations match
-    the english_translation string.  Returns "" on any error or no match.
+    sense_ctx: contextEn from the sense group (e.g. "to be") → Sheet1 col F
+    trans_ctx: contextEn from the specific translation (e.g. "height") → Sheet1 col G
+    Returns ("", "") on any error or no match.
     """
     try:
         url = f"https://www.spanishdict.com/translate/{spanish_word}"
@@ -192,14 +192,14 @@ def scrape_sense(spanish_word, english_translation):
         marker = "window.SD_COMPONENT_DATA = "
         idx = resp.text.find(marker)
         if idx == -1:
-            return ""
+            return ("", "")
 
         decoder = json.JSONDecoder()
         data, _ = decoder.raw_decode(resp.text, idx + len(marker))
 
         neodict = find_neodict(data)
         if not neodict:
-            return ""
+            return ("", "")
 
         eng_lower = english_translation.lower().strip()
         for entry in neodict:
@@ -211,33 +211,34 @@ def scrape_sense(spanish_word, english_translation):
                             continue
                         # 1. Exact match
                         if t == eng_lower:
-                            return sense.get("contextEn", "")
+                            return (sense.get("contextEn", ""), trans.get("contextEn", ""))
                         # 2. Sheet1 english is a prefix of SD translation
                         if t.startswith(eng_lower):
-                            return sense.get("contextEn", "")
+                            return (sense.get("contextEn", ""), trans.get("contextEn", ""))
                         # 3. SD translation is a prefix of Sheet1 english
                         if eng_lower.startswith(t):
-                            return sense.get("contextEn", "")
-        return ""
+                            return (sense.get("contextEn", ""), trans.get("contextEn", ""))
+        return ("", "")
     except Exception:
-        return ""
+        return ("", "")
 
 
 def backfill_senses(service):
-    """Fill Sheet1 col F (Sense) for rows that are missing it."""
-    # Ensure col F has a header
+    """Fill Sheet1 col F (Sense) and col G (Trans Context) for rows that are missing them."""
+    # Ensure headers exist
     execute_with_retry(
-        service.spreadsheets().values().update(
+        service.spreadsheets().values().batchUpdate(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet1!F1",
-            valueInputOption="RAW",
-            body={"values": [["Sense"]]},
+            body={"valueInputOption": "RAW", "data": [
+                {"range": "Sheet1!F1", "values": [["Sense"]]},
+                {"range": "Sheet1!G1", "values": [["Trans Context"]]},
+            ]},
         )
     )
-    print("Wrote 'Sense' header to Sheet1!F1")
+    print("Wrote headers to Sheet1!F1 and G1")
 
-    print("Reading Sheet1 (cols A:F)...")
-    sheet1_rows = read_sheet(service, "Sheet1!A:F")
+    print("Reading Sheet1 (cols A:G)...")
+    sheet1_rows = read_sheet(service, "Sheet1!A:G")
 
     if len(sheet1_rows) < 2:
         print("No data rows found.")
@@ -249,27 +250,28 @@ def backfill_senses(service):
     filled = 0
 
     for i, row in enumerate(data_rows):
-        while len(row) < 6:
+        while len(row) < 7:
             row.append("")
 
-        spanish = row[1]
-        english = row[2]
-        sense = row[5]
+        spanish   = row[1]
+        english   = row[2]
+        sense     = row[5]
+        trans_ctx = row[6]
 
-        if not spanish or sense:
-            continue  # skip empty or already-filled rows
+        if not spanish or (sense and trans_ctx):
+            continue  # skip empty rows or rows where both cols are already filled
 
-        sheet_row = i + 2  # 1-indexed; header is row 1, data starts at row 2
+        sheet_row = i + 2
         print(f"[{i + 1}/{total_words}] {spanish} ({english}): ", end="", flush=True)
 
-        result = scrape_sense(spanish, english)
-        print(result if result else "(no match)")
+        sense_result, trans_result = scrape_sense(spanish, english)
+        print(f"sense={sense_result or '—'}  trans_ctx={trans_result or '—'}")
 
-        if result:
-            pending.append({
-                "range": f"Sheet1!F{sheet_row}",
-                "values": [[result]],
-            })
+        if sense_result and not sense:
+            pending.append({"range": f"Sheet1!F{sheet_row}", "values": [[sense_result]]})
+            filled += 1
+        if trans_result and not trans_ctx:
+            pending.append({"range": f"Sheet1!G{sheet_row}", "values": [[trans_result]]})
             filled += 1
 
         time.sleep(0.5)
@@ -291,7 +293,74 @@ def backfill_senses(service):
             )
         )
 
-    print(f"\nDone! Filled {filled} senses.")
+    print(f"\nDone! Filled {filled} cells.")
+
+
+def backfill_trans_context(service):
+    """Fill Sheet1 col G (Trans Context) for all rows where it is currently empty."""
+    execute_with_retry(
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range="Sheet1!G1",
+            valueInputOption="RAW",
+            body={"values": [["Trans Context"]]},
+        )
+    )
+    print("Wrote 'Trans Context' header to Sheet1!G1")
+
+    print("Reading Sheet1 (cols A:G)...")
+    sheet1_rows = read_sheet(service, "Sheet1!A:G")
+
+    if len(sheet1_rows) < 2:
+        print("No data rows found.")
+        return
+
+    data_rows = sheet1_rows[1:]
+    total_words = len(data_rows)
+    pending = []
+    filled = 0
+
+    for i, row in enumerate(data_rows):
+        while len(row) < 7:
+            row.append("")
+
+        spanish   = row[1]
+        english   = row[2]
+        trans_ctx = row[6]
+
+        if not spanish or trans_ctx:
+            continue  # skip empty rows or already-filled
+
+        sheet_row = i + 2
+        print(f"[{i + 1}/{total_words}] {spanish} ({english}): ", end="", flush=True)
+
+        _, trans_result = scrape_sense(spanish, english)
+        print(trans_result if trans_result else "(no match)")
+
+        if trans_result:
+            pending.append({"range": f"Sheet1!G{sheet_row}", "values": [[trans_result]]})
+            filled += 1
+
+        time.sleep(0.5)
+
+        if len(pending) >= 20:
+            execute_with_retry(
+                service.spreadsheets().values().batchUpdate(
+                    spreadsheetId=SPREADSHEET_ID,
+                    body={"valueInputOption": "RAW", "data": pending},
+                )
+            )
+            pending = []
+
+    if pending:
+        execute_with_retry(
+            service.spreadsheets().values().batchUpdate(
+                spreadsheetId=SPREADSHEET_ID,
+                body={"valueInputOption": "RAW", "data": pending},
+            )
+        )
+
+    print(f"\nDone! Filled {filled} trans context cells.")
 
 
 def needs_generation(value):
@@ -404,26 +473,28 @@ def sync_csv_to_sheet1(service):
     )
     print(f"Synced {len(new_rows)} new words to Sheet1")
 
-    # Scrape sense labels for newly added rows
+    # Scrape sense + trans context for newly added rows
     print("Scraping senses for new words...")
-    sense_updates = []
+    context_updates = []
     for idx, row in enumerate(new_rows):
         spanish = row[1] if len(row) > 1 else ""
         english = row[2] if len(row) > 2 else ""
         if not spanish or not english:
             continue
-        sense = scrape_sense(spanish, english)
-        print(f"  {spanish}: {sense if sense else '(no match)'}")
-        if sense:
-            sheet_row = first_new_sheet_row + idx
-            sense_updates.append({"range": f"Sheet1!F{sheet_row}", "values": [[sense]]})
+        sense_ctx, trans_ctx = scrape_sense(spanish, english)
+        print(f"  {spanish}: sense={sense_ctx or '—'}  trans_ctx={trans_ctx or '—'}")
+        sheet_row = first_new_sheet_row + idx
+        if sense_ctx:
+            context_updates.append({"range": f"Sheet1!F{sheet_row}", "values": [[sense_ctx]]})
+        if trans_ctx:
+            context_updates.append({"range": f"Sheet1!G{sheet_row}", "values": [[trans_ctx]]})
         time.sleep(0.5)
 
-    if sense_updates:
+    if context_updates:
         execute_with_retry(
             service.spreadsheets().values().batchUpdate(
                 spreadsheetId=SPREADSHEET_ID,
-                body={"valueInputOption": "RAW", "data": sense_updates},
+                body={"valueInputOption": "RAW", "data": context_updates},
             )
         )
 
@@ -446,7 +517,7 @@ def main():
     sort_sheets(service)
 
     print("Reading Sheet1...")
-    sheet1_rows = read_sheet(service, "Sheet1!A:F")
+    sheet1_rows = read_sheet(service, "Sheet1!A:G")
 
     print("Reading Sheet2...")
     sheet2_rows = read_sheet(service, "Sheet2!A:E")
@@ -467,7 +538,7 @@ def main():
         s2_row = sheet2_rows[i] if i < len(sheet2_rows) else []
 
         # Pad rows to expected width
-        while len(s1_row) < 6:
+        while len(s1_row) < 7:
             s1_row.append("")
         while len(s2_row) < 5:
             s2_row.append("")
@@ -572,7 +643,7 @@ def sort_sheets(service):
         if s["properties"]["title"] == "Sheet2"
     )
 
-    sheet1_rows = read_sheet(service, "Sheet1!A:F")
+    sheet1_rows = read_sheet(service, "Sheet1!A:G")
     sheet2_rows = read_sheet(service, "Sheet2!A:E")
 
     if len(sheet1_rows) < 2:
@@ -588,7 +659,7 @@ def sort_sheets(service):
     for i in range(1, max_rows):
         s1 = sheet1_rows[i] if i < len(sheet1_rows) else []
         s2 = sheet2_rows[i] if i < len(sheet2_rows) else []
-        while len(s1) < 6:
+        while len(s1) < 7:
             s1.append("")
         while len(s2) < 5:
             s2.append("")
@@ -615,7 +686,7 @@ def sort_sheets(service):
     execute_with_retry(
         service.spreadsheets().values().clear(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet1!A2:F10000",
+            range="Sheet1!A2:G10000",
         )
     )
     execute_with_retry(
@@ -774,6 +845,8 @@ if __name__ == "__main__":
             sort_only()
         elif sys.argv[1] == "--backfill-senses":
             backfill_senses(get_sheets_service())
+        elif sys.argv[1] == "--backfill-trans-context":
+            backfill_trans_context(get_sheets_service())
         else:
             print(f"Unknown argument: {sys.argv[1]}")
             sys.exit(1)

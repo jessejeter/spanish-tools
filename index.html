@@ -945,7 +945,7 @@ function renderTimeline(srsData) {
   for (const r of reviews) {
     const x = xOf(new Date(r.date).getTime()).toFixed(1);
     const color = r.passed ? '#4ecca3' : '#e94560';
-    svg += `<circle cx="${x}" cy="${AXIS_Y}" r="${R}" fill="${color}" opacity="0.85"><title>${fmtDate(r.date)}: ${r.passed ? 'pass' : 'fail'}</title></circle>`;
+    svg += `<circle cx="${x}" cy="${AXIS_Y}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"><title>${fmtDate(r.date)}: ${r.passed ? 'pass' : 'fail'}</title></circle>`;
   }
 
   svg += '</svg>';

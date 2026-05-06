@@ -714,8 +714,8 @@ async function main() {
     }
 
     // ---- Chart: P(Recall) distribution ----
-    const BIN_SIZE = 0.05;
-    const N_BINS = 20; // 0-5%, 5-10%, ..., 95-100%
+    const BIN_SIZE = 0.0025;
+    const N_BINS = 400; // 0-0.25%, 0.25-0.5%, ..., 99.75-100%
     const bins = new Array(N_BINS).fill(0);
     for (const card of reviewed) {
       const data = srs[card.spanish];
@@ -727,19 +727,16 @@ async function main() {
     }
     const distLabels = Array.from({ length: N_BINS }, (_, i) => `${Math.round(i * BIN_SIZE * 100)}%`);
     const distColors = bins.map((_, i) => (i + 1) * BIN_SIZE <= 0.9
-      ? 'rgba(233,69,96,0.55)'   // below 90%: red
-      : 'rgba(78,204,163,0.55)'  // 90%+: green
+      ? 'rgba(233,69,96,0.65)'   // below 90%: red
+      : 'rgba(78,204,163,0.65)'  // 90%+: green
     );
-    const distBorderColors = bins.map((_, i) => (i + 1) * BIN_SIZE <= 0.9
-      ? 'rgba(233,69,96,0.9)'
-      : 'rgba(78,204,163,0.9)'
-    );
+    const distBorderColors = distColors;
 
     const threshold90Plugin = {
       id: 'threshold90',
       afterDraw(chart) {
         const { ctx, chartArea, scales } = chart;
-        const x = scales.x.getPixelForValue(17.5); // between bin 17 (85-90%) and bin 18 (90-95%)
+        const x = scales.x.getPixelForValue(359.5); // between bin 359 (89.75-90%) and bin 360 (90-90.25%)
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(x, chartArea.top);
@@ -772,7 +769,7 @@ async function main() {
           x: {
             ticks: {
               maxRotation: 0,
-              callback(v, i) { return i % 4 === 0 ? distLabels[i] : ''; },
+              callback(v, i) { return i % 40 === 0 ? distLabels[i] : ''; },
             },
           },
         },

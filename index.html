@@ -401,7 +401,8 @@ body {
         <div class="card-label" id="back-label"></div>
         <div class="card-translation" id="back-word"></div>
         <div class="card-pos" id="back-pos"></div>
-        <div id="back-dates" style="font-size:11px;color:var(--text-dim);opacity:0.5;margin-top:10px;line-height:1.8;"></div>
+        <div id="review-timeline" style="width:100%;margin:10px 0 2px;"></div>
+        <div id="back-dates" style="font-size:11px;color:var(--text-dim);opacity:0.5;margin-top:4px;line-height:1.8;"></div>
         <div class="card-other" id="back-other"></div>
         <div class="card-analysis" id="back-analysis"></div>
         <button class="btn-flip-back" onclick="event.stopPropagation(); flipToFront();">↩</button>
@@ -908,6 +909,45 @@ function showApp() {
   showCard(card);
 }
 
+function renderTimeline(srsData) {
+  const reviews = srsData?.reviews;
+  if (!reviews?.length) return '';
+
+  const now = Date.now();
+  const firstTime = new Date(reviews[0].date).getTime();
+  const span = Math.max(now - firstTime, 1);
+
+  const W = 280, H = 38, PAD = 6, AXIS_Y = 18, R = 5;
+  const xOf = t => PAD + ((t - firstTime) / span) * (W - 2 * PAD);
+
+  const fmtDate = iso => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+  };
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
+
+  // Axis line
+  svg += `<line x1="${PAD}" y1="${AXIS_Y}" x2="${W - PAD}" y2="${AXIS_Y}" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linecap="round"/>`;
+
+  // "Now" tick
+  svg += `<line x1="${W - PAD}" y1="${AXIS_Y - 5}" x2="${W - PAD}" y2="${AXIS_Y + 5}" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>`;
+
+  // Endpoint labels
+  svg += `<text x="${PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif">${fmtDate(reviews[0].date)}</text>`;
+  svg += `<text x="${W - PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif" text-anchor="end">now</text>`;
+
+  // Review dots
+  for (const r of reviews) {
+    const x = xOf(new Date(r.date).getTime()).toFixed(1);
+    const color = r.passed ? '#4ecca3' : '#e94560';
+    svg += `<circle cx="${x}" cy="${AXIS_Y}" r="${R}" fill="${color}" opacity="0.85"><title>${fmtDate(r.date)}: ${r.passed ? 'pass' : 'fail'}</title></circle>`;
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+
 function showCard(card) {
   currentCard = card;
   isFlipped = false;
@@ -949,6 +989,7 @@ function showCard(card) {
   datesEl.textContent = parts.join('   ·   ');
 
   const srsData = getSRS()[card.spanish];
+  document.getElementById('review-timeline').innerHTML = renderTimeline(srsData);
   const p = getPRecall(srsData, true);
   const precallEl = document.getElementById('front-precall');
   const isRecentFail = getPRecall(srsData) === 0;

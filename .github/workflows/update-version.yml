@@ -10,15 +10,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Write version.json
+      - name: Write version.json and stamp sw.js cache version
         run: |
           echo "{\"updated\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\"}" > version.json
+          SHA=$(git rev-parse --short HEAD)
+          sed -i "s/const CACHE = 'spanish-flashcards-[^']*'/const CACHE = 'spanish-flashcards-${SHA}'/" sw.js
 
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet version.json && exit 0
-          git add version.json
-          git commit -m "Update version.json [skip ci]"
+          git diff --quiet version.json sw.js && exit 0
+          git add version.json sw.js
+          git commit -m "Update version.json and sw.js cache version [skip ci]"
           git push

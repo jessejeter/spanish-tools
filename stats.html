@@ -223,6 +223,7 @@ body {
 
   <div class="chart-section">
     <div class="chart-title">P(Recall) Distribution</div>
+    <div id="recall-dist-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
     <div class="chart-wrap"><canvas id="chart-recall-dist" height="180"></canvas></div>
   </div>
 </div>
@@ -292,18 +293,19 @@ function nnForward(features, model) {
   return a[0];
 }
 
-function getPRecall(data) {
+function getPRecallAt(data, refTime) {
   if (!data) return null;
-  const reviews = data.reviews || [];
-  const lastReview = data.lastReview || (reviews.length ? reviews[reviews.length-1].date : null);
-  if (!lastReview) return null;
-  const daysSinceLast = Math.max((Date.now() - new Date(lastReview)) / 86400000, 0.01);
+  const allReviews = data.reviews || [];
+  const reviews = allReviews.filter(r => new Date(r.date) < refTime);
+  if (!reviews.length) return null;
+  const lastReview = reviews[reviews.length - 1].date;
+  const daysSinceLast = Math.max((refTime - new Date(lastReview)) / 86400000, 0.01);
 
   if (srsModel && reviews.length >= 1) {
     const n_correct = reviews.filter(r => r.passed).length;
     const n_wrong   = reviews.filter(r => !r.passed).length;
     const accuracy  = n_correct / reviews.length;
-    const daysSinceFirst = Math.max((Date.now() - new Date(reviews[0].date)) / 86400000, 0.01);
+    const daysSinceFirst = Math.max((refTime - new Date(reviews[0].date)) / 86400000, 0.01);
     return nnForward([
       Math.log1p(daysSinceLast), n_correct, n_wrong, accuracy,
       Math.log1p(reviews.length), Math.log1p(daysSinceFirst),
@@ -319,6 +321,10 @@ function getPRecall(data) {
     prevDate = r.date;
   }
   return Math.pow(2, -daysSinceLast / h);
+}
+
+function getPRecall(data) {
+  return getPRecallAt(data, Date.now());
 }
 
 // ---- Load SRS ----
@@ -715,69 +721,114 @@ async function main() {
 
     // ---- Chart: P(Recall) distribution ----
     const BIN_SIZE = 0.0025;
-    const N_BINS = 400; // 0-0.25%, 0.25-0.5%, ..., 99.75-100%
-    const bins = new Array(N_BINS).fill(0);
-    for (const card of reviewed) {
-      const data = srs[card.spanish];
-      if (!data || data.retired || !data.reviews?.length) continue;
-      const p = getPRecall(data);
-      if (p === null) continue;
-      const idx = Math.min(Math.floor(p / BIN_SIZE), N_BINS - 1);
-      bins[idx]++;
+    const P_MIN = 0.80;
+    const P_MAX = 1.00;
+    const N_BINS = Math.round((P_MAX - P_MIN) / BIN_SIZE); // 80 bins
+    const startOfDay = new Date(todayStr()); // midnight today
+
+    function buildBins(refTime) {
+      const b = new Array(N_BINS).fill(0);
+      let under80 = 0;
+      for (const card of reviewed) {
+        const data = srs[card.spanish];
+        if (!data || data.retired || !(data.reviews || []).filter(r => new Date(r.date) < refTime).length) continue;
+        const p = getPRecallAt(data, refTime);
+        if (p === null) continue;
+        if (p < P_MIN) { under80++; continue; }
+        const idx = Math.min(Math.floor((p - P_MIN) / BIN_SIZE), N_BINS - 1);
+        b[idx]++;
+      }
+      return { b, under80 };
     }
-    const distLabels = Array.from({ length: N_BINS }, (_, i) => `${Math.round(i * BIN_SIZE * 100)}%`);
-    const distColors = bins.map((_, i) => (i + 1) * BIN_SIZE <= 0.9
-      ? 'rgba(233,69,96,0.65)'   // below 90%: red
-      : 'rgba(78,204,163,0.65)'  // 90%+: green
+
+    const { b: binsNow, under80: under80Now } = buildBins(Date.now());
+    const { b: binsSod, under80: under80Sod } = buildBins(startOfDay);
+
+    const distLabels = Array.from({ length: N_BINS }, (_, i) =>
+      `${((P_MIN + i * BIN_SIZE) * 100).toFixed(2)}%`
     );
-    const distBorderColors = distColors;
+
+    // Color current bins by 90% threshold
+    const nowColors = binsNow.map((_, i) => (P_MIN + (i + 1) * BIN_SIZE) <= 0.9
+      ? 'rgba(233,69,96,0.75)'
+      : 'rgba(78,204,163,0.75)'
+    );
 
     const threshold90Plugin = {
       id: 'threshold90',
       afterDraw(chart) {
         const { ctx, chartArea, scales } = chart;
-        const x = scales.x.getPixelForValue(359.5); // between bin 359 (89.75-90%) and bin 360 (90-90.25%)
+        // 90% is at bin index (0.90 - 0.80) / 0.0025 = 40
+        const x = scales.x.getPixelForValue(39.5);
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(x, chartArea.top);
         ctx.lineTo(x, chartArea.bottom);
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
         ctx.font = '10px system-ui';
         ctx.fillText('90%', x + 4, chartArea.top + 12);
         ctx.restore();
       },
     };
 
+    // Callout text above chart
+    const calloutEl = document.getElementById('recall-dist-callout');
+    calloutEl.textContent =
+      `${under80Sod} words under 80% at start of day · ${under80Now} now`;
+
     new Chart(document.getElementById('chart-recall-dist'), {
       type: 'bar',
       data: {
         labels: distLabels,
-        datasets: [{
-          data: bins,
-          backgroundColor: distColors,
-          borderColor: distBorderColors,
-          borderWidth: 1,
-          borderRadius: 2,
-        }],
+        datasets: [
+          {
+            label: 'Start of day',
+            data: binsSod,
+            backgroundColor: 'rgba(136,136,170,0.35)',
+            borderColor: 'rgba(136,136,170,0.5)',
+            borderWidth: 1,
+            borderRadius: 2,
+            barPercentage: 1.0,
+            categoryPercentage: 1.0,
+            order: 2,
+          },
+          {
+            label: 'Current',
+            data: binsNow,
+            backgroundColor: nowColors,
+            borderColor: nowColors,
+            borderWidth: 0,
+            borderRadius: 2,
+            barPercentage: 1.0,
+            categoryPercentage: 1.0,
+            order: 1,
+          },
+        ],
       },
       options: deepMerge(CHART_OPTS_BASE, {
         scales: {
           x: {
             ticks: {
               maxRotation: 0,
-              callback(v, i) { return i % 40 === 0 ? distLabels[i] : ''; },
+              callback(v, i) { return i % 40 === 0 ? `${Math.round((P_MIN + i * BIN_SIZE) * 100)}%` : ''; },
             },
           },
         },
         plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            align: 'end',
+            labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 } },
+          },
           tooltip: {
             callbacks: {
-              title: items => `${distLabels[items[0].dataIndex]}–${distLabels[Math.min(items[0].dataIndex + 1, N_BINS - 1)]}`,
-              label: items => ` ${items.raw} words`,
+              title: items => distLabels[items[0].dataIndex],
+              label: item => ` ${item.dataset.label}: ${item.raw} words`,
             },
           },
         },

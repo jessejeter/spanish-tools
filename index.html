@@ -385,6 +385,7 @@ body {
     <span id="counter" class="count"></span>
     <span id="session-stats"></span>
     <div id="model-info" style="font-size:10px;color:var(--text-dim);opacity:0.45;margin-top:2px;"></div>
+    <div id="day-timer" style="font-size:10px;color:var(--text-dim);opacity:0.45;"></div>
   </div>
 
   <div class="card-container" id="card-container">
@@ -437,6 +438,58 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXL
 
 let allCards = [];
 let currentCard = null;
+
+// ---- Day Timer (active time only, resets at midnight) ----
+const DAY_TIMER_KEY = 'spanish-flashcards-day-timer';
+
+function getDayTimer() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DAY_TIMER_KEY));
+    if (d && d.date === todayStr()) return d.seconds;
+  } catch {}
+  return 0;
+}
+
+function saveDayTimer(seconds) {
+  localStorage.setItem(DAY_TIMER_KEY, JSON.stringify({ date: todayStr(), seconds }));
+}
+
+function formatTimer(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+let dayTimerSeconds = getDayTimer();
+let timerInterval = null;
+let timerTickStart = null;
+
+function startTimer() {
+  if (timerInterval) return;
+  timerTickStart = Date.now();
+  timerInterval = setInterval(() => {
+    dayTimerSeconds++;
+    saveDayTimer(dayTimerSeconds);
+    const el = document.getElementById('day-timer');
+    if (el) el.textContent = `Today: ${formatTimer(dayTimerSeconds)}`;
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopTimer(); else startTimer();
+});
+
+// Start immediately if page is visible and initialize display
+if (!document.hidden) startTimer();
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('day-timer');
+  if (el) el.textContent = `Today: ${formatTimer(dayTimerSeconds)}`;
+});
 let isFlipped = false;
 let lastUndo = null;
 const recentFails = {}; // word → timestamp of most recent fail

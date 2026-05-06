@@ -220,6 +220,11 @@ body {
     <div class="chart-title">Daily Reviews</div>
     <div class="chart-wrap"><canvas id="chart-reviews" height="180"></canvas></div>
   </div>
+
+  <div class="chart-section">
+    <div class="chart-title">P(Recall) Distribution</div>
+    <div class="chart-wrap"><canvas id="chart-recall-dist" height="180"></canvas></div>
+  </div>
 </div>
 
 <script>
@@ -707,6 +712,81 @@ async function main() {
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No review history yet.</p>'
       );
     }
+
+    // ---- Chart: P(Recall) distribution ----
+    const BIN_SIZE = 0.05;
+    const N_BINS = 20; // 0-5%, 5-10%, ..., 95-100%
+    const bins = new Array(N_BINS).fill(0);
+    for (const card of reviewed) {
+      const data = srs[card.spanish];
+      if (!data || data.retired || !data.reviews?.length) continue;
+      const p = getPRecall(data);
+      if (p === null) continue;
+      const idx = Math.min(Math.floor(p / BIN_SIZE), N_BINS - 1);
+      bins[idx]++;
+    }
+    const distLabels = Array.from({ length: N_BINS }, (_, i) => `${Math.round(i * BIN_SIZE * 100)}%`);
+    const distColors = bins.map((_, i) => (i + 1) * BIN_SIZE <= 0.9
+      ? 'rgba(233,69,96,0.55)'   // below 90%: red
+      : 'rgba(78,204,163,0.55)'  // 90%+: green
+    );
+    const distBorderColors = bins.map((_, i) => (i + 1) * BIN_SIZE <= 0.9
+      ? 'rgba(233,69,96,0.9)'
+      : 'rgba(78,204,163,0.9)'
+    );
+
+    const threshold90Plugin = {
+      id: 'threshold90',
+      afterDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        const x = scales.x.getPixelForValue(17.5); // between bin 17 (85-90%) and bin 18 (90-95%)
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '10px system-ui';
+        ctx.fillText('90%', x + 4, chartArea.top + 12);
+        ctx.restore();
+      },
+    };
+
+    new Chart(document.getElementById('chart-recall-dist'), {
+      type: 'bar',
+      data: {
+        labels: distLabels,
+        datasets: [{
+          data: bins,
+          backgroundColor: distColors,
+          borderColor: distBorderColors,
+          borderWidth: 1,
+          borderRadius: 2,
+        }],
+      },
+      options: deepMerge(CHART_OPTS_BASE, {
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 0,
+              callback(v, i) { return i % 4 === 0 ? distLabels[i] : ''; },
+            },
+          },
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              title: items => `${distLabels[items[0].dataIndex]}–${distLabels[Math.min(items[0].dataIndex + 1, N_BINS - 1)]}`,
+              label: items => ` ${items.raw} words`,
+            },
+          },
+        },
+      }),
+      plugins: [threshold90Plugin],
+    });
 
   } catch (err) {
     document.getElementById('loading').style.display = 'none';

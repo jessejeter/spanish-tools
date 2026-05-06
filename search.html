@@ -252,6 +252,12 @@ body {
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       <button id="search-clear" onclick="clearSearch()">×</button>
     </div>
+    <div id="filter-chip" style="display:none;margin-top:7px;display:none;align-items:center;gap:6px;
+      font-size:12px;color:var(--text-dim);background:var(--surface);
+      border-radius:8px;padding:5px 10px;width:fit-content;">
+      <span id="filter-label"></span>
+      <span onclick="clearFilter()" style="cursor:pointer;opacity:0.55;font-size:15px;line-height:1;">×</span>
+    </div>
   </div>
 
   <div id="results"></div>
@@ -425,13 +431,62 @@ async function loadData() {
   allCards = cards.sort((a, b) => a.spanish.localeCompare(b.spanish));
 }
 
+// ---- Filter ----
+let activeFilter = null;
+
+const FILTER_LABELS = {
+  'low-recall': 'P(recall) < 90%',
+  'new':        'No reviews yet',
+  'retired':    'Retired',
+};
+
+function applyFilter(cards) {
+  if (!activeFilter) return cards;
+
+  if (activeFilter === 'low-recall') {
+    const now = Date.now();
+    return cards
+      .filter(c => {
+        const data = srs[c.spanish];
+        return data && !data.retired && (data.reviews || []).length > 0;
+      })
+      .map(c => ({ c, p: computeP(srs[c.spanish].reviews, Date.now()) }))
+      .filter(({ p }) => p !== null && p < 0.9)
+      .sort((a, b) => a.p - b.p)
+      .map(({ c }) => c);
+  }
+
+  if (activeFilter === 'new') {
+    return cards.filter(c => {
+      const data = srs[c.spanish];
+      return !data?.retired && !(data?.reviews?.length);
+    });
+  }
+
+  if (activeFilter === 'retired') {
+    return cards.filter(c => srs[c.spanish]?.retired);
+  }
+
+  return cards;
+}
+
+function clearFilter() {
+  activeFilter = null;
+  document.getElementById('filter-chip').style.display = 'none';
+  history.replaceState({}, '', location.pathname);
+  renderResults(document.getElementById('search-input').value);
+}
+
 // ---- Search ----
 function filterCards(query) {
   const q = query.toLowerCase().trim();
-  if (!q) return allCards.slice(0, 50);
-  return allCards.filter(c =>
-    c.spanish.toLowerCase().includes(q) || c.english.toLowerCase().includes(q)
-  );
+  const base = q
+    ? allCards.filter(c => c.spanish.toLowerCase().includes(q) || c.english.toLowerCase().includes(q))
+    : allCards;
+  const filtered = applyFilter(base);
+  // Only cap at 50 when no query and no filter
+  if (!q && !activeFilter) return filtered.slice(0, 50);
+  return filtered;
 }
 
 function renderResults(query) {
@@ -440,7 +495,7 @@ function renderResults(query) {
   container.innerHTML = '';
 
   const q = query.trim();
-  if (!q && allCards.length > 50) {
+  if (!q && !activeFilter && allCards.length > 50) {
     const hint = document.createElement('div');
     hint.className = 'result-hint';
     hint.textContent = `${allCards.length} words — type to search`;
@@ -861,6 +916,15 @@ async function main() {
     await loadData();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('page').style.display    = 'block';
+
+    // Apply URL filter param
+    const urlFilter = new URLSearchParams(location.search).get('filter');
+    if (urlFilter && FILTER_LABELS[urlFilter]) {
+      activeFilter = urlFilter;
+      document.getElementById('filter-label').textContent = FILTER_LABELS[urlFilter];
+      const chip = document.getElementById('filter-chip');
+      chip.style.display = 'flex';
+    }
 
     renderResults('');
 

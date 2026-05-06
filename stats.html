@@ -133,6 +133,15 @@ body {
   letter-spacing: 0.8px;
 }
 
+a.stat-card {
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+a.stat-card:active { opacity: 0.6; }
+@media (hover: hover) { a.stat-card:hover { outline: 1px solid rgba(255,255,255,0.18); } }
+
 .chart-section {
   padding: 20px 16px 0;
   max-width: 500px;
@@ -180,26 +189,26 @@ body {
       <div class="stat-value good" id="s-total-added">—</div>
       <div class="stat-label">Total Added</div>
     </div>
-    <div class="stat-card">
+    <a href="search.html" class="stat-card">
       <div class="stat-value good" id="s-cards">—</div>
       <div class="stat-label">Total Cards</div>
-    </div>
+    </a>
     <div class="stat-card">
       <div class="stat-value dim" id="s-pending">—</div>
       <div class="stat-label">Pending Review</div>
     </div>
-    <div class="stat-card">
+    <a href="search.html?filter=new" class="stat-card">
       <div class="stat-value dim" id="s-new">—</div>
       <div class="stat-label">New</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="search.html?filter=low-recall" class="stat-card">
       <div class="stat-value warn" id="s-low-recall">—</div>
       <div class="stat-label">P(recall) &lt; 90%</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="search.html?filter=retired" class="stat-card">
       <div class="stat-value dim" id="s-retired">—</div>
       <div class="stat-label">Retired</div>
-    </div>
+    </a>
     <div class="stat-card">
       <div class="stat-value" id="s-avg7">—</div>
       <div class="stat-label">Avg Reviews / Day (7d)</div>

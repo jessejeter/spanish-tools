@@ -440,8 +440,8 @@ def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
         f"If they're fully interchangeable, just say so. If a regional variant is worth a "
         f"brief mention, note it in a few words as an aside.\n\n"
         f"If there are no meaningful synonyms, write only: No close synonyms.\n\n"
-        "Format: plain text only, no markdown, dashes list, one entry per line: "
-        "\"- word: explanation\"."
+        "Format: plain text only, no markdown, dashes list. One entry per line: "
+        "\"- word: explanation\". Separate each entry with a blank line."
     )
 
 

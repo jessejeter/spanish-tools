@@ -967,7 +967,7 @@ function showCard(card) {
 
   const senseEl = document.getElementById('front-sense');
   if (card.sense) {
-    senseEl.textContent = card.transCtx ? `${card.sense} [${card.transCtx}]` : card.sense;
+    senseEl.textContent = card.transCtx ? `${card.sense} (${card.transCtx})` : card.sense;
     senseEl.style.display = 'block';
   } else {
     senseEl.style.display = 'none';

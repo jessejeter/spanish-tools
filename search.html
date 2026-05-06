@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<title>Search Vocab</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --card: #0f3460;
+  --text: #e4e4e4;
+  --text-dim: #aaaacc;
+  --accent: #e94560;
+  --green: #4ecca3;
+  --yellow: #f0c040;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  padding-bottom: 48px;
+}
+
+#loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  gap: 16px;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--surface);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#error {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+#error button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#page { display: none; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 8px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.page-header a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 20px;
+  opacity: 0.6;
+}
+.page-header a:hover { opacity: 1; }
+.page-header h1 { font-size: 20px; font-weight: 700; flex: 1; }
+
+/* Search */
+#search-wrap {
+  padding: 4px 16px 10px;
+  max-width: 500px;
+  margin: 0 auto;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+  padding-top: 8px;
+}
+#search-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+  -webkit-appearance: none;
+}
+#search-input:focus { border-color: rgba(255,255,255,0.3); }
+#search-input::placeholder { color: var(--text-dim); opacity: 0.5; }
+
+/* Results */
+#results { max-width: 500px; margin: 0 auto; padding: 0 16px; }
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+  background: var(--surface);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+.result-item:active { opacity: 0.65; }
+.result-spanish { font-size: 16px; font-weight: 600; }
+.result-english { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.result-p { font-size: 13px; font-weight: 600; min-width: 38px; text-align: right; }
+.result-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 10px 0 6px;
+  opacity: 0.6;
+}
+
+/* Detail */
+#detail { display: none; max-width: 500px; margin: 0 auto; padding: 0 16px; }
+
+.detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 0 20px;
+  opacity: 0.7;
+}
+.detail-back:active { opacity: 0.45; }
+
+.detail-word { font-size: 30px; font-weight: 700; margin-bottom: 4px; }
+.detail-english { font-size: 16px; color: var(--text-dim); margin-bottom: 3px; }
+.detail-pos { font-size: 12px; color: var(--text-dim); opacity: 0.55; margin-bottom: 14px; }
+.detail-prob { font-size: 34px; font-weight: 700; margin-bottom: 6px; }
+.detail-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  opacity: 0.55;
+  margin-bottom: 22px;
+  line-height: 1.9;
+}
+
+.section-title {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+  opacity: 0.65;
+}
+
+.chart-wrap {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px 12px 10px;
+  margin-bottom: 20px;
+}
+
+.detail-analysis {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  user-select: text;
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="color:var(--text-dim);font-size:14px;">Loading…</p>
+</div>
+
+<div id="error">
+  <p id="error-msg">Failed to load.</p>
+  <button onclick="location.reload()">Retry</button>
+</div>
+
+<div id="page">
+  <div class="page-header">
+    <a href="home.html">⌂</a>
+    <h1>Search</h1>
+  </div>
+
+  <div id="search-wrap">
+    <input id="search-input" type="search" placeholder="Search Spanish or English…"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+
+  <div id="results"></div>
+
+  <div id="detail">
+    <div class="detail-back" onclick="showResults()">← Back</div>
+    <div class="detail-word"  id="d-word"></div>
+    <div class="detail-english" id="d-english"></div>
+    <div class="detail-pos"   id="d-pos"></div>
+    <div class="detail-prob"  id="d-prob"></div>
+    <div class="detail-meta"  id="d-meta"></div>
+    <div class="section-title">P(Recall) Over Time</div>
+    <div class="chart-wrap"><canvas id="prob-chart" height="220"></canvas></div>
+    <div class="section-title">Review History</div>
+    <div id="d-timeline" style="width:100%;margin-bottom:2px;"></div>
+    <div id="d-timeline-stats" style="font-size:11px;color:var(--text-dim);opacity:0.6;text-align:right;margin-bottom:20px;"></div>
+    <div id="d-analysis" class="detail-analysis" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
+const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
+const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec';
+const STORAGE_KEY = 'spanish-flashcards-v2';
+
+let allCards = [];
+let srs = {};
+let srsModel = null;
+let probChart = null;
+
+// ---- Helpers ----
+function parseMDY(s) {
+  if (!s) return '';
+  const gviz = s.match(/^Date\((\d+),(\d+),(\d+)\)$/);
+  if (gviz) {
+    const [, y, m, d] = gviz;
+    return `${y}-${String(Number(m)+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  const parts = s.split('/');
+  if (parts.length !== 3) return '';
+  return `${parts[2]}-${String(parts[0]).padStart(2,'0')}-${String(parts[1]).padStart(2,'0')}`;
+}
+
+function parseGvizJson(text) {
+  const match = text.match(/google\.visualization\.Query\.setResponse\(({.*})\)/s);
+  if (!match) throw new Error('Invalid GViz response');
+  const data = JSON.parse(match[1]);
+  if (data.status === 'error')
+    throw new Error(data.errors?.map(e => e.message).join(', ') || 'Sheet error');
+  return data.table.rows.map(row =>
+    row.c.map(cell => (cell && cell.v != null) ? String(cell.v) : '')
+  );
+}
+
+async function fetchSheet(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseGvizJson(await res.text());
+}
+
+function fmtDate(ms) {
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+}
+
+// ---- Model ----
+function nnForward(features, model) {
+  let a = features.map((v, i) => (v - model.scaler_mean[i]) / model.scaler_std[i]);
+  for (let l = 0; l < model.weights.length; l++) {
+    const W = model.weights[l], b = model.biases[l];
+    const z = b.map((bi, j) => bi + a.reduce((s, ai, k) => s + ai * W[k][j], 0));
+    a = l < model.weights.length - 1
+      ? z.map(v => Math.max(0, v))
+      : z.map(v => 1 / (1 + Math.exp(-Math.max(-20, Math.min(20, v)))));
+  }
+  return a[0];
+}
+
+function computeP(reviews, refTime) {
+  if (!reviews.length) return null;
+  const lastTime = new Date(reviews[reviews.length - 1].date).getTime();
+  const daysSinceLast = Math.max((refTime - lastTime) / 86400000, 0.01);
+
+  if (srsModel) {
+    const n_correct    = reviews.filter(r => r.passed).length;
+    const n_wrong      = reviews.filter(r => !r.passed).length;
+    const accuracy     = n_correct / reviews.length;
+    const daysSinceFirst = Math.max((refTime - new Date(reviews[0].date).getTime()) / 86400000, 0.01);
+    return nnForward([
+      Math.log1p(daysSinceLast), n_correct, n_wrong, accuracy,
+      Math.log1p(reviews.length), Math.log1p(daysSinceFirst),
+    ], srsModel);
+  }
+
+  // HLR fallback
+  let h = 1.0, prevDate = null;
+  for (const r of reviews) {
+    const gap = prevDate ? Math.max((new Date(r.date) - new Date(prevDate)) / 86400000, 0.01) : 1.0;
+    h = Math.max(0.5, gap * (r.passed ? 2.0 : 0.5));
+    prevDate = r.date;
+  }
+  return Math.pow(2, -daysSinceLast / h);
+}
+
+function pColor(p) {
+  if (p === null) return 'var(--text-dim)';
+  if (p >= 0.9)  return 'var(--green)';
+  if (p >= 0.75) return 'var(--yellow)';
+  return 'var(--accent)';
+}
+
+// ---- SRS ----
+async function loadSRS() {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL);
+    if (res.ok) {
+      const remote = await res.json();
+      let local = {};
+      try { local = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch {}
+      const merged = { ...remote };
+      for (const [w, d] of Object.entries(local)) {
+        if (!merged[w] || (d.lastReview || '') > (merged[w].lastReview || ''))
+          merged[w] = d;
+      }
+      return merged;
+    }
+  } catch {}
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+
+// ---- Data loading ----
+async function loadData() {
+  const [[s1, s2], srsLoaded, model] = await Promise.all([
+    Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
+    loadSRS(),
+    fetch('vocab_model.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+
+  srs = srsLoaded;
+  srsModel = model;
+
+  const s2Map = {};
+  for (const row of s2) {
+    const key = (row[0] || '').split('\n')[0].trim().toLowerCase();
+    if (key) s2Map[key] = row;
+  }
+
+  const cards = [];
+  for (const row of s1) {
+    const spanish  = (row[1] || '').trim();
+    const english  = (row[2] || '').trim();
+    const pos      = (row[3] || '').trim();
+    const sense    = (row[5] || '').trim();
+    const dateAdded = (row[0] || '').trim();
+    if (!spanish) continue;
+
+    const lookupKey = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
+    const s2row = s2Map[lookupKey.toLowerCase()] || [];
+    if ((s2row[2] || '').toUpperCase() !== 'TRUE') continue;
+
+    cards.push({
+      spanish, english, pos, sense, dateAdded,
+      dateReviewed: parseMDY(s2row[3] || ''),
+      analysis: (s2row[1] || '').trim(),
+      otherTranslations: (s2row[4] || '').trim(),
+    });
+  }
+
+  allCards = cards.sort((a, b) => a.spanish.localeCompare(b.spanish));
+}
+
+// ---- Search ----
+function filterCards(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return allCards.slice(0, 50);
+  return allCards.filter(c =>
+    c.spanish.toLowerCase().includes(q) || c.english.toLowerCase().includes(q)
+  );
+}
+
+function renderResults(query) {
+  const matches = filterCards(query);
+  const container = document.getElementById('results');
+  container.innerHTML = '';
+
+  const q = query.trim();
+  if (!q && allCards.length > 50) {
+    const hint = document.createElement('div');
+    hint.className = 'result-hint';
+    hint.textContent = `${allCards.length} words — type to search`;
+    container.appendChild(hint);
+  } else if (matches.length === 0) {
+    const hint = document.createElement('div');
+    hint.className = 'result-hint';
+    hint.textContent = 'No matches';
+    container.appendChild(hint);
+    return;
+  }
+
+  for (const card of matches) {
+    const data = srs[card.spanish];
+    const reviews = data?.reviews || [];
+    const p = reviews.length ? computeP(reviews, Date.now()) : null;
+    const pStr = p !== null ? `${Math.round(p * 100)}%` : '—';
+
+    const el = document.createElement('div');
+    el.className = 'result-item';
+    el.innerHTML = `
+      <div>
+        <div class="result-spanish">${card.spanish}</div>
+        <div class="result-english">${card.english}${card.sense ? ` <span style="opacity:0.55">(${card.sense})</span>` : ''}</div>
+      </div>
+      <div class="result-p" style="color:${pColor(p)}">${pStr}</div>
+    `;
+    el.addEventListener('click', () => showDetail(card));
+    container.appendChild(el);
+  }
+}
+
+// ---- Results / Detail toggle ----
+function showResults() {
+  document.getElementById('detail').style.display = 'none';
+  document.getElementById('search-wrap').style.display = 'block';
+  document.getElementById('results').style.display = 'block';
+  if (probChart) { probChart.destroy(); probChart = null; }
+  window.scrollTo(0, 0);
+}
+
+function showDetail(card) {
+  document.getElementById('search-wrap').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+
+  const data = srs[card.spanish];
+  const reviews = data?.reviews || [];
+  const p = reviews.length ? computeP(reviews, Date.now()) : null;
+  const now = Date.now();
+
+  document.getElementById('d-word').textContent    = card.spanish;
+  document.getElementById('d-english').textContent = card.english + (card.sense ? ` (${card.sense})` : '');
+  document.getElementById('d-pos').textContent     = card.pos;
+
+  const probEl = document.getElementById('d-prob');
+  probEl.textContent  = p !== null ? `${Math.round(p * 100)}%` : 'New';
+  probEl.style.color  = pColor(p);
+
+  const metaParts = [];
+  if (card.dateAdded)  metaParts.push(`Added: ${card.dateAdded}`);
+  if (reviews.length)  metaParts.push(`First review: ${reviews[0].date.slice(0, 10)}`);
+  if (reviews.length)  metaParts.push(`${reviews.length} review${reviews.length !== 1 ? 's' : ''}`);
+  document.getElementById('d-meta').textContent = metaParts.join('   ·   ');
+
+  const analysisEl = document.getElementById('d-analysis');
+  if (card.analysis) {
+    analysisEl.textContent  = card.analysis;
+    analysisEl.style.display = 'block';
+  } else {
+    analysisEl.style.display = 'none';
+  }
+
+  // Timeline
+  const tl = renderTimeline(data);
+  document.getElementById('d-timeline').innerHTML         = tl ? tl.svg : '';
+  document.getElementById('d-timeline-stats').textContent = tl ? `${tl.passes} / ${tl.total} correct` : '';
+
+  // Prob chart
+  if (probChart) { probChart.destroy(); probChart = null; }
+  if (reviews.length >= 1) probChart = buildProbChart(data);
+
+  document.getElementById('detail').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+// ---- Timeline SVG ----
+function renderTimeline(data) {
+  const reviews = data?.reviews;
+  if (!reviews?.length) return null;
+
+  const now = Date.now();
+  const firstTime = new Date(reviews[0].date).getTime();
+  const span = Math.max(now - firstTime, 1);
+  const W = 280, H = 38, PAD = 6, AXIS_Y = 18, R = 5;
+  const xOf = t => PAD + ((t - firstTime) / span) * (W - 2 * PAD);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">`;
+  svg += `<line x1="${PAD}" y1="${AXIS_Y}" x2="${W-PAD}" y2="${AXIS_Y}" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linecap="round"/>`;
+  svg += `<line x1="${W-PAD}" y1="${AXIS_Y-5}" x2="${W-PAD}" y2="${AXIS_Y+5}" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>`;
+  svg += `<text x="${PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif">${fmtDate(firstTime)}</text>`;
+  svg += `<text x="${W-PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif" text-anchor="end">now</text>`;
+
+  for (const r of reviews) {
+    const x = xOf(new Date(r.date).getTime()).toFixed(1);
+    const color = r.passed ? '#4ecca3' : '#e94560';
+    svg += `<circle cx="${x}" cy="${AXIS_Y}" r="${R}" fill="${color}" opacity="0.85"><title>${fmtDate(new Date(r.date).getTime())}: ${r.passed ? 'pass' : 'fail'}</title></circle>`;
+  }
+  svg += '</svg>';
+
+  return { svg, passes: reviews.filter(r => r.passed).length, total: reviews.length };
+}
+
+// ---- Probability over time chart ----
+function buildProbChart(data) {
+  const reviews = data.reviews || [];
+  if (!reviews.length) return null;
+
+  const now      = Date.now();
+  const firstTime = new Date(reviews[0].date).getTime();
+  const futureEnd = now + 30 * 24 * 3600000;
+  const HOUR      = 3600000;
+
+  // Sample times: hourly + tight samples around each review event
+  const timeSet = new Set([now]);
+  for (let t = firstTime; t <= futureEnd; t += HOUR) timeSet.add(t);
+  for (const r of reviews) {
+    const rt = new Date(r.date).getTime();
+    timeSet.add(rt - 60000);  // just before review
+    timeSet.add(rt + 60000);  // just after review
+  }
+
+  const sortedTimes = [...timeSet]
+    .filter(t => t >= firstTime && t <= futureEnd)
+    .sort((a, b) => a - b);
+
+  const pastPoints   = [];
+  const futurePoints = [];
+
+  for (const t of sortedTimes) {
+    // Past: use only reviews that happened before t
+    // Future: use full review history (project from current state)
+    const relevantReviews = t <= now
+      ? reviews.filter(r => new Date(r.date).getTime() < t)
+      : reviews;
+    if (!relevantReviews.length) continue;
+
+    const p = computeP(relevantReviews, t);
+    if (p === null) continue;
+    const pt = { x: t, y: +(p * 100).toFixed(1) };
+    (t <= now ? pastPoints : futurePoints).push(pt);
+  }
+
+  // Review event dots (probability just before each review)
+  const passDots = [], failDots = [];
+  for (const r of reviews) {
+    const rt = new Date(r.date).getTime();
+    const before = reviews.filter(rv => new Date(rv.date).getTime() < rt);
+    if (!before.length) continue;
+    const p = computeP(before, rt);
+    if (p === null) continue;
+    (r.passed ? passDots : failDots).push({ x: rt, y: +(p * 100).toFixed(1) });
+  }
+
+  // Compute y-axis min from data for a tighter, more readable range
+  const allY = [...pastPoints, ...futurePoints].map(pt => pt.y);
+  const yMin = allY.length ? Math.max(0, Math.floor(Math.min(...allY) / 10) * 10 - 5) : 0;
+
+  function tickLabel(ms) {
+    return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // "Now" vertical line plugin
+  const nowLinePlugin = {
+    id: 'nowLine',
+    afterDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      const x = scales.x.getPixelForValue(now);
+      if (x < chartArea.left || x > chartArea.right) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.font      = '9px -apple-system,system-ui,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('now', x, chartArea.top - 4);
+      ctx.restore();
+    },
+  };
+
+  const canvas = document.getElementById('prob-chart');
+  return new Chart(canvas, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'History',
+          data: pastPoints,
+          showLine: true,
+          borderColor: '#4ecca3',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0,
+          order: 3,
+        },
+        {
+          label: 'Projection',
+          data: futurePoints,
+          showLine: true,
+          borderColor: 'rgba(78,204,163,0.35)',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          tension: 0,
+          order: 3,
+        },
+        {
+          label: '90%',
+          data: [{ x: firstTime, y: 90 }, { x: futureEnd, y: 90 }],
+          showLine: true,
+          borderColor: 'rgba(255,255,255,0.13)',
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          order: 5,
+        },
+        {
+          label: 'Pass',
+          data: passDots,
+          showLine: false,
+          backgroundColor: '#4ecca3',
+          borderColor: '#1a1a2e',
+          borderWidth: 1.5,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          order: 1,
+        },
+        {
+          label: 'Fail',
+          data: failDots,
+          showLine: false,
+          backgroundColor: '#e94560',
+          borderColor: '#1a1a2e',
+          borderWidth: 1.5,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f3460',
+          titleColor: '#8888aa',
+          bodyColor: '#e4e4e4',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          filter: item => item.dataset.label !== '90%',
+          callbacks: {
+            title: items => tickLabel(items[0].raw.x),
+            label: item => ` ${item.dataset.label}: ${item.raw.y}%`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          min: firstTime,
+          max: futureEnd,
+          grid:  { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            maxTicksLimit: 6,
+            maxRotation: 0,
+            color: '#8888aa',
+            font: { size: 10 },
+            callback: v => tickLabel(v),
+          },
+        },
+        y: {
+          min: yMin,
+          max: 100,
+          grid:  { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            maxTicksLimit: 5,
+            color: '#8888aa',
+            font: { size: 10 },
+            callback: v => `${v}%`,
+          },
+        },
+      },
+    },
+    plugins: [nowLinePlugin],
+  });
+}
+
+// ---- Main ----
+async function main() {
+  try {
+    await loadData();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('page').style.display    = 'block';
+
+    renderResults('');
+
+    const input = document.getElementById('search-input');
+    input.addEventListener('input', () => renderResults(input.value));
+    input.focus();
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display   = 'flex';
+    document.getElementById('error-msg').textContent = err.message;
+  }
+}
+
+main();
+</script>
+</body>
+</html>

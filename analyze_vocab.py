@@ -420,7 +420,6 @@ def make_analysis_prompt(spanish_word, english=None, sense=None):
 
 def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
     """Build the Gemini prompt for Synonyms (Sheet2 col E)."""
-    # Build sense context string
     if sense and trans_ctx:
         sense_str = f' in the "{sense}" sense ({trans_ctx})'
     elif sense:
@@ -432,16 +431,17 @@ def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
 
     return (
         f"For the Spanish word \"{spanish}\" (meaning \"{english}\"{sense_str}), "
-        f"list the 2 to 4 most useful Spanish synonyms — words a learner might reach for "
-        f"when trying to express the same idea. Focus strictly on this specific sense; "
-        f"do not include synonyms for unrelated meanings of \"{spanish}\".\n\n"
-        f"For each synonym, write one or two sentences explaining when you would choose "
-        f"that word over \"{spanish}\". Cover any meaningful differences in register, "
-        f"region, connotation, or typical context. If two words are truly interchangeable, "
-        f"say so explicitly. If the difference is purely regional, say which regions prefer which.\n\n"
-        "IMPORTANT formatting rules: Write in plain text only. No markdown — no bold, "
-        "no headers. Use a simple list with dashes, one synonym per line in the format: "
-        "\"- word: explanation\". Be concise. Omit obscure synonyms."
+        f"give the 1 to 3 most practically useful synonyms — the words a learner would "
+        f"actually reach for when trying to say the same thing. Common, everyday words only; "
+        f"skip obscure or highly regional terms unless there's genuinely nothing else.\n\n"
+        f"For each synonym, give a short, plain-language explanation of when you'd use it "
+        f"instead of \"{spanish}\". Think of it as a knowledgeable friend giving a quick "
+        f"useful answer, not a dictionary definition. One to two sentences max per entry. "
+        f"If they're fully interchangeable, just say so. If a regional variant is worth a "
+        f"brief mention, note it in a few words as an aside.\n\n"
+        f"If there are no meaningful synonyms, write only: No close synonyms.\n\n"
+        "Format: plain text only, no markdown, dashes list, one entry per line: "
+        "\"- word: explanation\"."
     )
 
 

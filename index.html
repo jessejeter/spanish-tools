@@ -933,10 +933,6 @@ function renderTimeline(srsData) {
   // "Now" tick
   svg += `<line x1="${W - PAD}" y1="${AXIS_Y - 5}" x2="${W - PAD}" y2="${AXIS_Y + 5}" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>`;
 
-  // Pass/total label
-  const passes = reviews.filter(r => r.passed).length;
-  svg += `<text x="${W - PAD}" y="9" fill="rgba(255,255,255,0.35)" font-size="8.5" font-family="-apple-system,system-ui,sans-serif" text-anchor="end">${passes} / ${reviews.length}</text>`;
-
   // Endpoint labels
   svg += `<text x="${PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif">${fmtDate(reviews[0].date)}</text>`;
   svg += `<text x="${W - PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif" text-anchor="end">now</text>`;
@@ -949,6 +945,10 @@ function renderTimeline(srsData) {
   }
 
   svg += '</svg>';
+
+  const passes = reviews.filter(r => r.passed).length;
+  svg += `<div style="font-size:11px;color:var(--text-dim);opacity:0.6;margin-top:2px;text-align:right;">${passes} / ${reviews.length} correct</div>`;
+
   return svg;
 }
 

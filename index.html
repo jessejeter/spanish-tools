@@ -362,9 +362,25 @@ body {
 }
 
 #empty h2 { font-size: 24px; color: var(--text); }
+
+#tl-tooltip {
+  position: fixed;
+  background: rgba(18,18,28,0.95);
+  color: #e0e0e0;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  pointer-events: none;
+  white-space: nowrap;
+  display: none;
+  z-index: 9999;
+  border: 1px solid rgba(255,255,255,0.13);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
 </style>
 </head>
 <body>
+<div id="tl-tooltip"></div>
 
 <!-- Loading -->
 <div id="loading">
@@ -491,6 +507,15 @@ if (!document.hidden) startTimer();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('day-timer');
   if (el) el.textContent = `Today: ${formatTimer(dayTimerSeconds)}`;
+
+  const tlTip = document.getElementById('tl-tooltip');
+  function moveTlTip(e) { tlTip.style.left = (e.clientX + 14) + 'px'; tlTip.style.top = (e.clientY - 36) + 'px'; }
+  document.getElementById('review-timeline').addEventListener('mousemove', e => {
+    const tip = e.target.dataset.tip;
+    if (tip) { tlTip.textContent = tip; tlTip.style.display = 'block'; moveTlTip(e); }
+    else tlTip.style.display = 'none';
+  });
+  document.getElementById('review-timeline').addEventListener('mouseleave', () => { tlTip.style.display = 'none'; });
 });
 let isFlipped = false;
 let lastUndo = null;
@@ -954,7 +979,7 @@ function renderTimeline(srsData) {
     const tip = rd.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
       + ' ' + rd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
       + ' — ' + (r.passed ? 'pass' : 'fail');
-    svg += `<circle cx="${x}" cy="${cy}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" style="mix-blend-mode:screen"><title>${tip}</title></circle>`;
+    svg += `<circle cx="${x}" cy="${cy}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" style="mix-blend-mode:screen" data-tip="${tip}"></circle>`;
   }
 
   svg += '</svg>';

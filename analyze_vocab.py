@@ -429,11 +429,21 @@ def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
     else:
         sense_str = ''
 
+    clarification = (
+        f' The parenthetical/bracketed info{sense_str} is disambiguation — '
+        f'it clarifies which sense of "{english}" we mean, not a second anchor. '
+        f'"{english}" is the core concept; find synonyms for that.'
+    ) if sense_str else ''
+
     return (
         f"For the Spanish word \"{spanish}\" (meaning \"{english}\"{sense_str}), "
-        f"give the 1 to 3 most practically useful synonyms — the words a learner would "
-        f"actually reach for when trying to say the same thing. Common, everyday words only; "
-        f"skip obscure or highly regional terms unless there's genuinely nothing else.\n\n"
+        f"give the 1 to 3 most practically useful synonyms — other Spanish words a learner "
+        f"would reach for when trying to express \"{english}\".{clarification}\n\n"
+        f"A synonym must pass this test: you could substitute it for \"{spanish}\" in a "
+        f"sentence and preserve the core meaning. Words that merely overlap in the same "
+        f"domain (e.g. eating and swallowing both involve food) do not qualify.\n\n"
+        f"Common, everyday words only; skip obscure or highly regional terms unless "
+        f"there's genuinely nothing else.\n\n"
         f"For each synonym, give a short, plain-language explanation of when you'd use it "
         f"instead of \"{spanish}\". Think of it as a knowledgeable friend giving a quick "
         f"useful answer, not a dictionary definition. One to two sentences max per entry. "

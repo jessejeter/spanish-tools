@@ -432,26 +432,31 @@ def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
     clarification = (
         f' The parenthetical/bracketed info{sense_str} is disambiguation — '
         f'it clarifies which sense of "{english}" we mean, not a second anchor. '
-        f'"{english}" is the core concept; find synonyms for that.'
+        f'"{english}" is the core concept.'
     ) if sense_str else ''
 
     return (
-        f"For the Spanish word \"{spanish}\" (meaning \"{english}\"{sense_str}), "
-        f"give the 1 to 3 most practically useful synonyms — other Spanish words a learner "
-        f"would reach for when trying to express \"{english}\".{clarification}\n\n"
-        f"A synonym must pass this test: you could substitute it for \"{spanish}\" in a "
-        f"sentence and preserve the core meaning. Words that merely overlap in the same "
-        f"domain (e.g. eating and swallowing both involve food) do not qualify.\n\n"
-        f"Common, everyday words only; skip obscure or highly regional terms unless "
-        f"there's genuinely nothing else.\n\n"
-        f"For each synonym, give a short, plain-language explanation of when you'd use it "
-        f"instead of \"{spanish}\". Think of it as a knowledgeable friend giving a quick "
-        f"useful answer, not a dictionary definition. One to two sentences max per entry. "
-        f"If they're fully interchangeable, just say so. If a regional variant is worth a "
-        f"brief mention, note it in a few words as an aside.\n\n"
-        f"If there are no meaningful synonyms, write only: No close synonyms.\n\n"
-        "Format: plain text only, no markdown, dashes list. One entry per line: "
-        "\"- word: explanation\". Separate each entry with a blank line."
+        f"A Spanish learner wants to express \"{english}\" in Spanish.{clarification} "
+        f"Produce a short translation guide covering \"{spanish}\" and its closest synonyms.\n\n"
+        f"Always include \"{spanish}\" as the first entry. Then add 1 to 2 synonyms if "
+        f"meaningful ones exist — skip this if there are none. A synonym must pass the "
+        f"substitution test: you could swap it for \"{spanish}\" in a sentence and preserve "
+        f"the core meaning. Domain overlap (e.g. eating and swallowing both involve food) "
+        f"does not qualify. Common, everyday words only; no obscure or highly regional terms "
+        f"unless there's genuinely nothing else.\n\n"
+        f"For each entry, give a suitability rating (how natural and common it is for this "
+        f"specific meaning of \"{english}\") and a plain-language note of 1–2 sentences:\n"
+        f"  ★★★★★ the go-to word — natural and common\n"
+        f"  ★★★★☆ very good fit, minor nuance or frequency difference\n"
+        f"  ★★★☆☆ decent option, but notable register/regional/connotation gap\n"
+        f"  ★★☆☆☆ possible but not ideal — formal, regional, or imprecise\n"
+        f"  ★☆☆☆☆ rarely used or quite specialized for this meaning\n\n"
+        f"For \"{spanish}\" itself, the note should say whether it's the natural default "
+        f"and flag any important register or regional caveats. For synonyms, note when "
+        f"you'd reach for them over \"{spanish}\".\n\n"
+        "Format: plain text only, no markdown. One entry per line: "
+        "\"- [stars] word: note\". Separate each entry with a blank line. "
+        "Example: \"- ★★★★☆ engullir: Use when implying speed or greediness.\""
     )
 
 

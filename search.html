@@ -307,6 +307,16 @@ let srs = {};
 let srsModel = null;
 let probChart = null;
 
+// ---- Timeline tooltip ----
+function tlTipShow(e, el) {
+  const t = document.getElementById('tl-tooltip');
+  t.textContent = el.getAttribute('data-tip');
+  t.style.display = 'block';
+  t.style.left = (e.clientX + 14) + 'px';
+  t.style.top = (e.clientY - 36) + 'px';
+}
+function tlTipHide() { document.getElementById('tl-tooltip').style.display = 'none'; }
+
 // ---- Helpers ----
 function parseMDY(s) {
   if (!s) return '';
@@ -727,7 +737,7 @@ function renderTimeline(data) {
     const tip = rd.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
       + ' ' + rd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
       + ' — ' + (r.passed ? 'pass' : 'fail');
-    svg += `<circle cx="${x}" cy="${cy}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" style="mix-blend-mode:screen" data-tip="${tip}"></circle>`;
+    svg += `<circle cx="${x}" cy="${cy}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" style="mix-blend-mode:screen" data-tip="${tip}" onmousemove="tlTipShow(event,this)" onmouseout="tlTipHide()"></circle>`;
   }
   svg += '</svg>';
 
@@ -955,15 +965,6 @@ async function main() {
     }
 
     renderResults('');
-
-    const tlTip = document.getElementById('tl-tooltip');
-    function moveTlTip(e) { tlTip.style.left = (e.clientX + 14) + 'px'; tlTip.style.top = (e.clientY - 36) + 'px'; }
-    document.getElementById('d-timeline').addEventListener('mousemove', e => {
-      const tip = e.target.dataset.tip;
-      if (tip) { tlTip.textContent = tip; tlTip.style.display = 'block'; moveTlTip(e); }
-      else tlTip.style.display = 'none';
-    });
-    document.getElementById('d-timeline').addEventListener('mouseleave', () => { tlTip.style.display = 'none'; });
 
     const input = document.getElementById('search-input');
     const clearBtn = document.getElementById('search-clear');

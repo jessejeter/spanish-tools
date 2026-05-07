@@ -950,7 +950,11 @@ function renderTimeline(srsData) {
     const x = xOf(new Date(r.date).getTime()).toFixed(1);
     const cy = (AXIS_Y - level * 2).toFixed(1);
     const color = r.passed ? '#4ecca3' : '#e94560';
-    svg += `<circle cx="${x}" cy="${cy}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" style="mix-blend-mode:screen"><title>${fmtDate(r.date)}: ${r.passed ? 'pass' : 'fail'}</title></circle>`;
+    const rd = new Date(r.date);
+    const tip = rd.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+      + ' ' + rd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      + ' — ' + (r.passed ? 'pass' : 'fail');
+    svg += `<circle cx="${x}" cy="${cy}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" style="mix-blend-mode:screen"><title>${tip}</title></circle>`;
   }
 
   svg += '</svg>';

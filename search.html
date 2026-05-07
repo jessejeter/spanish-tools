@@ -698,10 +698,16 @@ function renderTimeline(data) {
   svg += `<text x="${PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif">${fmtDate(firstTime)}</text>`;
   svg += `<text x="${W-PAD}" y="${H}" fill="rgba(255,255,255,0.28)" font-size="7.5" font-family="-apple-system,system-ui,sans-serif" text-anchor="end">now</text>`;
 
+  // Review dots (vertical offset for same-day reviews, screen blend for overlaps)
+  const dayOffset = {};
   for (const r of reviews) {
+    const day = r.date.slice(0, 10);
+    const level = dayOffset[day] || 0;
+    dayOffset[day] = level + 1;
     const x = xOf(new Date(r.date).getTime()).toFixed(1);
+    const cy = (AXIS_Y - level * 2).toFixed(1);
     const color = r.passed ? '#4ecca3' : '#e94560';
-    svg += `<circle cx="${x}" cy="${AXIS_Y}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"><title>${fmtDate(new Date(r.date).getTime())}: ${r.passed ? 'pass' : 'fail'}</title></circle>`;
+    svg += `<circle cx="${x}" cy="${cy}" r="${R}" fill="${color}" fill-opacity="0.55" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" style="mix-blend-mode:screen"><title>${fmtDate(new Date(r.date).getTime())}: ${r.passed ? 'pass' : 'fail'}</title></circle>`;
   }
   svg += '</svg>';
 

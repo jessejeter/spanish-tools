@@ -363,8 +363,6 @@ body {
 
 #empty h2 { font-size: 24px; color: var(--text); }
 
-/* Lift content above topo background */
-#loading, #error, .btn-home, #app, #empty { position: relative; z-index: 1; }
 
 #tl-tooltip {
   position: fixed;
@@ -1130,42 +1128,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ---- Topo background ----
-// Concentric irregular polygons from lower-left corner — geometric topo contours
-(function() {
-  const W = 1440, H = 900;
-  // Focal point: lower-left corner
-  const cx = 0, cy = H;
-  const RINGS = 15, STEP = 130;
-  const N = 12; // vertices per ring — straight line segments between them
-  // Fixed terrain shape: radius multiplier per vertex angle (consistent across all rings)
-  const terrain = [1.00, 0.74, 1.32, 0.88, 1.20, 0.66, 1.38, 0.82, 1.14, 0.70, 1.26, 0.92];
-
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-  svg.setAttribute('overflow', 'hidden');
-  svg.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:0;display:block;';
-
-  for (let ring = 1; ring <= RINGS; ring++) {
-    const R = ring * STEP;
-    const pts = [];
-    for (let j = 0; j < N; j++) {
-      const angle = (j / N) * 2 * Math.PI;
-      const r = R * terrain[j];
-      pts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
-    }
-    const d = 'M ' + pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' L ') + ' Z';
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', 'rgba(255,255,255,0.065)');
-    path.setAttribute('stroke-width', '0.85');
-    svg.appendChild(path);
-  }
-  document.body.insertBefore(svg, document.body.firstChild);
-})();
 
 // ---- Init ----
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');

@@ -25,7 +25,7 @@ self.addEventListener('fetch', e => {
   // Navigation (HTML): network first so updates apply immediately
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'no-cache' })
         .then(res => { caches.open(CACHE).then(c => c.put(e.request, res.clone())); return res; })
         .catch(() => caches.match(e.request))
     );

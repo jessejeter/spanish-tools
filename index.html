@@ -460,6 +460,7 @@ let currentCard = null;
 
 // ---- Day Timer (active time only, resets at midnight) ----
 const DAY_TIMER_KEY = 'spanish-flashcards-day-timer';
+const DAY_TIMER_HISTORY_KEY = 'spanish-flashcards-time-history';
 
 function getDayTimer() {
   try {
@@ -470,7 +471,13 @@ function getDayTimer() {
 }
 
 function saveDayTimer(seconds) {
-  localStorage.setItem(DAY_TIMER_KEY, JSON.stringify({ date: todayStr(), seconds }));
+  const today = todayStr();
+  localStorage.setItem(DAY_TIMER_KEY, JSON.stringify({ date: today, seconds }));
+  try {
+    const history = JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {};
+    history[today] = seconds;
+    localStorage.setItem(DAY_TIMER_HISTORY_KEY, JSON.stringify(history));
+  } catch {}
 }
 
 function formatTimer(seconds) {

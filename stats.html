@@ -231,6 +231,11 @@ a.stat-card:active { opacity: 0.6; }
   </div>
 
   <div class="chart-section">
+    <div class="chart-title">Daily Time in App</div>
+    <div class="chart-wrap"><canvas id="chart-time" height="180"></canvas></div>
+  </div>
+
+  <div class="chart-section">
     <div class="chart-title">P(Recall) Distribution</div>
     <div id="recall-dist-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
     <div class="chart-wrap"><canvas id="chart-recall-dist" height="180"></canvas></div>
@@ -725,6 +730,76 @@ async function main() {
     } else {
       document.getElementById('chart-reviews').parentElement.insertAdjacentHTML(
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No review history yet.</p>'
+      );
+    }
+
+    // ---- Chart: Daily Time in App ----
+    const DAY_TIMER_HISTORY_KEY = 'spanish-flashcards-time-history';
+    let timeHistory = {};
+    try { timeHistory = JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {}; } catch {}
+
+    if (Object.keys(timeHistory).length > 0) {
+      const timeLabels = dateRange(globalStart, today);
+      const timeMinutes = timeLabels.map(d => timeHistory[d] ? timeHistory[d] / 60 : 0);
+      const timeMinutesByDate = {};
+      for (const [d, s] of Object.entries(timeHistory)) timeMinutesByDate[d] = s / 60;
+      const timeSmoothed = gaussianSmooth(timeLabels, timeMinutesByDate, 7);
+
+      function fmtMinutes(m) {
+        const mins = Math.floor(m), secs = Math.round((m - mins) * 60);
+        return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+      }
+
+      new Chart(document.getElementById('chart-time'), {
+        type: 'bar',
+        data: {
+          labels: timeLabels,
+          datasets: [
+            {
+              type: 'bar',
+              data: timeMinutes,
+              backgroundColor: 'rgba(233,69,96,0.35)',
+              borderColor: 'rgba(233,69,96,0.6)',
+              borderWidth: 1,
+              borderRadius: 2,
+              label: 'Time',
+            },
+            {
+              type: 'line',
+              data: timeSmoothed,
+              borderColor: '#f0c040',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.4,
+              label: '7d avg',
+            },
+          ],
+        },
+        options: deepMerge(CHART_OPTS_BASE, {
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 } },
+            },
+            tooltip: {
+              callbacks: {
+                title: items => items[0]?.label || '',
+                label: item => ` ${item.dataset.label}: ${fmtMinutes(item.raw)}`,
+              },
+            },
+          },
+          scales: {
+            x: { ticks: { callback(v, i) { return timeLabels[i]?.slice(0,7) || ''; } } },
+            y: { ticks: { callback: v => `${Math.round(v)}m` } },
+          },
+        }),
+      });
+    } else {
+      document.getElementById('chart-time').parentElement.insertAdjacentHTML(
+        'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No time history yet.</p>'
       );
     }
 

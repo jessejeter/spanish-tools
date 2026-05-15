@@ -803,47 +803,71 @@ async function main() {
       );
     }
 
-    // ---- Chart: P(Recall) distribution ----
-    const BIN_SIZE = 0.0025;
+    // ---- Chart: P(Recall) distribution (KDE) ----
     const P_MIN = 0.80;
-    const P_MAX = 1.00;
-    const N_BINS = Math.round((P_MAX - P_MIN) / BIN_SIZE); // 80 bins
-    const startOfDay = new Date(todayStr()); // midnight today
+    const KDE_H = 0.005;
+    const KDE_N = 300;
+    const startOfDay = new Date(todayStr());
 
-    function buildBins(refTime) {
-      const b = new Array(N_BINS).fill(0);
+    function collectPValues(refTime) {
+      const pValues = [];
       let under80 = 0;
       for (const card of reviewed) {
         const data = srs[card.spanish];
         if (!data || data.retired || !(data.reviews || []).filter(r => new Date(r.date) < refTime).length) continue;
         const p = getPRecallAt(data, refTime);
         if (p === null) continue;
-        if (p < P_MIN) { under80++; continue; }
-        const idx = Math.min(Math.floor((p - P_MIN) / BIN_SIZE), N_BINS - 1);
-        b[idx]++;
+        if (p < P_MIN) under80++;
+        pValues.push(p);
       }
-      return { b, under80 };
+      return { pValues, under80 };
     }
 
-    const { b: binsNow, under80: under80Now } = buildBins(Date.now());
-    const { b: binsSod, under80: under80Sod } = buildBins(startOfDay);
+    function gaussianKDE(pValues, evalPoints, h) {
+      const n = pValues.length;
+      if (!n) return evalPoints.map(() => 0);
+      const norm = n * h * Math.sqrt(2 * Math.PI);
+      return evalPoints.map(x =>
+        pValues.reduce((sum, xi) => {
+          const u = (x - xi) / h;
+          return sum + Math.exp(-0.5 * u * u);
+        }, 0) / norm
+      );
+    }
 
-    const distLabels = Array.from({ length: N_BINS }, (_, i) =>
-      `${((P_MIN + i * BIN_SIZE) * 100).toFixed(2)}%`
+    const kdeEval = Array.from({ length: KDE_N }, (_, i) =>
+      P_MIN + (i / (KDE_N - 1)) * (1.0 - P_MIN)
     );
 
-    // Color current bins by 90% threshold
-    const nowColors = binsNow.map((_, i) => (P_MIN + (i + 1) * BIN_SIZE) <= 0.9
-      ? 'rgba(233,69,96,0.75)'
-      : 'rgba(78,204,163,0.75)'
-    );
+    const { pValues: pvNow, under80: under80Now } = collectPValues(Date.now());
+    const { pValues: pvSod, under80: under80Sod } = collectPValues(startOfDay);
+
+    const kdeNow = gaussianKDE(pvNow, kdeEval, KDE_H);
+    const kdeSod = gaussianKDE(pvSod, kdeEval, KDE_H);
+
+    // Median P(recall) shift from start of day to now
+    const deltas = [];
+    for (const card of reviewed) {
+      const data = srs[card.spanish];
+      if (!data || data.retired) continue;
+      const pNow = getPRecallAt(data, Date.now());
+      const pSod = getPRecallAt(data, startOfDay);
+      if (pNow !== null && pSod !== null) deltas.push(pNow - pSod);
+    }
+    let medianDeltaStr = '—';
+    if (deltas.length) {
+      deltas.sort((a, b) => a - b);
+      const mid = Math.floor(deltas.length / 2);
+      const median = deltas.length % 2 ? deltas[mid] : (deltas[mid - 1] + deltas[mid]) / 2;
+      const sign = median >= 0 ? '+' : '';
+      medianDeltaStr = `${sign}${(median * 100).toFixed(2)}pp`;
+    }
 
     const threshold90Plugin = {
       id: 'threshold90',
       afterDraw(chart) {
         const { ctx, chartArea, scales } = chart;
-        // 90% is at bin index (0.90 - 0.80) / 0.0025 = 40
-        const x = scales.x.getPixelForValue(39.5);
+        const x = scales.x.getPixelForValue(0.9);
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(x, chartArea.top);
@@ -859,36 +883,34 @@ async function main() {
       },
     };
 
-    // Callout text above chart
     const calloutEl = document.getElementById('recall-dist-callout');
     calloutEl.textContent =
-      `${under80Sod} words under 80% at start of day · ${under80Now} now`;
+      `${under80Sod} words under 80% at start of day · ${under80Now} now · median shift: ${medianDeltaStr}`;
 
     new Chart(document.getElementById('chart-recall-dist'), {
-      type: 'bar',
+      type: 'line',
       data: {
-        labels: distLabels,
         datasets: [
           {
             label: 'Start of day',
-            data: binsSod,
-            backgroundColor: 'rgba(136,136,170,0.35)',
-            borderColor: 'rgba(136,136,170,0.5)',
-            borderWidth: 1,
-            borderRadius: 2,
-            barPercentage: 1.0,
-            categoryPercentage: 1.0,
+            data: kdeEval.map((x, i) => ({ x, y: kdeSod[i] })),
+            borderColor: 'rgba(136,136,170,0.85)',
+            backgroundColor: 'rgba(136,136,170,0.18)',
+            fill: true,
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0,
             order: 2,
           },
           {
             label: 'Current',
-            data: binsNow,
-            backgroundColor: nowColors,
-            borderColor: nowColors,
-            borderWidth: 0,
-            borderRadius: 2,
-            barPercentage: 1.0,
-            categoryPercentage: 1.0,
+            data: kdeEval.map((x, i) => ({ x, y: kdeNow[i] })),
+            borderColor: 'rgba(78,204,163,0.9)',
+            backgroundColor: 'rgba(78,204,163,0.18)',
+            fill: true,
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0,
             order: 1,
           },
         ],
@@ -896,11 +918,16 @@ async function main() {
       options: deepMerge(CHART_OPTS_BASE, {
         scales: {
           x: {
+            type: 'linear',
+            min: P_MIN,
+            max: 1.0,
             ticks: {
               maxRotation: 0,
-              callback(v, i) { return i % 40 === 0 ? `${Math.round((P_MIN + i * BIN_SIZE) * 100)}%` : ''; },
+              maxTicksLimit: 6,
+              callback: v => `${Math.round(v * 100)}%`,
             },
           },
+          y: { display: false },
         },
         plugins: {
           legend: {
@@ -911,8 +938,8 @@ async function main() {
           },
           tooltip: {
             callbacks: {
-              title: items => distLabels[items[0].dataIndex],
-              label: item => ` ${item.dataset.label}: ${item.raw} words`,
+              title: items => `${(items[0].parsed.x * 100).toFixed(1)}%`,
+              label: item => ` ${item.dataset.label}: density ${item.parsed.y.toFixed(2)}`,
             },
           },
         },

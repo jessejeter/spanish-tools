@@ -240,6 +240,11 @@ a.stat-card:active { opacity: 0.6; }
     <div id="recall-dist-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
     <div class="chart-wrap"><canvas id="chart-recall-dist" height="180"></canvas></div>
   </div>
+
+  <div class="chart-section">
+    <div class="chart-title">P(Recall) CDF</div>
+    <div class="chart-wrap"><canvas id="chart-recall-cdf" height="180"></canvas></div>
+  </div>
 </div>
 
 <script>
@@ -940,6 +945,87 @@ async function main() {
             callbacks: {
               title: items => `${(items[0].parsed.x * 100).toFixed(1)}%`,
               label: item => ` ${item.dataset.label}: density ${item.parsed.y.toFixed(2)}`,
+            },
+          },
+        },
+      }),
+      plugins: [threshold90Plugin],
+    });
+
+    // ---- Chart: P(Recall) CDF ----
+    function empiricalCDF(pValues, evalPoints) {
+      const sorted = [...pValues].sort((a, b) => a - b);
+      const n = sorted.length;
+      return evalPoints.map(x => {
+        let lo = 0, hi = n;
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (sorted[mid] <= x) lo = mid + 1; else hi = mid; }
+        return lo / n;
+      });
+    }
+
+    const cdfNow = empiricalCDF(pvNow, kdeEval);
+    const cdfSod = empiricalCDF(pvSod, kdeEval);
+
+    new Chart(document.getElementById('chart-recall-cdf'), {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Start of day',
+            data: kdeEval.map((x, i) => ({ x, y: cdfSod[i] })),
+            borderColor: 'rgba(136,136,170,0.85)',
+            backgroundColor: 'rgba(136,136,170,0.12)',
+            fill: true,
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0,
+            order: 2,
+          },
+          {
+            label: 'Current',
+            data: kdeEval.map((x, i) => ({ x, y: cdfNow[i] })),
+            borderColor: 'rgba(78,204,163,0.9)',
+            backgroundColor: 'rgba(78,204,163,0.12)',
+            fill: true,
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0,
+            order: 1,
+          },
+        ],
+      },
+      options: deepMerge(CHART_OPTS_BASE, {
+        scales: {
+          x: {
+            type: 'linear',
+            min: P_MIN,
+            max: 1.0,
+            ticks: {
+              maxRotation: 0,
+              maxTicksLimit: 6,
+              callback: v => `${Math.round(v * 100)}%`,
+            },
+          },
+          y: {
+            min: 0,
+            max: 1,
+            ticks: {
+              maxTicksLimit: 5,
+              callback: v => `${Math.round(v * 100)}%`,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            align: 'end',
+            labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 } },
+          },
+          tooltip: {
+            callbacks: {
+              title: items => `${(items[0].parsed.x * 100).toFixed(1)}%`,
+              label: item => ` ${item.dataset.label}: ${(item.parsed.y * 100).toFixed(1)}% of words`,
             },
           },
         },

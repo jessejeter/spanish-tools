@@ -454,6 +454,9 @@ const STORAGE_KEY = 'spanish-flashcards-v2';
 const TODAY_COUNT_KEY = 'spanish-flashcards-today-count';
 const TODAY_SYNC_KEY = '__today__';
 const DAILY_WAA_KEY = 'spanish-flashcards-daily-waa';
+const DEVICE_ID_KEY = 'spanish-flashcards-device-id';
+const TIMER_REMOTE_KEY = 'spanish-flashcards-timer-remote';
+const TIMER_SYNC_KEY = '__timer_history__';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec';
 
 let allCards = [];
@@ -475,10 +478,65 @@ function saveDayTimer(seconds) {
   const today = todayStr();
   localStorage.setItem(DAY_TIMER_KEY, JSON.stringify({ date: today, seconds }));
   try {
+    const myId = getDeviceId();
     const history = JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {};
-    history[today] = seconds;
+    const otherSecs = getTimerRemoteCache()
+      .filter(e => e.deviceId !== myId)
+      .reduce((sum, e) => sum + (e.data?.[today] || 0), 0);
+    history[today] = seconds + otherSecs;
     localStorage.setItem(DAY_TIMER_HISTORY_KEY, JSON.stringify(history));
   } catch {}
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
+function getTimerRemoteCache() {
+  try { return JSON.parse(localStorage.getItem(TIMER_REMOTE_KEY)) || []; } catch { return []; }
+}
+
+function pushTimerHistory() {
+  if (!remoteEnabled()) return;
+  const myId = getDeviceId();
+  const today = todayStr();
+  const localHistory = {};
+  try { Object.assign(localHistory, JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {}); } catch {}
+  // Store my raw seconds for today (not the merged total which includes other devices)
+  const myHistory = { ...localHistory, [today]: dayTimerSeconds };
+  const otherEntries = getTimerRemoteCache().filter(e => e.deviceId !== myId);
+  pushSRSRemote([{
+    word: TIMER_SYNC_KEY,
+    reviews: [{ deviceId: myId, data: myHistory }, ...otherEntries],
+    lastReview: today,
+    retired: false,
+  }]);
+}
+
+function mergeTimerHistory(remoteReviews) {
+  if (!remoteReviews?.length) return;
+  localStorage.setItem(TIMER_REMOTE_KEY, JSON.stringify(remoteReviews));
+  // Sum all devices' contributions per day
+  const merged = {};
+  for (const entry of remoteReviews) {
+    if (!entry.deviceId || !entry.data) continue;
+    for (const [date, secs] of Object.entries(entry.data)) {
+      merged[date] = (merged[date] || 0) + secs;
+    }
+  }
+  // Today: local device may be ahead of remote — use max(local, remote) for my share
+  const today = todayStr();
+  const myId = getDeviceId();
+  const myEntry = remoteReviews.find(e => e.deviceId === myId);
+  const myRemoteSecs = myEntry?.data?.[today] || 0;
+  const otherSecs = (merged[today] || 0) - myRemoteSecs;
+  merged[today] = otherSecs + Math.max(dayTimerSeconds, myRemoteSecs);
+  localStorage.setItem(DAY_TIMER_HISTORY_KEY, JSON.stringify(merged));
 }
 
 function formatTimer(seconds) {
@@ -756,6 +814,9 @@ async function syncRemoteSRS() {
     } else if (localCount > remoteCount) {
       pushTodayCount(localCount);
     }
+
+    mergeTimerHistory(remote[TIMER_SYNC_KEY]?.reviews);
+    pushTimerHistory();
 
     if (localOnly.length > 0) pushSRSRemote(localOnly);
   } catch (e) {
@@ -1139,6 +1200,10 @@ function retire() {
 }
 
 // ---- Event Listeners ----
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') pushTimerHistory();
+});
+
 document.getElementById('card-container').addEventListener('click', (e) => {
   if (e.target.closest('.card-back') && isFlipped) return;
   flipCard();

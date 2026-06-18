@@ -765,8 +765,20 @@ async function main() {
 
     // ---- Chart: Daily Time in App ----
     const DAY_TIMER_HISTORY_KEY = 'spanish-flashcards-time-history';
+    const TIMER_SYNC_KEY = '__timer_history__';
+    // Sum all devices' contributions from the remote SRS response, fall back to local cache
     let timeHistory = {};
-    try { timeHistory = JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {}; } catch {}
+    const remoteTimerReviews = srs[TIMER_SYNC_KEY]?.reviews;
+    if (remoteTimerReviews?.length) {
+      for (const entry of remoteTimerReviews) {
+        if (!entry.deviceId || !entry.data) continue;
+        for (const [date, secs] of Object.entries(entry.data)) {
+          timeHistory[date] = (timeHistory[date] || 0) + secs;
+        }
+      }
+    } else {
+      try { timeHistory = JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {}; } catch {}
+    }
 
     if (Object.keys(timeHistory).length > 0) {
       const timeLabels = dateRange(globalStart, today);

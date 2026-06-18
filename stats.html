@@ -236,6 +236,12 @@ a.stat-card:active { opacity: 0.6; }
   </div>
 
   <div class="chart-section">
+    <div class="chart-title">Daily WAA (Words Above Average)</div>
+    <div id="waa-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
+    <div class="chart-wrap"><canvas id="chart-waa" height="160"></canvas></div>
+  </div>
+
+  <div class="chart-section">
     <div class="chart-title">P(Recall) Distribution</div>
     <div id="recall-dist-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
     <div class="chart-wrap"><canvas id="chart-recall-dist" height="180"></canvas></div>
@@ -508,6 +514,25 @@ function makeCumulativeChart(canvasId, labels, borderColor, bgColor, datasets) {
     plugins: [crosshairPlugin],
   });
 }
+
+// ---- Zero-line plugin (for WAA chart) ----
+const zeroLinePlugin = {
+  id: 'zeroLine',
+  afterDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!scales.y) return;
+    const y = scales.y.getPixelForValue(0);
+    if (y < chartArea.top || y > chartArea.bottom) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, y);
+    ctx.lineTo(chartArea.right, y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  },
+};
 
 // ---- Main ----
 async function main() {
@@ -805,6 +830,59 @@ async function main() {
     } else {
       document.getElementById('chart-time').parentElement.insertAdjacentHTML(
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No time history yet.</p>'
+      );
+    }
+
+    // ---- Chart: Daily WAA ----
+    const DAILY_WAA_KEY = 'spanish-flashcards-daily-waa';
+    let waaHistory = {};
+    try { waaHistory = JSON.parse(localStorage.getItem(DAILY_WAA_KEY)) || {}; } catch {}
+
+    if (Object.keys(waaHistory).length > 0) {
+      const waaLabels = dateRange(globalStart, today);
+      const waaValues = waaLabels.map(d => waaHistory[d] || 0);
+
+      const todayWAA = waaHistory[today] || 0;
+      const recent7Days = waaLabels.slice(-7).map(d => waaHistory[d]).filter(v => v !== undefined);
+      const avg7WAA = recent7Days.length ? recent7Days.reduce((s, v) => s + v, 0) / recent7Days.length : 0;
+      const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(2);
+      document.getElementById('waa-callout').textContent =
+        `Today: ${fmt(todayWAA)} · 7d avg: ${fmt(avg7WAA)}`;
+
+      new Chart(document.getElementById('chart-waa'), {
+        type: 'bar',
+        data: {
+          labels: waaLabels,
+          datasets: [{
+            data: waaValues,
+            backgroundColor: waaValues.map(v => v >= 0 ? 'rgba(78,204,163,0.45)' : 'rgba(233,69,96,0.45)'),
+            borderColor: waaValues.map(v => v >= 0 ? 'rgba(78,204,163,0.8)' : 'rgba(233,69,96,0.8)'),
+            borderWidth: 1,
+            borderRadius: 2,
+          }],
+        },
+        options: deepMerge(CHART_OPTS_BASE, {
+          scales: {
+            x: { ticks: { callback(v, i) { return waaLabels[i]?.slice(0, 7) || ''; } } },
+            y: {
+              beginAtZero: false,
+              ticks: { maxTicksLimit: 5, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) },
+            },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: items => items[0]?.label || '',
+                label: item => ` WAA: ${fmt(item.raw)}`,
+              },
+            },
+          },
+        }),
+        plugins: [zeroLinePlugin],
+      });
+    } else {
+      document.getElementById('chart-waa').parentElement.insertAdjacentHTML(
+        'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No WAA history yet — start reviewing cards to track performance.</p>'
       );
     }
 

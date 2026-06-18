@@ -175,7 +175,7 @@ def main():
         print(f"  ERROR fetching: {e}")
         sys.exit(1)
 
-    vocab_srs  = {k: v for k, v in all_srs.items() if not k.startswith("frame:")}
+    vocab_srs  = {k: v for k, v in all_srs.items() if not k.startswith("frame:") and not k.startswith("__")}
     frames_srs = {k: v for k, v in all_srs.items() if k.startswith("frame:")}
     print(f"  vocab: {len(vocab_srs)}  frames: {len(frames_srs)}")
 

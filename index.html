@@ -454,6 +454,7 @@ const STORAGE_KEY = 'spanish-flashcards-v2';
 const TODAY_COUNT_KEY = 'spanish-flashcards-today-count';
 const TODAY_SYNC_KEY = '__today__';
 const DAILY_WAA_KEY = 'spanish-flashcards-daily-waa';
+const MODEL_CACHE_KEY = 'spanish-flashcards-model-cache';
 const DEVICE_ID_KEY = 'spanish-flashcards-device-id';
 const TIMER_REMOTE_KEY = 'spanish-flashcards-timer-remote';
 const TIMER_SYNC_KEY = '__timer_history__';
@@ -840,35 +841,52 @@ let srsModel = null;
 
 async function loadSRSModel() {
   const el = document.getElementById('model-info');
-  const warn = (msg, color) => {
+  const setInfo = (msg, color, bold) => {
     if (!el) return;
     el.textContent = msg;
-    el.style.color = color;
-    el.style.opacity = '1';
-    el.style.fontWeight = '600';
+    el.style.color = color || '';
+    el.style.opacity = color ? '1' : '0.45';
+    el.style.fontWeight = bold ? '600' : '';
   };
+
+  // Try fetching the latest model
+  let fetched = null;
   try {
     const res = await fetch('vocab_model.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    srsModel = await res.json();
-    const trainedAt = new Date(srsModel.trained_at);
-    const daysSince = (Date.now() - trainedAt) / 86400000;
-    const trainedDate = trainedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    if (daysSince > 2) {
-      warn(`⚠ Model stale — last trained ${trainedDate} (${Math.floor(daysSince)}d ago)`, 'var(--yellow)');
-    } else {
-      if (el) {
-        el.textContent = `Model: ${trainedDate} · ${srsModel.n_samples.toLocaleString()} samples`;
-        el.style.color = '';
-        el.style.opacity = '0.45';
-        el.style.fontWeight = '';
-      }
-    }
+    if (res.ok) fetched = await res.json();
+    else console.warn('vocab_model.json fetch failed:', res.status);
   } catch (e) {
-    srsModel = null;
-    warn('⚠ Model unavailable — using HLR fallback (check retrain task)', 'var(--red)');
-    console.warn('Could not load vocab_model.json, using HLR fallback:', e);
+    console.warn('vocab_model.json fetch error:', e);
   }
+
+  if (fetched) {
+    srsModel = fetched;
+    try { localStorage.setItem(MODEL_CACHE_KEY, JSON.stringify(fetched)); } catch {}
+    const trainedAt = new Date(fetched.trained_at);
+    const daysSince = (Date.now() - trainedAt) / 86400000;
+    const dateStr = trainedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (daysSince > 2) {
+      setInfo(`⚠ Model stale — last trained ${dateStr} (${Math.floor(daysSince)}d ago)`, 'var(--yellow)', true);
+    } else {
+      setInfo(`Model: ${dateStr} · ${fetched.n_samples.toLocaleString()} samples`);
+    }
+    return;
+  }
+
+  // Fetch failed — fall back to last cached model
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(MODEL_CACHE_KEY)); } catch {}
+  if (cached) {
+    srsModel = cached;
+    const dateStr = new Date(cached.trained_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    setInfo(`⚠ Model fetch failed — using cached model from ${dateStr}`, 'var(--yellow)', true);
+    return;
+  }
+
+  // No model at all (first ever load with no network) — HLR is last resort only
+  srsModel = null;
+  setInfo('⚠ No model available — check connection and reload', 'var(--red)', true);
+  console.warn('No SRS model available, falling back to HLR heuristic');
 }
 
 // Forward pass through the stored MLP weights.

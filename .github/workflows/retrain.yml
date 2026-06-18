@@ -1,0 +1,33 @@
+name: Retrain SRS Model
+
+on:
+  schedule:
+    # 9 AM UTC daily — runs after the vocab sync (8 AM UTC) so training data is fresh
+    - cron: "0 9 * * *"
+  workflow_dispatch: # Allow manual runs from GitHub UI
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests numpy scikit-learn
+
+      - name: Run retraining
+        run: python retrain.py
+
+      - name: Commit and push model weights
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet vocab_model.json frames_model.json && exit 0
+          git add vocab_model.json frames_model.json
+          git commit -m "Update SRS model weights"
+          git push

@@ -590,7 +590,7 @@ async function main() {
     // 7-day avg reviews
     const reviewsByDate = {};
     for (const [word, data] of Object.entries(srs)) {
-      if (word === TODAY_SYNC_KEY) continue;
+      if (word.startsWith('__')) continue;
       for (const r of data.reviews || []) {
         const d = r.date.slice(0, 10);
         reviewsByDate[d] = (reviewsByDate[d] || 0) + 1;

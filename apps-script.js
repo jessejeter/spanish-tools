@@ -147,10 +147,18 @@ function countTodaySpanishDictWords() {
 // Optional query param ?sheet=FramesSRS to read from a different sheet
 function doGet(e) {
   try {
-  if (e && e.parameter && e.parameter.action === 'countTodayWords') {
+  const params = (e && e.parameter) || {};
+  const qs = (e && e.queryString) || '';
+  const action = params.action || new RegExp('[?&]?action=([^&]+)').exec(qs)?.[1];
+  if (action === 'countTodayWords') {
     return countTodaySpanishDictWords();
   }
-  const sheet = getSheet(e && e.parameter && e.parameter.sheet);
+  if (action === 'debug') {
+    return ContentService
+      .createTextOutput(JSON.stringify({ params, qs }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  const sheet = getSheet(params.sheet);
   if (sheet.getLastRow() === 0) {
     return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);
   }

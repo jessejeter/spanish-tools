@@ -1148,6 +1148,7 @@ async function checkSDCount() {
     const res = await fetch(APPS_SCRIPT_URL + '?action=countTodayWords');
     const json = await res.json();
     if (json.__error) throw new Error(json.__error);
+    if (!('byList' in json)) throw new Error('Apps Script not yet redeployed — redeploy and retry');
     const { count, byList, errors } = json;
     val.textContent = count;
     val.className = 'stat-value' + (count === 0 ? ' dim' : ' good');

@@ -146,6 +146,7 @@ function countTodaySpanishDictWords() {
 // GET — return all SRS data as JSON
 // Optional query param ?sheet=FramesSRS to read from a different sheet
 function doGet(e) {
+  try {
   if (e && e.parameter && e.parameter.action === 'countTodayWords') {
     return countTodaySpanishDictWords();
   }
@@ -181,6 +182,11 @@ function doGet(e) {
   return ContentService
     .createTextOutput(JSON.stringify(srs))
     .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ __error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 // POST — upsert SRS entries

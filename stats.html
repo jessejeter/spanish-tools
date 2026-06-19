@@ -213,6 +213,11 @@ a.stat-card:active { opacity: 0.6; }
       <div class="stat-value" id="s-avg7">—</div>
       <div class="stat-label">Avg Reviews / Day (7d)</div>
     </div>
+    <div class="stat-card" id="sd-count-card" onclick="checkSDCount()" style="cursor:pointer;grid-column:1/-1;">
+      <div class="stat-value dim" id="sd-count-value">—</div>
+      <div class="stat-label">Words Added to SpanishDict Today <span id="sd-count-hint" style="opacity:0.5;">(tap to check)</span></div>
+      <div id="sd-count-detail" style="font-size:11px;color:var(--text-dim);margin-top:4px;min-height:14px;"></div>
+    </div>
   </div>
 
   <div class="chart-section">
@@ -1127,6 +1132,34 @@ async function main() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('error').style.display = 'flex';
     document.getElementById('error-msg').textContent = err.message;
+  }
+}
+
+async function checkSDCount() {
+  const card = document.getElementById('sd-count-card');
+  const val  = document.getElementById('sd-count-value');
+  const hint = document.getElementById('sd-count-hint');
+  const detail = document.getElementById('sd-count-detail');
+  card.onclick = null;
+  card.style.cursor = 'default';
+  hint.textContent = '';
+  val.textContent = '…';
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=countTodayWords');
+    const { count, byList } = await res.json();
+    val.textContent = count;
+    val.className = 'stat-value' + (count === 0 ? ' dim' : ' good');
+    const parts = Object.entries(byList)
+      .filter(([, n]) => n != null && n > 0)
+      .map(([name, n]) => `${name}: ${n}`);
+    detail.textContent = parts.length ? parts.join(' · ') : '';
+  } catch (_) {
+    val.textContent = '!';
+    val.className = 'stat-value warn';
+    detail.textContent = 'fetch failed — tap to retry';
+    card.onclick = checkSDCount;
+    card.style.cursor = 'pointer';
+    hint.textContent = '(tap to retry)';
   }
 }
 

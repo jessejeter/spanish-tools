@@ -112,7 +112,7 @@ function countTodaySpanishDictWords() {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
         muteHttpExceptions: true,
       }).getContentText();
-      const match = html.match(/window\.SD_COMPONENT_DATA\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
+      const match = html.match(/window\.SD_COMPONENT_DATA\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/);
       if (!match) { byList[name] = 0; continue; }
       const data = JSON.parse(match[1]);
       let count = 0;

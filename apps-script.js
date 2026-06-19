@@ -147,18 +147,7 @@ function countTodaySpanishDictWords() {
 // Optional query param ?sheet=FramesSRS to read from a different sheet
 function doGet(e) {
   try {
-  const params = (e && e.parameter) || {};
-  const qs = (e && e.queryString) || '';
-  const action = params.action || new RegExp('[?&]?action=([^&]+)').exec(qs)?.[1];
-  if (action === 'countTodayWords') {
-    return countTodaySpanishDictWords();
-  }
-  if (action === 'debug') {
-    return ContentService
-      .createTextOutput(JSON.stringify({ params, qs }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  const sheet = getSheet(params.sheet);
+  const sheet = getSheet(e && e.parameter && e.parameter.sheet);
   if (sheet.getLastRow() === 0) {
     return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);
   }
@@ -197,11 +186,17 @@ function doGet(e) {
   }
 }
 
-// POST — upsert SRS entries
-// Body: JSON array of { word, reviews, right, wrong, firstReview, lastReview, retired }
-// Words prefixed with "frame:" are routed to the FramesSRS sheet automatically.
+// POST — upsert SRS entries, or handle special actions
+// Body: JSON array of { word, ... } for SRS updates
+//       JSON object { action: 'countTodayWords' } for word count
 function doPost(e) {
-  const updates = JSON.parse(e.postData.contents);
+  const body = JSON.parse(e.postData.contents);
+
+  if (body && body.action === 'countTodayWords') {
+    return countTodaySpanishDictWords();
+  }
+
+  const updates = Array.isArray(body) ? body : [];
 
   // Group updates by destination sheet based on word prefix
   const bySheet = {};

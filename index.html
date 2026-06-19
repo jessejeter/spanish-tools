@@ -793,8 +793,8 @@ function recomputeTodayWAA() {
       const r = reviews[i];
       if (!r.date?.startsWith(today)) continue;
       const prev = reviews.slice(0, i);
-      // Card was new when first seen today — skip
-      if (!prev.some(pr => pr.date && !pr.date.startsWith(today))) continue;
+      // Card had no prior reviews at all — P undefined, skip
+      if (!prev.length) continue;
       const p = computePFromHistory(prev, new Date(r.date).getTime());
       if (p === null) continue;
       total += (r.passed ? 1 : 0) - p;
@@ -1240,8 +1240,8 @@ function grade(passed) {
   const srsEntry = srs[currentCard.spanish];
   const priorReviews = srsEntry?.reviews || [];
   const today = todayStr();
-  // Only count WAA for cards with an established P(recall) from before today
-  const hasEstablishedP = priorReviews.some(r => r.date && !r.date.startsWith(today));
+  // Only count WAA once there's at least one prior review to base P(recall) on
+  const hasEstablishedP = priorReviews.length > 0;
   const waaDelta = hasEstablishedP ? (passed ? 1 : 0) - getPRecall(srsEntry, true) : null;
   lastUndo = {
     card: currentCard,

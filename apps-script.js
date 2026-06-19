@@ -102,6 +102,9 @@ function fmtDate(v) {
 }
 
 function countTodaySpanishDictWords() {
+  return ContentService
+    .createTextOutput(JSON.stringify({ count: 99, byList: { test: 99 }, errors: {} }))
+    .setMimeType(ContentService.MimeType.JSON);
   const tz = 'America/New_York';
   const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   let total = 0;
@@ -190,6 +193,7 @@ function doGet(e) {
 // Body: JSON array of { word, ... } for SRS updates
 //       JSON object { action: 'countTodayWords' } for word count
 function doPost(e) {
+  try {
   const body = JSON.parse(e.postData.contents);
 
   if (body && body.action === 'countTodayWords') {
@@ -212,6 +216,11 @@ function doPost(e) {
   return ContentService
     .createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ __error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function upsertRows(sheet, updates) {

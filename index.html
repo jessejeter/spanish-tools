@@ -657,6 +657,7 @@ async function loadData() {
     }
 
     allCards = cards;
+    recomputeTodayWAA();
     showApp();
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
@@ -775,6 +776,32 @@ function addDailyWAA(delta) {
   const today = todayStr();
   const data = getDailyWAA();
   data[today] = (data[today] || 0) + delta;
+  localStorage.setItem(DAILY_WAA_KEY, JSON.stringify(data));
+}
+
+// Recompute today's WAA from scratch using stored review history.
+// Skips new cards (no pre-today reviews) and uses the correct P(recall)
+// at the time each review was made.
+function recomputeTodayWAA() {
+  const srs = getSRS();
+  const today = todayStr();
+  let total = 0;
+  for (const [word, entry] of Object.entries(srs)) {
+    if (word.startsWith('__')) continue;
+    const reviews = entry.reviews || [];
+    for (let i = 0; i < reviews.length; i++) {
+      const r = reviews[i];
+      if (!r.date?.startsWith(today)) continue;
+      const prev = reviews.slice(0, i);
+      // Card was new when first seen today — skip
+      if (!prev.some(pr => pr.date && !pr.date.startsWith(today))) continue;
+      const p = computePFromHistory(prev, new Date(r.date).getTime());
+      if (p === null) continue;
+      total += (r.passed ? 1 : 0) - p;
+    }
+  }
+  const data = getDailyWAA();
+  data[today] = total;
   localStorage.setItem(DAILY_WAA_KEY, JSON.stringify(data));
 }
 
@@ -943,6 +970,30 @@ function getPRecall(data, displayOnly = false) {
 
   if (recentFail && !displayOnly) return 0;
   return p;
+}
+
+// Compute P(recall) from an explicit prior-review slice at a given reference time.
+// No recentFail override — used for WAA calculations.
+function computePFromHistory(prevReviews, refTimeMs) {
+  if (!prevReviews.length) return null;
+  const daysSinceLast = Math.max((refTimeMs - new Date(prevReviews[prevReviews.length - 1].date)) / 86400000, 0.01);
+  if (srsModel) {
+    const n_correct = prevReviews.filter(r => r.passed).length;
+    const n_wrong   = prevReviews.filter(r => !r.passed).length;
+    const accuracy  = n_correct / prevReviews.length;
+    const daysSinceFirst = Math.max((refTimeMs - new Date(prevReviews[0].date)) / 86400000, 0.01);
+    return nnForward([
+      Math.log1p(daysSinceLast), n_correct, n_wrong, accuracy,
+      Math.log1p(prevReviews.length), Math.log1p(daysSinceFirst),
+    ], srsModel);
+  }
+  let h = 1.0, prevDate = null;
+  for (const r of prevReviews) {
+    const gap = prevDate ? Math.max((new Date(r.date) - new Date(prevDate)) / 86400000, 0.01) : 1.0;
+    h = Math.max(0.5, gap * (r.passed ? 2.0 : 0.5));
+    prevDate = r.date;
+  }
+  return Math.pow(2, -daysSinceLast / h);
 }
 
 function weightedRandom(cards, srs) {
@@ -1186,15 +1237,20 @@ function flipToFront() {
 function grade(passed) {
   if (!currentCard) return;
   const srs = getSRS();
-  const waaDelta = (passed ? 1 : 0) - getPRecall(srs[currentCard.spanish]);
+  const srsEntry = srs[currentCard.spanish];
+  const priorReviews = srsEntry?.reviews || [];
+  const today = todayStr();
+  // Only count WAA for cards with an established P(recall) from before today
+  const hasEstablishedP = priorReviews.some(r => r.date && !r.date.startsWith(today));
+  const waaDelta = hasEstablishedP ? (passed ? 1 : 0) - getPRecall(srsEntry, true) : null;
   lastUndo = {
     card: currentCard,
-    srsEntry: srs[currentCard.spanish] ? JSON.parse(JSON.stringify(srs[currentCard.spanish])) : null,
+    srsEntry: srsEntry ? JSON.parse(JSON.stringify(srsEntry)) : null,
     todayCount: getTodayCount(),
     waaDelta,
   };
   recordReview(currentCard.spanish, passed);
-  addDailyWAA(waaDelta);
+  if (waaDelta !== null) addDailyWAA(waaDelta);
   if (!passed) recentFails[currentCard.spanish] = Date.now();
   else delete recentFails[currentCard.spanish];
   incrementTodayCount();

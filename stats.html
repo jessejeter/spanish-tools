@@ -1146,17 +1146,19 @@ async function checkSDCount() {
   val.textContent = '…';
   try {
     const res = await fetch(APPS_SCRIPT_URL + '?action=countTodayWords');
-    const { count, byList } = await res.json();
+    const json = await res.json();
+    const { count, byList, errors } = json;
     val.textContent = count;
     val.className = 'stat-value' + (count === 0 ? ' dim' : ' good');
     const parts = Object.entries(byList)
       .filter(([, n]) => n != null && n > 0)
       .map(([name, n]) => `${name}: ${n}`);
-    detail.textContent = parts.length ? parts.join(' · ') : '';
-  } catch (_) {
+    const errParts = Object.entries(errors || {}).map(([name, msg]) => `${name}: ${msg}`);
+    detail.textContent = [...parts, ...errParts].join(' · ') || '';
+  } catch (e) {
     val.textContent = '!';
     val.className = 'stat-value warn';
-    detail.textContent = 'fetch failed — tap to retry';
+    detail.textContent = String(e);
     card.onclick = checkSDCount;
     card.style.cursor = 'pointer';
     hint.textContent = '(tap to retry)';

@@ -106,14 +106,26 @@ function countTodaySpanishDictWords() {
   const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   let total = 0;
   const byList = {};
+  const errors = {};
   for (const [name, url] of Object.entries(SPANISHDICT_URLS)) {
     try {
-      const html = UrlFetchApp.fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      const resp = UrlFetchApp.fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
         muteHttpExceptions: true,
-      }).getContentText();
+      });
+      const status = resp.getResponseCode();
+      if (status !== 200) {
+        errors[name] = `HTTP ${status}`;
+        byList[name] = null;
+        continue;
+      }
+      const html = resp.getContentText();
       const match = html.match(/window\.SD_COMPONENT_DATA\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/);
-      if (!match) { byList[name] = 0; continue; }
+      if (!match) {
+        errors[name] = `no SD_COMPONENT_DATA (page len=${html.length}, snippet=${html.slice(0, 120).replace(/\s+/g, ' ')})`;
+        byList[name] = null;
+        continue;
+      }
       const data = JSON.parse(match[1]);
       let count = 0;
       for (const vt of (data.vocabTranslations || [])) {
@@ -121,12 +133,13 @@ function countTodaySpanishDictWords() {
       }
       byList[name] = count;
       total += count;
-    } catch (_) {
+    } catch (e) {
+      errors[name] = String(e);
       byList[name] = null;
     }
   }
   return ContentService
-    .createTextOutput(JSON.stringify({ count: total, byList }))
+    .createTextOutput(JSON.stringify({ count: total, byList, errors }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

@@ -403,6 +403,10 @@ body {
     <span id="session-stats"></span>
     <div id="model-info" style="font-size:10px;color:var(--text-dim);opacity:0.45;margin-top:2px;"></div>
     <div id="day-timer" style="font-size:10px;color:var(--text-dim);opacity:0.45;"></div>
+    <div style="margin-top:3px;">
+      <button id="sd-count-btn" onclick="checkSDCount()" style="font-size:10px;background:none;border:1px solid var(--text-dim);color:var(--text-dim);padding:1px 7px;border-radius:3px;cursor:pointer;opacity:0.55;">words added today?</button>
+      <span id="sd-count" style="font-size:10px;color:var(--text-dim);margin-left:6px;opacity:0.7;"></span>
+    </div>
   </div>
 
   <div class="card-container" id="card-container">
@@ -1083,6 +1087,26 @@ function todayStr() {
 function nowStr() {
   const d = new Date();
   return `${todayStr()}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+}
+
+async function checkSDCount() {
+  const btn = document.getElementById('sd-count-btn');
+  const out = document.getElementById('sd-count');
+  btn.disabled = true;
+  out.textContent = 'checking...';
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=countTodayWords');
+    const { count, byList } = await res.json();
+    const parts = Object.entries(byList)
+      .filter(([, n]) => n > 0)
+      .map(([name, n]) => `${name}: ${n}`);
+    out.textContent = count === 0
+      ? '0 added today'
+      : `${count} added today${parts.length ? ' (' + parts.join(', ') + ')' : ''}`;
+  } catch (e) {
+    out.textContent = 'error — try again';
+  }
+  btn.disabled = false;
 }
 
 // ---- UI ----

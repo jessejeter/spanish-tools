@@ -26,6 +26,14 @@
 
 const SRS_SHEET_NAME = 'SRS';
 
+const SPANISHDICT_URLS = {
+  misc:        'https://www.spanishdict.com/lists/8562777/jesse35630s-misc',
+  nouns:       'https://www.spanishdict.com/lists/8543367/jesse35630s-nouns',
+  verbs:       'https://www.spanishdict.com/lists/8524520/jesse35630s-verbs',
+  adjectives:  'https://www.spanishdict.com/lists/8545180/jesse35630s-adjectives',
+  phrases:     'https://www.spanishdict.com/lists/8545326/jesse35630s-phrases',
+};
+
 // Runs when the spreadsheet opens — adds menu and refreshes Sheet2 col A.
 function onOpen() {
   SpreadsheetApp.getActiveSpreadsheet().addMenu('Vocab Tools', [
@@ -93,9 +101,41 @@ function fmtDate(v) {
   return String(v);
 }
 
+function countTodaySpanishDictWords() {
+  const tz = 'America/New_York';
+  const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  let total = 0;
+  const byList = {};
+  for (const [name, url] of Object.entries(SPANISHDICT_URLS)) {
+    try {
+      const html = UrlFetchApp.fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        muteHttpExceptions: true,
+      }).getContentText();
+      const match = html.match(/window\.SD_COMPONENT_DATA\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
+      if (!match) { byList[name] = 0; continue; }
+      const data = JSON.parse(match[1]);
+      let count = 0;
+      for (const vt of (data.vocabTranslations || [])) {
+        if (vt.createdAt && Utilities.formatDate(new Date(vt.createdAt), tz, 'yyyy-MM-dd') === today) count++;
+      }
+      byList[name] = count;
+      total += count;
+    } catch (_) {
+      byList[name] = null;
+    }
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify({ count: total, byList }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 // GET — return all SRS data as JSON
 // Optional query param ?sheet=FramesSRS to read from a different sheet
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'countTodayWords') {
+    return countTodaySpanishDictWords();
+  }
   const sheet = getSheet(e && e.parameter && e.parameter.sheet);
   if (sheet.getLastRow() === 0) {
     return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);

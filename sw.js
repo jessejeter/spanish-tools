@@ -1,4 +1,4 @@
-const CACHE = 'spanish-flashcards-fca4770';
+const CACHE = 'spanish-flashcards-68aad0c';
 const STATIC = ['/', '/index.html', '/manifest.json', '/icon-180.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -18,12 +18,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   // Never cache these — always fetch fresh
-  if (
-    e.request.url.includes('version.json') ||
-    e.request.url.includes('vocab_model.json') ||
-    e.request.url.includes('docs.google.com') ||
-    e.request.url.includes('script.google.com')
-  ) {
+  if (e.request.url.includes('version.json') || e.request.url.includes('vocab_model.json')) {
     e.respondWith(fetch(e.request, { cache: 'no-store' }));
     return;
   }

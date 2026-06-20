@@ -558,12 +558,15 @@ async function main() {
     // Classify Sheet1 rows
     const reviewed = [];   // { spanish, dateAdded, dateReviewed }
     const pending  = [];   // { spanish, dateAdded }
+    const misses   = [];   // debug: lookup failures
 
     for (const row of s1) {
       const spanish = (row[1] || '').trim();
       const english = (row[2] || '').trim();
       const sense    = (row[5] || '').trim();
-      const transCtx = (row[6] || '').trim();
+      const transCtxRaw = (row[6] || '').trim();
+      // GViz converts boolean cell values to "true"/"false"; apps-script treats them as empty
+      const transCtx = /^(true|false)$/i.test(transCtxRaw) ? '' : transCtxRaw;
       const dateAdded = (row[0] || '').trim();
       if (!spanish) continue;
 
@@ -573,9 +576,8 @@ async function main() {
       const isReviewed = (s2row[2] || '').toUpperCase() === 'TRUE';
 
       if (!isReviewed && !s2Map[lookupKey.toLowerCase()]) {
-        // Key not found in s2Map at all — find the closest s2Map key with same Spanish word
         const similar = Object.keys(s2Map).filter(k => k.startsWith(spanish.toLowerCase() + ':'));
-        console.log('MISS:', JSON.stringify(lookupKey), '| similar s2Map keys:', similar.slice(0, 3));
+        misses.push({ lookupKey, similar: similar.slice(0, 2) });
       }
 
       if (isReviewed) {
@@ -616,6 +618,17 @@ async function main() {
       if (reviewsByDate[ds] !== undefined) { sum7 += reviewsByDate[ds]; count7++; }
     }
     const avg7 = count7 > 0 ? Math.round(sum7 / 7) : 0;
+
+    // ---- Debug: show lookup misses on page ----
+    if (misses.length) {
+      const pre = document.createElement('pre');
+      pre.style.cssText = 'background:#300;color:#f88;padding:12px;font-size:11px;overflow:auto;max-height:200px;margin:8px 0';
+      pre.textContent = `${misses.length} lookup misses. First 5:\n` +
+        misses.slice(0, 5).map(m =>
+          `WANT: ${JSON.stringify(m.lookupKey)}\n GOT: ${m.similar.map(s => JSON.stringify(s)).join(', ') || '(nothing)'}`
+        ).join('\n\n');
+      document.querySelector('.stats-grid')?.before(pre);
+    }
 
     // ---- Render stats ----
     document.getElementById('s-total-added').textContent = totalCards + totalPending;

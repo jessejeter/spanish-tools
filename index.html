@@ -631,7 +631,8 @@ async function loadData() {
       const spanish = (s1[i][1] || '').trim();
       const english = (s1[i][2] || '').trim();
       const sense    = (s1[i][5] || '').trim();
-      const transCtx = (s1[i][6] || '').trim();
+      const transCtxRaw = (s1[i][6] || '').trim();
+      const transCtx = /^(true|false)$/i.test(transCtxRaw) ? '' : transCtxRaw;
       if (!spanish) continue;
       let lookupKey = sense ? `${spanish}: ${english} (${sense})` : `${spanish}: ${english}`;
       if (transCtx) lookupKey += ` [${transCtx}]`;

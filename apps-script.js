@@ -146,10 +146,13 @@ function countTodaySpanishDictWords() {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// GET — return all SRS data as JSON
-// Optional query param ?sheet=FramesSRS to read from a different sheet
+// GET — return all SRS data as JSON, or handle special paths
+// Path /count → return today's SpanishDict word count
 function doGet(e) {
   try {
+  if (e && e.pathInfo === 'count') {
+    return countTodaySpanishDictWords();
+  }
   const sheet = getSheet(e && e.parameter && e.parameter.sheet);
   if (sheet.getLastRow() === 0) {
     return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);

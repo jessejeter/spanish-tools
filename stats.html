@@ -1136,27 +1136,32 @@ async function main() {
 }
 
 async function checkSDCount() {
-  const card = document.getElementById('sd-count-card');
-  const val  = document.getElementById('sd-count-value');
-  const hint = document.getElementById('sd-count-hint');
+  const card   = document.getElementById('sd-count-card');
+  const val    = document.getElementById('sd-count-value');
+  const hint   = document.getElementById('sd-count-hint');
   const detail = document.getElementById('sd-count-detail');
   card.onclick = null;
   card.style.cursor = 'default';
   hint.textContent = '';
   val.textContent = '…';
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '/count');
-    const json = await res.json();
-    if (json.__error) throw new Error(json.__error);
-    if (!('byList' in json)) throw new Error('Apps Script not yet redeployed — redeploy and retry');
-    const { count, byList, errors } = json;
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=SDCount`;
+    const res  = await fetch(url, { cache: 'no-store' });
+    const rows = parseGvizJson(await res.text());
+    if (!rows.length || rows[0][0] === '') throw new Error('No data yet — run updateWordCountCache() in Apps Script first');
+    const count  = Number(rows[0][0]);
+    const ts     = rows[0][1] || '';
+    const byList = JSON.parse(rows[0][2] || '{}');
     val.textContent = count;
     val.className = 'stat-value' + (count === 0 ? ' dim' : ' good');
     const parts = Object.entries(byList)
       .filter(([, n]) => n != null && n > 0)
       .map(([name, n]) => `${name}: ${n}`);
-    const errParts = Object.entries(errors || {}).map(([name, msg]) => `${name}: ${msg}`);
-    detail.textContent = [...parts, ...errParts].join(' · ') || '';
+    const ago = ts ? ' · updated ' + ts.slice(11, 16) : '';
+    detail.textContent = (parts.join(' · ') || 'none today') + ago;
+    card.onclick = checkSDCount;
+    card.style.cursor = 'pointer';
+    hint.textContent = '(tap to refresh)';
   } catch (e) {
     val.textContent = '!';
     val.className = 'stat-value warn';

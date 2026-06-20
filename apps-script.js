@@ -101,10 +101,20 @@ function fmtDate(v) {
   return String(v);
 }
 
+// Call this manually once, then set a time-driven trigger to run it every 15 min.
+// Writes today's SpanishDict word count to the "SDCount" sheet so the browser
+// can read it via GViz without needing to call this web app directly.
+function updateWordCountCache() {
+  const result = JSON.parse(countTodaySpanishDictWords().getContent());
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('SDCount');
+  if (!sheet) sheet = ss.insertSheet('SDCount');
+  const tz = 'America/New_York';
+  const ts = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ss");
+  sheet.getRange('A1:C1').setValues([[result.count, ts, JSON.stringify(result.byList)]]);
+}
+
 function countTodaySpanishDictWords() {
-  return ContentService
-    .createTextOutput(JSON.stringify({ count: 99, byList: { test: 99 }, errors: {} }))
-    .setMimeType(ContentService.MimeType.JSON);
   const tz = 'America/New_York';
   const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   let total = 0;
@@ -146,13 +156,9 @@ function countTodaySpanishDictWords() {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// GET — return all SRS data as JSON, or handle special paths
-// Path /count → return today's SpanishDict word count
+// GET — return all SRS data as JSON
 function doGet(e) {
   try {
-  if (e && e.pathInfo === 'count') {
-    return countTodaySpanishDictWords();
-  }
   const sheet = getSheet(e && e.parameter && e.parameter.sheet);
   if (sheet.getLastRow() === 0) {
     return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);

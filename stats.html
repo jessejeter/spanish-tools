@@ -572,6 +572,12 @@ async function main() {
       const s2row = s2Map[lookupKey.toLowerCase()] || [];
       const isReviewed = (s2row[2] || '').toUpperCase() === 'TRUE';
 
+      if (!isReviewed && !s2Map[lookupKey.toLowerCase()]) {
+        // Key not found in s2Map at all — find the closest s2Map key with same Spanish word
+        const similar = Object.keys(s2Map).filter(k => k.startsWith(spanish.toLowerCase() + ':'));
+        console.log('MISS:', JSON.stringify(lookupKey), '| similar s2Map keys:', similar.slice(0, 3));
+      }
+
       if (isReviewed) {
         reviewed.push({ spanish, dateAdded, dateReviewed: parseMDY(s2row[3] || '') });
       } else {

@@ -673,6 +673,7 @@ async function loadData() {
 
     allCards = cards;
     recomputeTodayWAA();
+    recomputeAllWAAHistory();
     showApp();
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
@@ -808,7 +809,6 @@ function recomputeTodayWAA() {
       const r = reviews[i];
       if (!r.date?.startsWith(today)) continue;
       const prev = reviews.slice(0, i);
-      // Card had no prior reviews at all — P undefined, skip
       if (!prev.length) continue;
       const p = computePFromHistory(prev, new Date(r.date).getTime());
       if (p === null) continue;
@@ -818,6 +818,42 @@ function recomputeTodayWAA() {
   const data = getDailyWAA();
   data[today] = total;
   localStorage.setItem(DAILY_WAA_KEY, JSON.stringify(data));
+}
+
+// Retroactively compute WAA for all historical dates using stored review history.
+// Runs once per calendar day (first app open after midnight).
+// Today's value is left untouched — it accumulates in real-time via addDailyWAA.
+const WAA_RECALC_KEY = 'spanish-flashcards-waa-recalc-date';
+
+function recomputeAllWAAHistory() {
+  const today = todayStr();
+  if (localStorage.getItem(WAA_RECALC_KEY) === today) return;
+
+  const srs = getSRS();
+  const waaByDate = {};
+
+  for (const [word, entry] of Object.entries(srs)) {
+    if (word.startsWith('__') || entry.retired) continue;
+    const reviews = entry.reviews || [];
+    for (let i = 0; i < reviews.length; i++) {
+      const r = reviews[i];
+      if (!r.date) continue;
+      const date = r.date.slice(0, 10);
+      if (date === today) continue;
+      const prev = reviews.slice(0, i);
+      if (!prev.length) continue;
+      const p = computePFromHistory(prev, new Date(r.date).getTime());
+      if (p === null) continue;
+      waaByDate[date] = (waaByDate[date] || 0) + ((r.passed ? 1 : 0) - p);
+    }
+  }
+
+  const existing = getDailyWAA();
+  const todayVal = existing[today];
+  const merged = { ...existing, ...waaByDate };
+  if (todayVal !== undefined) merged[today] = todayVal;
+  localStorage.setItem(DAILY_WAA_KEY, JSON.stringify(merged));
+  localStorage.setItem(WAA_RECALC_KEY, today);
 }
 
 // ---- Remote SRS Sync ----

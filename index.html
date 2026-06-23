@@ -834,9 +834,10 @@ async function syncRemoteSRS() {
     const local = getSRS();
 
     const merged = { ...remote };
-    const localOnly = [];
+    const needsPush = [];
     for (const [word, data] of Object.entries(local)) {
-      if (!merged[word] || (data.lastReview || '') > (merged[word].lastReview || '')) {
+      const localNewer = !merged[word] || (data.lastReview || '') > (merged[word].lastReview || '');
+      if (localNewer) {
         // Migrate old format: reconstruct right/wrong from reviews if missing
         if (data.reviews && data.right === undefined) {
           data.right = data.reviews.filter(r => r.passed).length;
@@ -844,8 +845,8 @@ async function syncRemoteSRS() {
           data.firstReview = data.reviews.length > 0 ? data.reviews[0].date : '';
         }
         merged[word] = data;
+        if (word !== TODAY_SYNC_KEY && word !== TIMER_SYNC_KEY) needsPush.push({ word, ...data });
       }
-      if (!remote[word]) localOnly.push({ word, ...data });
     }
 
     saveSRS(merged);
@@ -861,7 +862,7 @@ async function syncRemoteSRS() {
     mergeTimerHistory(remote[TIMER_SYNC_KEY]?.reviews);
     pushTimerHistory();
 
-    if (localOnly.length > 0) pushSRSRemote(localOnly);
+    if (needsPush.length > 0) pushSRSRemote(needsPush);
   } catch (e) {
     console.warn('SRS remote sync failed, using local data:', e);
   }

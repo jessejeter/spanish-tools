@@ -761,11 +761,13 @@ function updateCounter() {
   const now = Date.now();
   const inHoldout = c => recentFails[c.spanish] && now - recentFails[c.spanish] < 2 * 60 * 1000;
   const holdout = allCards.filter(inHoldout).length;
-  const under90 = allCards.filter(c => !srs[c.spanish]?.retired && c.dateReviewed !== todayStr() && srs[c.spanish]?.reviews?.length > 0 && !inHoldout(c) && getPRecall(srs[c.spanish]) < 0.9).length;
+  const hasSRS    = allCards.filter(c => srs[c.spanish]?.reviews?.length > 0).length;
+  const notToday  = allCards.filter(c => srs[c.spanish]?.reviews?.length > 0 && c.dateReviewed !== todayStr()).length;
+  const under90   = allCards.filter(c => !srs[c.spanish]?.retired && c.dateReviewed !== todayStr() && srs[c.spanish]?.reviews?.length > 0 && !inHoldout(c) && getPRecall(srs[c.spanish]) < 0.9).length;
   const todayWAA = getDailyWAA()[todayStr()] || 0;
   const waaSign = todayWAA >= 0 ? '+' : '';
   const waaColor = todayWAA >= 0 ? 'var(--green)' : 'var(--red)';
-  parts.push(`<90%: ${under90}`);
+  parts.push(`<90%: ${under90} [cards:${allCards.length} srs:${hasSRS} !today:${notToday}]`);
   parts.push(`Holdout: ${holdout}`);
   parts.push(`<span style="color:${waaColor}">Daily WAA: ${waaSign}${todayWAA.toFixed(1)}</span>`);
 

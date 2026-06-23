@@ -516,6 +516,14 @@ function pushTimerHistory() {
   // Read raw per-device history (never contains other devices' seconds)
   const myHistory = {};
   try { Object.assign(myHistory, JSON.parse(localStorage.getItem(MY_TIMER_HISTORY_KEY)) || {}); } catch {}
+  // For past days, preserve whatever the server already has for this device
+  // (prevents wiping restored historical data on sync)
+  const myRemoteEntry = getTimerRemoteCache().find(e => e.deviceId === myId);
+  if (myRemoteEntry?.data) {
+    for (const [date, secs] of Object.entries(myRemoteEntry.data)) {
+      if (date < today && !myHistory[date]) myHistory[date] = secs;
+    }
+  }
   myHistory[today] = dayTimerSeconds;
   const otherEntries = getTimerRemoteCache().filter(e => e.deviceId !== myId);
   pushSRSRemote([{

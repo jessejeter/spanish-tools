@@ -466,6 +466,7 @@ let currentCard = null;
 // ---- Day Timer (active time only, resets at midnight) ----
 const DAY_TIMER_KEY = 'spanish-flashcards-day-timer';
 const DAY_TIMER_HISTORY_KEY = 'spanish-flashcards-time-history';
+const MY_TIMER_HISTORY_KEY = 'spanish-flashcards-my-time-history'; // this device's raw seconds only
 
 function getDayTimer() {
   try {
@@ -479,6 +480,12 @@ function saveDayTimer(seconds) {
   const today = todayStr();
   localStorage.setItem(DAY_TIMER_KEY, JSON.stringify({ date: today, seconds }));
   try {
+    // MY_TIMER_HISTORY_KEY: raw seconds for this device only (used when pushing to remote)
+    const myHistory = JSON.parse(localStorage.getItem(MY_TIMER_HISTORY_KEY)) || {};
+    myHistory[today] = seconds;
+    localStorage.setItem(MY_TIMER_HISTORY_KEY, JSON.stringify(myHistory));
+
+    // DAY_TIMER_HISTORY_KEY: merged total across all devices (used for display)
     const myId = getDeviceId();
     const history = JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {};
     const otherSecs = getTimerRemoteCache()
@@ -506,10 +513,10 @@ function pushTimerHistory() {
   if (!remoteEnabled()) return;
   const myId = getDeviceId();
   const today = todayStr();
-  const localHistory = {};
-  try { Object.assign(localHistory, JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {}); } catch {}
-  // Store my raw seconds for today (not the merged total which includes other devices)
-  const myHistory = { ...localHistory, [today]: dayTimerSeconds };
+  // Read raw per-device history (never contains other devices' seconds)
+  const myHistory = {};
+  try { Object.assign(myHistory, JSON.parse(localStorage.getItem(MY_TIMER_HISTORY_KEY)) || {}); } catch {}
+  myHistory[today] = dayTimerSeconds;
   const otherEntries = getTimerRemoteCache().filter(e => e.deviceId !== myId);
   pushSRSRemote([{
     word: TIMER_SYNC_KEY,

@@ -408,8 +408,12 @@ function clipToStart(labels, data, startDate) {
 }
 
 function gaussianSmooth(labels, countsByDate, bandwidth = 7) {
+  const dataDates = Object.keys(countsByDate);
+  if (!dataDates.length) return labels.map(() => null);
+  const firstDataTime = Math.min(...dataDates.map(d => new Date(d).getTime()));
   return labels.map(d => {
     const td = new Date(d).getTime();
+    if (td < firstDataTime) return null;
     let sumW = 0, sumV = 0;
     for (const [d2, v] of Object.entries(countsByDate)) {
       const diff = (td - new Date(d2).getTime()) / 86400000;

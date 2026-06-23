@@ -879,7 +879,6 @@ function pushSRSRemote(updates) {
 // ---- Neural Net Model ----
 // Loaded from vocab_model.json (written nightly by retrain.py).
 // Falls back to HLR heuristic if the file hasn't been generated yet.
-const REVIEW_LOG_CAP = 20;
 let srsModel = null;
 
 async function loadSRSModel() {
@@ -1067,7 +1066,6 @@ function recordReview(word, passed) {
   const entry = srs[word] || {};
   const reviews = entry.reviews || [];
   reviews.push({ date: nowStr(), passed });
-  if (reviews.length > REVIEW_LOG_CAP) reviews.shift();
   const right = (entry.right || 0) + (passed ? 1 : 0);
   const wrong = (entry.wrong || 0) + (passed ? 0 : 1);
   const firstReview = entry.firstReview || nowStr();

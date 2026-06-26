@@ -187,27 +187,35 @@ a.stat-card:active { opacity: 0.6; }
   <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-value good" id="s-total-added">—</div>
-      <div class="stat-label">Total Added</div>
+      <div class="stat-label">Total</div>
     </div>
     <a href="search.html" class="stat-card">
-      <div class="stat-value good" id="s-cards">—</div>
-      <div class="stat-label">Total Cards</div>
+      <div class="stat-value good" id="s-active">—</div>
+      <div class="stat-label">Active</div>
     </a>
+    <div class="stat-card">
+      <div class="stat-value dim" id="s-spanishdict">?</div>
+      <div class="stat-label">SpanishDict</div>
+    </div>
     <div class="stat-card">
       <div class="stat-value dim" id="s-pending">—</div>
       <div class="stat-label">Pending Review</div>
     </div>
+    <div class="stat-card">
+      <div class="stat-value dim" id="s-sheets-today">—</div>
+      <div class="stat-label">Sheets Today</div>
+    </div>
     <a href="search.html?filter=new" class="stat-card">
       <div class="stat-value dim" id="s-new">—</div>
-      <div class="stat-label">New</div>
-    </a>
-    <a href="search.html?filter=low-recall" class="stat-card">
-      <div class="stat-value warn" id="s-low-recall">—</div>
-      <div class="stat-label">P(recall) &lt; 90%</div>
+      <div class="stat-label">New in App</div>
     </a>
     <a href="search.html?filter=retired" class="stat-card">
       <div class="stat-value dim" id="s-retired">—</div>
       <div class="stat-label">Retired</div>
+    </a>
+    <a href="search.html?filter=low-recall" class="stat-card">
+      <div class="stat-value warn" id="s-low-recall">—</div>
+      <div class="stat-label">P(recall) &lt; 90%</div>
     </a>
     <div class="stat-card">
       <div class="stat-value" id="s-avg7">—</div>
@@ -581,12 +589,17 @@ async function main() {
     // ---- Stats ----
     const totalCards = reviewed.length;
     const totalPending = pending.length;
+    const today = todayStr();
 
-    let lowRecall = 0, newCount = 0, retiredCount = 0;
+    let lowRecall = 0, sheetsToday = 0, newInApp = 0, activeCount = 0, retiredCount = 0;
     for (const card of reviewed) {
       const data = srs[card.spanish];
       if (data?.retired) { retiredCount++; continue; }
-      if (!data?.reviews?.length) { newCount++; continue; }
+      if (!data?.reviews?.length) {
+        if (card.dateReviewed === today) { sheetsToday++; } else { newInApp++; }
+        continue;
+      }
+      activeCount++;
       const p = getPRecall(data);
       if (p !== null && p < 0.9) lowRecall++;
     }
@@ -600,7 +613,6 @@ async function main() {
         reviewsByDate[d] = (reviewsByDate[d] || 0) + 1;
       }
     }
-    const today = todayStr();
     let sum7 = 0, count7 = 0;
     for (let i = 0; i < 7; i++) {
       const d = new Date(today);
@@ -612,9 +624,10 @@ async function main() {
 
     // ---- Render stats ----
     document.getElementById('s-total-added').textContent = totalCards + totalPending;
-    document.getElementById('s-cards').textContent = totalCards;
+    document.getElementById('s-active').textContent = activeCount;
     document.getElementById('s-pending').textContent = totalPending;
-    document.getElementById('s-new').textContent = newCount;
+    document.getElementById('s-sheets-today').textContent = sheetsToday;
+    document.getElementById('s-new').textContent = newInApp;
     document.getElementById('s-low-recall').textContent = lowRecall;
     document.getElementById('s-retired').textContent = retiredCount;
     document.getElementById('s-avg7').textContent = avg7;

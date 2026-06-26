@@ -433,11 +433,35 @@ function gaussianSmooth(labels, countsByDate, bandwidth = 7) {
   });
 }
 
-// Reduce label density: only show labels ~30 days apart
-function sparseLabels(labels, maxLabels = 10) {
-  if (labels.length <= maxLabels) return labels;
-  const step = Math.ceil(labels.length / maxLabels);
-  return labels.map((l, i) => (i % step === 0 || i === labels.length - 1) ? l.slice(0, 7) : '');
+function monthTickIndices(labels, maxTicks = 8) {
+  const firsts = labels.reduce((acc, l, i) => { if (l.endsWith('-01')) acc.push(i); return acc; }, []);
+  if (!firsts.length) return new Set();
+  const step = Math.max(1, Math.ceil(firsts.length / maxTicks));
+  return new Set(firsts.filter((_, j) => j % step === 0));
+}
+
+function makeMonthLinesPlugin(monthIndices) {
+  return {
+    id: 'monthLines',
+    afterDraw(chart) {
+      if (!monthIndices.size) return;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta?.data?.length) return;
+      const { ctx, chartArea } = chart;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      for (const i of monthIndices) {
+        if (i >= meta.data.length) continue;
+        const x = meta.data[i].x;
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+  };
 }
 
 // ---- Chart defaults ----
@@ -666,6 +690,7 @@ async function main() {
     }
     const cumCanvas = document.getElementById('chart-cumulative');
     cumCanvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    const cumMonthIndices = monthTickIndices(cumLabels);
     new Chart(cumCanvas, {
       type: 'line',
       data: {
@@ -678,7 +703,7 @@ async function main() {
       },
       options: deepMerge(CHART_OPTS_BASE, {
         interaction: { mode: 'index', intersect: false },
-        scales: { x: { ticks: { callback(v, i) { return cumLabels[i]?.slice(0, 7) || ''; } } } },
+        scales: { x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return cumMonthIndices.has(i) ? cumLabels[i]?.slice(0, 7) : null; } } } },
         plugins: {
           legend: {
             display: true,
@@ -693,7 +718,7 @@ async function main() {
           },
         },
       }),
-      plugins: [crosshairPlugin],
+      plugins: [crosshairPlugin, makeMonthLinesPlugin(cumMonthIndices)],
     });
 
     // ---- Chart 3: Words newly reviewed per day ----
@@ -705,6 +730,7 @@ async function main() {
     if (Object.keys(wordsPerDay).length > 0) {
       const wpLabels = dateRange(globalStart, today);
       const wpCounts = wpLabels.map(d => wordsPerDay[d] || 0);
+      const wpMonthIndices = monthTickIndices(wpLabels);
       new Chart(document.getElementById('chart-words-per-day'), {
         type: 'bar',
         data: {
@@ -718,8 +744,9 @@ async function main() {
           }],
         },
         options: deepMerge(CHART_OPTS_BASE, {
-          scales: { x: { ticks: { callback(v, i) { return wpLabels[i]?.slice(0,7) || ''; } } } },
+          scales: { x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return wpMonthIndices.has(i) ? wpLabels[i]?.slice(0, 7) : null; } } } },
         }),
+        plugins: [makeMonthLinesPlugin(wpMonthIndices)],
       });
     }
 
@@ -728,6 +755,7 @@ async function main() {
       const revLabels = dateRange(globalStart, today);
       const revCounts = revLabels.map(d => reviewsByDate[d] || 0);
       const smoothed  = gaussianSmooth(revLabels, reviewsByDate, 7);
+      const revMonthIndices = monthTickIndices(revLabels);
 
       new Chart(document.getElementById('chart-reviews'), {
         type: 'bar',
@@ -770,9 +798,10 @@ async function main() {
             },
           },
           scales: {
-            x: { ticks: { callback(v, i) { return revLabels[i]?.slice(0,7) || ''; } } },
+            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return revMonthIndices.has(i) ? revLabels[i]?.slice(0, 7) : null; } } },
           },
         }),
+        plugins: [makeMonthLinesPlugin(revMonthIndices)],
       });
     } else {
       document.getElementById('chart-reviews').parentElement.insertAdjacentHTML(
@@ -809,6 +838,7 @@ async function main() {
         return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
       }
 
+      const timeMonthIndices = monthTickIndices(timeLabels);
       new Chart(document.getElementById('chart-time'), {
         type: 'bar',
         data: {
@@ -851,10 +881,11 @@ async function main() {
             },
           },
           scales: {
-            x: { ticks: { callback(v, i) { return timeLabels[i]?.slice(0,7) || ''; } } },
+            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return timeMonthIndices.has(i) ? timeLabels[i]?.slice(0, 7) : null; } } },
             y: { ticks: { callback: v => `${Math.round(v)}m` } },
           },
         }),
+        plugins: [makeMonthLinesPlugin(timeMonthIndices)],
       });
     } else {
       document.getElementById('chart-time').parentElement.insertAdjacentHTML(
@@ -878,6 +909,7 @@ async function main() {
       document.getElementById('waa-callout').textContent =
         `Today: ${fmt(todayWAA)} · 7d avg: ${fmt(avg7WAA)}`;
 
+      const waaMonthIndices = monthTickIndices(waaLabels);
       new Chart(document.getElementById('chart-waa'), {
         type: 'bar',
         data: {
@@ -892,8 +924,10 @@ async function main() {
         },
         options: deepMerge(CHART_OPTS_BASE, {
           scales: {
-            x: { ticks: { callback(v, i) { return waaLabels[i]?.slice(0, 7) || ''; } } },
+            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return waaMonthIndices.has(i) ? waaLabels[i]?.slice(0, 7) : null; } } },
             y: {
+              min: -10,
+              max: 10,
               beginAtZero: false,
               ticks: { maxTicksLimit: 5, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) },
             },
@@ -907,7 +941,7 @@ async function main() {
             },
           },
         }),
-        plugins: [zeroLinePlugin],
+        plugins: [zeroLinePlugin, makeMonthLinesPlugin(waaMonthIndices)],
       });
     } else {
       document.getElementById('chart-waa').parentElement.insertAdjacentHTML(

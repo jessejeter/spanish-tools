@@ -227,6 +227,19 @@ body {
   user-select: text;
 }
 
+.btn-retire-detail {
+  background: transparent;
+  border: 1px solid #444466;
+  color: #666688;
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-retire-detail.is-retired { border-color: #8855cc; color: #aa77ee; }
+.btn-retire-detail:active { transform: scale(0.95); }
+
 #tl-tooltip {
   position: fixed;
   background: rgba(18,18,28,0.95);
@@ -292,6 +305,9 @@ body {
     <div id="d-timeline" style="width:100%;margin-bottom:2px;"></div>
     <div id="d-timeline-stats" style="font-size:11px;color:var(--text-dim);opacity:0.6;text-align:right;margin-bottom:20px;"></div>
     <div id="d-analysis" class="detail-analysis" style="display:none;"></div>
+    <div style="text-align:center;margin-top:16px;padding-bottom:24px;">
+      <button id="btn-retire-detail" class="btn-retire-detail" onclick="toggleRetire()"></button>
+    </div>
   </div>
 </div>
 
@@ -306,6 +322,7 @@ let allCards = [];
 let srs = {};
 let srsModel = null;
 let probChart = null;
+let detailCard = null;
 
 // ---- Timeline tooltip ----
 function tlTipShow(e, el) {
@@ -624,6 +641,26 @@ function fmtDays(days) {
   return `${days.toFixed(1)}d`;
 }
 
+// ---- Retire / Unretire ----
+function updateRetireButton(retired) {
+  const btn = document.getElementById('btn-retire-detail');
+  btn.textContent = retired ? 'Unretire' : 'Retire';
+  btn.classList.toggle('is-retired', retired);
+}
+
+function toggleRetire() {
+  if (!detailCard) return;
+  const entry = srs[detailCard.spanish] || {};
+  const nowRetired = !entry.retired;
+  srs[detailCard.spanish] = { ...entry, retired: nowRetired };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(srs));
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify([{ word: detailCard.spanish, ...srs[detailCard.spanish] }]),
+  }).catch(e => console.warn('SRS remote save failed:', e));
+  updateRetireButton(nowRetired);
+}
+
 // ---- Results / Detail toggle ----
 function showResults() {
   document.getElementById('detail').style.display = 'none';
@@ -636,6 +673,7 @@ function showResults() {
 function showDetail(card) {
   document.getElementById('search-wrap').style.display = 'none';
   document.getElementById('results').style.display = 'none';
+  detailCard = card;
 
   const data = srs[card.spanish];
   const reviews = data?.reviews || [];
@@ -703,6 +741,7 @@ function showDetail(card) {
   if (probChart) { probChart.destroy(); probChart = null; }
   if (reviews.length >= 1) probChart = buildProbChart(data);
 
+  updateRetireButton(data?.retired || false);
   document.getElementById('detail').style.display = 'block';
   window.scrollTo(0, 0);
 }

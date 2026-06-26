@@ -436,7 +436,7 @@ body {
     <button class="btn-retire" onclick="retire()">Retire — I'll never forget this</button>
   </div>
   <div class="undo-row" id="undo-row">
-    <button class="btn-undo" onclick="undoLast()">Undo last card</button>
+    <button class="btn-undo" id="btn-undo" onclick="undoLast()">Undo last card</button>
   </div>
 </div>
 
@@ -1306,6 +1306,7 @@ function grade(passed) {
   incrementTodayCount();
   const next = pickNextCard();
   if (!next) { showEmpty(); return; }
+  document.getElementById('btn-undo').textContent = 'Undo last card';
   showCard(next);
   document.getElementById('undo-row').classList.add('visible');
 }
@@ -1332,13 +1333,17 @@ function undoLast() {
 function retire() {
   if (!currentCard) return;
   const srs = getSRS();
+  const priorEntry = srs[currentCard.spanish] ? JSON.parse(JSON.stringify(srs[currentCard.spanish])) : null;
   const entry = { ...(srs[currentCard.spanish] || {}), retired: true };
   srs[currentCard.spanish] = entry;
   saveSRS(srs);
   pushSRSRemote([{ word: currentCard.spanish, ...entry }]);
   const next = pickNextCard();
   if (!next) { showEmpty(); return; }
+  lastUndo = { card: currentCard, srsEntry: priorEntry, todayCount: getTodayCount(), waaDelta: null };
+  document.getElementById('btn-undo').textContent = 'Undo retire';
   showCard(next);
+  document.getElementById('undo-row').classList.add('visible');
 }
 
 // ---- Event Listeners ----

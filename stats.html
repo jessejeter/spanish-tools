@@ -298,8 +298,23 @@ function parseGvizJson(text) {
   );
 }
 
+const FETCH_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url, opts = {}, ms = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: controller.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`Request timed out: ${url}`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchSheet(url) {
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return parseGvizJson(await res.text());
 }
@@ -309,7 +324,7 @@ let srsModel = null;
 
 async function loadSRSModel() {
   try {
-    const res = await fetch('vocab_model.json');
+    const res = await fetchWithTimeout('vocab_model.json');
     if (res.ok) srsModel = await res.json();
   } catch {}
 }
@@ -364,7 +379,7 @@ function getPRecall(data) {
 async function loadSRS() {
   if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
     try {
-      const res = await fetch(APPS_SCRIPT_URL);
+      const res = await fetchWithTimeout(APPS_SCRIPT_URL);
       if (res.ok) {
         const remote = await res.json();
         // merge with local so we don't miss anything
@@ -465,10 +480,12 @@ function makeMonthLinesPlugin(monthIndices) {
 }
 
 // ---- Chart defaults ----
-Chart.defaults.color = '#8888aa';
-Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
-Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
-Chart.defaults.font.size = 11;
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.color = '#8888aa';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+  Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
+  Chart.defaults.font.size = 11;
+}
 
 const CHART_OPTS_BASE = {
   responsive: true,
@@ -573,6 +590,9 @@ const zeroLinePlugin = {
 // ---- Main ----
 async function main() {
   try {
+    if (typeof Chart === 'undefined') {
+      throw new Error('Failed to load charting library. Check your connection and retry.');
+    }
     const [[s1, s2], srs] = await Promise.all([
       Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
       loadSRS(),

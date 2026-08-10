@@ -3,24 +3,47 @@ name: Update version.json
 on:
   push:
     branches: [main]
+  # github-actions[bot] pushes (retrain.yml, sync_vocab.yml) use the default
+  # GITHUB_TOKEN, and GitHub never lets a GITHUB_TOKEN push trigger other
+  # `on: push` workflows (anti-recursion safeguard). workflow_run isn't
+  # subject to that restriction, so this is what catches those bot pushes.
+  workflow_run:
+    workflows: ["Retrain SRS Model", "Sync SpanishDict Vocabulary"]
+    types: [completed]
+    branches: [main]
 
 jobs:
   update-version:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Check whether HEAD already has this commit stamped
+        id: check
+        run: |
+          CURRENT_SHA=$(git rev-parse --short HEAD)
+          STAMPED_SHA=$(grep -oP "spanish-flashcards-\K[0-9a-f]+" sw.js || true)
+          if [ "$CURRENT_SHA" = "$STAMPED_SHA" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Write version.json and stamp sw.js cache version
+        if: steps.check.outputs.skip == 'false'
         run: |
-          echo "{\"updated\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\"}" > version.json
+          echo "{\"updated\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\", \"updated_iso\": \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" > version.json
           SHA=$(git rev-parse --short HEAD)
           sed -i "s/const CACHE = 'spanish-flashcards-[^']*'/const CACHE = 'spanish-flashcards-${SHA}'/" sw.js
 
-      - name: Commit and push if changed
+      - name: Commit and push
+        if: steps.check.outputs.skip == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet version.json sw.js && exit 0
           git add version.json sw.js
           git commit -m "Update version.json and sw.js cache version [skip ci]"
           git push

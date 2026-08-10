@@ -28,7 +28,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet vocab_model.json frames_model.json && exit 0
-          echo "{\"model_trained\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\"}" > model_version.json
+          echo "{\"model_trained\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\", \"model_trained_iso\": \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" > model_version.json
           git add vocab_model.json frames_model.json model_version.json
           git commit -m "Update SRS model weights"
           git push

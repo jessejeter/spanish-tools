@@ -78,8 +78,15 @@ h1 {
 
 .updated {
   font-size: 12px;
-  color: #e4e4e4;
-  opacity: 0.5;
+  opacity: 0.85;
+}
+
+.status-ok {
+  color: #6fcf97;
+}
+
+.status-stale {
+  color: #ff6b6b;
 }
 </style>
 </head>
@@ -102,18 +109,25 @@ h1 {
   <div class="btn-sub">Look up words &amp; view history</div>
 </a>
 
-<p class="updated" id="updated">Updated …</p>
-<p class="updated" id="model-updated">Model trained …</p>
+<p class="updated" id="updated" data-stale-hours="168">Updated …</p>
+<p class="updated" id="model-updated" data-stale-hours="48">Model trained …</p>
 <button onclick="hardRefresh()" style="background:none;border:none;color:#e4e4e4;opacity:0.5;font-size:12px;cursor:pointer;padding:4px;">↺ force refresh</button>
 <script>
+function showTimestamp(el, text, isoString) {
+  el.textContent = text;
+  const ageHours = (Date.now() - new Date(isoString).getTime()) / 3600000;
+  const staleHours = Number(el.dataset.staleHours);
+  el.classList.add(ageHours > staleHours ? 'status-stale' : 'status-ok');
+}
+
 fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
   .then(r => r.json())
-  .then(d => document.getElementById('updated').textContent = 'Updated ' + d.updated)
+  .then(d => showTimestamp(document.getElementById('updated'), 'Updated ' + d.updated, d.updated_iso))
   .catch(() => {});
 
 fetch('model_version.json?t=' + Date.now(), { cache: 'no-store' })
   .then(r => r.json())
-  .then(d => document.getElementById('model-updated').textContent = 'Model trained ' + d.model_trained)
+  .then(d => showTimestamp(document.getElementById('model-updated'), 'Model trained ' + d.model_trained, d.model_trained_iso))
   .catch(() => {});
 
 function hardRefresh() {

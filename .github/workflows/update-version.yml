@@ -35,7 +35,7 @@ jobs:
       - name: Write version.json and stamp sw.js cache version
         if: steps.check.outputs.skip == 'false'
         run: |
-          echo "{\"updated\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\"}" > version.json
+          echo "{\"updated\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\", \"updated_iso\": \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" > version.json
           SHA=$(git rev-parse --short HEAD)
           sed -i "s/const CACHE = 'spanish-flashcards-[^']*'/const CACHE = 'spanish-flashcards-${SHA}'/" sw.js
 

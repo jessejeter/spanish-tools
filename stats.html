@@ -263,6 +263,16 @@ a.stat-card:active { opacity: 0.6; }
 </div>
 
 <script>
+// The zoom plugin's UMD script tag alone doesn't wire it into Chart.js —
+// it still needs an explicit registration. Its CDN build exposes the
+// plugin under different global names across versions, so check the
+// known candidates rather than assume one.
+(function registerZoomPlugin() {
+  const plugin = window.ChartZoom || window['chartjs-plugin-zoom'] || window.Zoom;
+  if (typeof Chart !== 'undefined' && plugin) Chart.register(plugin);
+  else console.warn('chartjs-plugin-zoom failed to load or register — pinch/wheel zoom will not work.');
+})();
+
 const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
 const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1&headers=1`;
 const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;

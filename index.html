@@ -378,10 +378,27 @@ body {
   border: 1px solid rgba(255,255,255,0.13);
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
+
+#midnight-warning {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9997;
+  background: var(--yellow);
+  color: #1a1a2e;
+  font-weight: 700;
+  font-size: 13px;
+  text-align: center;
+  padding: 10px 12px;
+  padding-top: max(10px, env(safe-area-inset-top));
+}
 </style>
 </head>
 <body>
 <div id="tl-tooltip"></div>
+<div id="midnight-warning"></div>
 
 <!-- Loading -->
 <div id="loading">
@@ -590,6 +607,22 @@ function formatTimer(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+const MIDNIGHT_WARNING_SECS = 120; // show the reset warning in the last 2 minutes of the day
+
+function updateMidnightWarning() {
+  const el = document.getElementById('midnight-warning');
+  if (!el) return;
+  const secsToMidnight = 86400 - secondsSinceMidnight();
+  if (secsToMidnight <= MIDNIGHT_WARNING_SECS) {
+    const m = Math.floor(secsToMidnight / 60);
+    const s = secsToMidnight % 60;
+    el.textContent = `⚠ Daily reset in ${m}:${String(s).padStart(2, '0')} — grade now to count today`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 let dayTimerSeconds = getDayTimer();
 let timerInterval = null;
 let timerTickStart = null;
@@ -603,12 +636,14 @@ const sessionDateStr = todayStr();
 function startTimer() {
   if (timerInterval) return;
   timerTickStart = Date.now();
+  updateMidnightWarning();
   timerInterval = setInterval(() => {
     if (todayStr() !== sessionDateStr) { location.reload(); return; }
     dayTimerSeconds++;
     saveDayTimer(dayTimerSeconds);
     const el = document.getElementById('day-timer');
     if (el) el.textContent = `Today: ${formatTimer(dayTimerSeconds)}`;
+    updateMidnightWarning();
   }, 1000);
 }
 

@@ -11,7 +11,6 @@
 <link rel="icon" type="image/png" href="icon-180.png">
 <title>Vocab Stats</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -263,16 +262,6 @@ a.stat-card:active { opacity: 0.6; }
 </div>
 
 <script>
-// The zoom plugin's UMD script tag alone doesn't wire it into Chart.js —
-// it still needs an explicit registration. Its CDN build exposes the
-// plugin under different global names across versions, so check the
-// known candidates rather than assume one.
-(function registerZoomPlugin() {
-  const plugin = window.ChartZoom || window['chartjs-plugin-zoom'] || window.Zoom;
-  if (typeof Chart !== 'undefined' && plugin) Chart.register(plugin);
-  else console.warn('chartjs-plugin-zoom failed to load or register — pinch/wheel zoom will not work.');
-})();
-
 const SPREADSHEET_ID = '14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc';
 const SHEET1_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1&headers=1`;
 const SHEET2_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet2`;
@@ -466,10 +455,17 @@ function monthTickIndices(labels, maxTicks = 8) {
   return new Set(firsts.filter((_, j) => j % step === 0));
 }
 
-function makeMonthLinesPlugin(monthIndices) {
+function makeMonthLinesPlugin() {
+  // Recomputes month-boundary indices from the chart's current labels on
+  // every draw (rather than a Set captured once at chart creation), so
+  // this stays correct as the zoom window below slices which labels are
+  // actually visible.
   return {
     id: 'monthLines',
     afterDraw(chart) {
+      const labels = chart.data.labels;
+      if (!labels?.length) return;
+      const monthIndices = monthTickIndices(labels);
       if (!monthIndices.size) return;
       const meta = chart.getDatasetMeta(0);
       if (!meta?.data?.length) return;
@@ -490,6 +486,80 @@ function makeMonthLinesPlugin(monthIndices) {
   };
 }
 
+// ---- Zoom/pan: pinch-to-zoom + tap-scrub-tooltip, without a plugin ----
+// chartjs-plugin-zoom's pinch handling goes through Hammer.js, which turned
+// out to be unreliable here (and its category-scale zoom math can collapse
+// the visible range to a single point under a fast pinch). Instead this
+// keeps a simple index window [start, end) into the full underlying data
+// and re-slices chart.data on zoom, which can't collapse below a sane
+// minimum and needs nothing beyond raw touch/wheel events — so it can't
+// fight the existing single-finger tap/drag-to-scrub tooltip gesture,
+// since it only ever engages on 2-finger touches or the wheel.
+function makeZoomWindow(n, onWindowChange) {
+  let start = 0, end = n;
+  const MIN_WINDOW = Math.min(5, n);
+  function zoomAt(frac, factor) {
+    const curLen = end - start;
+    const centerIdx = start + frac * curLen;
+    let newLen = Math.round(curLen / factor);
+    newLen = Math.max(MIN_WINDOW, Math.min(newLen, n));
+    let newStart = Math.round(centerIdx - frac * newLen);
+    newStart = Math.max(0, Math.min(newStart, n - newLen));
+    if (newStart === start && start + newLen === end) return;
+    start = newStart;
+    end = start + newLen;
+    onWindowChange(start, end);
+  }
+  function reset() {
+    if (start === 0 && end === n) return;
+    start = 0;
+    end = n;
+    onWindowChange(start, end);
+  }
+  return { zoomAt, reset };
+}
+
+function attachZoomGestures(canvas, controller) {
+  let pinchStartDist = null, pinchFrac = 0.5;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const fracOf = clientX => {
+    const rect = canvas.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  };
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      pinchStartDist = dist(e.touches);
+      pinchFrac = fracOf((e.touches[0].clientX + e.touches[1].clientX) / 2);
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || pinchStartDist == null) return;
+    const newDist = dist(e.touches);
+    const ratio = newDist / pinchStartDist;
+    if (Math.abs(ratio - 1) > 0.03) {
+      controller.zoomAt(pinchFrac, ratio);
+      pinchStartDist = newDist;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinchStartDist = null;
+  }, { passive: true });
+
+  let lastTapTime = 0;
+  canvas.addEventListener('touchend', e => {
+    if (e.touches.length > 0) return;
+    const now = Date.now();
+    if (now - lastTapTime < 350) controller.reset();
+    lastTapTime = now;
+  }, { passive: true });
+  canvas.addEventListener('dblclick', () => controller.reset());
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    controller.zoomAt(fracOf(e.clientX), e.deltaY < 0 ? 1.15 : 1 / 1.15);
+  }, { passive: false });
+}
+
 // ---- Chart defaults ----
 if (typeof Chart !== 'undefined') {
   Chart.defaults.color = '#8888aa';
@@ -502,6 +572,11 @@ const CHART_OPTS_BASE = {
   responsive: true,
   maintainAspectRatio: false,
   animation: false,
+  // 'index' + intersect:false: touching anywhere in a day's column shows
+  // that day's tooltip (not just a precise hit on the bar/point itself),
+  // and dragging continuously updates it column-by-column — including
+  // right out to the last (most recent) day at the chart's edge.
+  interaction: { mode: 'index', intersect: false },
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -510,18 +585,6 @@ const CHART_OPTS_BASE = {
       bodyColor: '#e4e4e4',
       borderColor: 'rgba(255,255,255,0.1)',
       borderWidth: 1,
-    },
-    zoom: {
-      // Pinch/wheel only — no single-finger drag-to-pan, since that's the
-      // same gesture already used to scrub across the chart and see the
-      // tooltip for each day. Double-tap/double-click resets (wired below).
-      zoom: {
-        wheel: { enabled: true },
-        pinch: { enabled: true },
-        mode: 'x',
-      },
-      pan: { enabled: false },
-      limits: { x: { min: 'original', max: 'original' } },
     },
   },
   scales: {
@@ -733,20 +796,19 @@ async function main() {
     }
     const cumCanvas = document.getElementById('chart-cumulative');
     cumCanvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-    const cumMonthIndices = monthTickIndices(cumLabels);
-    new Chart(cumCanvas, {
+    const cumChart = new Chart(cumCanvas, {
       type: 'line',
       data: {
-        labels: cumLabels,
+        labels: cumLabels.slice(),
         datasets: [
-          { label: 'Added',    data: cumAddedData,    borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-          { label: 'Reviewed', data: cumReviewedData, borderColor: '#e94560', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-          { label: 'Pending',  data: cumPendingData,  borderColor: '#f0c040', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+          { label: 'Added',    data: cumAddedData.slice(),    borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+          { label: 'Reviewed', data: cumReviewedData.slice(), borderColor: '#e94560', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+          { label: 'Pending',  data: cumPendingData.slice(),  borderColor: '#f0c040', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
         ],
       },
       options: deepMerge(CHART_OPTS_BASE, {
         interaction: { mode: 'index', intersect: false },
-        scales: { x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return cumMonthIndices.has(i) ? cumLabels[i]?.slice(0, 7) : null; } } } },
+        scales: { x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return monthTickIndices(this.chart.data.labels).has(i) ? this.chart.data.labels[i]?.slice(0, 7) : null; } } } },
         plugins: {
           legend: {
             display: true,
@@ -761,8 +823,15 @@ async function main() {
           },
         },
       }),
-      plugins: [crosshairPlugin, makeMonthLinesPlugin(cumMonthIndices)],
+      plugins: [crosshairPlugin, makeMonthLinesPlugin()],
     });
+    attachZoomGestures(cumCanvas, makeZoomWindow(cumLabels.length, (start, end) => {
+      cumChart.data.labels = cumLabels.slice(start, end);
+      cumChart.data.datasets[0].data = cumAddedData.slice(start, end);
+      cumChart.data.datasets[1].data = cumReviewedData.slice(start, end);
+      cumChart.data.datasets[2].data = cumPendingData.slice(start, end);
+      cumChart.update('none');
+    }));
 
     // ---- Chart 3: Words newly reviewed per day ----
     const wordsPerDay = {};
@@ -773,13 +842,13 @@ async function main() {
     if (Object.keys(wordsPerDay).length > 0) {
       const wpLabels = dateRange(globalStart, today);
       const wpCounts = wpLabels.map(d => wordsPerDay[d] || 0);
-      const wpMonthIndices = monthTickIndices(wpLabels);
-      new Chart(document.getElementById('chart-words-per-day'), {
+      const wpCanvas = document.getElementById('chart-words-per-day');
+      const wpChart = new Chart(wpCanvas, {
         type: 'bar',
         data: {
-          labels: wpLabels,
+          labels: wpLabels.slice(),
           datasets: [{
-            data: wpCounts,
+            data: wpCounts.slice(),
             backgroundColor: 'rgba(240,192,64,0.4)',
             borderColor: 'rgba(240,192,64,0.7)',
             borderWidth: 1,
@@ -787,10 +856,15 @@ async function main() {
           }],
         },
         options: deepMerge(CHART_OPTS_BASE, {
-          scales: { x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return wpMonthIndices.has(i) ? wpLabels[i]?.slice(0, 7) : null; } } } },
+          scales: { x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return monthTickIndices(this.chart.data.labels).has(i) ? this.chart.data.labels[i]?.slice(0, 7) : null; } } } },
         }),
-        plugins: [makeMonthLinesPlugin(wpMonthIndices)],
+        plugins: [makeMonthLinesPlugin()],
       });
+      attachZoomGestures(wpCanvas, makeZoomWindow(wpLabels.length, (start, end) => {
+        wpChart.data.labels = wpLabels.slice(start, end);
+        wpChart.data.datasets[0].data = wpCounts.slice(start, end);
+        wpChart.update('none');
+      }));
     }
 
     // ---- Chart 4: Daily reviews + Gaussian smooth ----
@@ -798,16 +872,16 @@ async function main() {
       const revLabels = dateRange(globalStart, today);
       const revCounts = revLabels.map(d => reviewsByDate[d] || 0);
       const smoothed  = gaussianSmooth(revLabels, reviewsByDate, 7);
-      const revMonthIndices = monthTickIndices(revLabels);
+      const revCanvas = document.getElementById('chart-reviews');
 
-      new Chart(document.getElementById('chart-reviews'), {
+      const revChart = new Chart(revCanvas, {
         type: 'bar',
         data: {
-          labels: revLabels,
+          labels: revLabels.slice(),
           datasets: [
             {
               type: 'bar',
-              data: revCounts,
+              data: revCounts.slice(),
               backgroundColor: 'rgba(78,204,163,0.35)',
               borderColor: 'rgba(78,204,163,0.6)',
               borderWidth: 1,
@@ -816,7 +890,7 @@ async function main() {
             },
             {
               type: 'line',
-              data: smoothed,
+              data: smoothed.slice(),
               borderColor: '#e94560',
               backgroundColor: 'transparent',
               borderWidth: 2,
@@ -841,11 +915,17 @@ async function main() {
             },
           },
           scales: {
-            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return revMonthIndices.has(i) ? revLabels[i]?.slice(0, 7) : null; } } },
+            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return monthTickIndices(this.chart.data.labels).has(i) ? this.chart.data.labels[i]?.slice(0, 7) : null; } } },
           },
         }),
-        plugins: [makeMonthLinesPlugin(revMonthIndices)],
+        plugins: [makeMonthLinesPlugin()],
       });
+      attachZoomGestures(revCanvas, makeZoomWindow(revLabels.length, (start, end) => {
+        revChart.data.labels = revLabels.slice(start, end);
+        revChart.data.datasets[0].data = revCounts.slice(start, end);
+        revChart.data.datasets[1].data = smoothed.slice(start, end);
+        revChart.update('none');
+      }));
     } else {
       document.getElementById('chart-reviews').parentElement.insertAdjacentHTML(
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No review history yet.</p>'
@@ -881,15 +961,15 @@ async function main() {
         return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
       }
 
-      const timeMonthIndices = monthTickIndices(timeLabels);
-      new Chart(document.getElementById('chart-time'), {
+      const timeCanvas = document.getElementById('chart-time');
+      const timeChart = new Chart(timeCanvas, {
         type: 'bar',
         data: {
-          labels: timeLabels,
+          labels: timeLabels.slice(),
           datasets: [
             {
               type: 'bar',
-              data: timeMinutes,
+              data: timeMinutes.slice(),
               backgroundColor: 'rgba(233,69,96,0.35)',
               borderColor: 'rgba(233,69,96,0.6)',
               borderWidth: 1,
@@ -898,7 +978,7 @@ async function main() {
             },
             {
               type: 'line',
-              data: timeSmoothed,
+              data: timeSmoothed.slice(),
               borderColor: '#f0c040',
               backgroundColor: 'transparent',
               borderWidth: 2,
@@ -924,12 +1004,18 @@ async function main() {
             },
           },
           scales: {
-            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return timeMonthIndices.has(i) ? timeLabels[i]?.slice(0, 7) : null; } } },
+            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return monthTickIndices(this.chart.data.labels).has(i) ? this.chart.data.labels[i]?.slice(0, 7) : null; } } },
             y: { ticks: { callback: v => `${Math.round(v)}m` } },
           },
         }),
-        plugins: [makeMonthLinesPlugin(timeMonthIndices)],
+        plugins: [makeMonthLinesPlugin()],
       });
+      attachZoomGestures(timeCanvas, makeZoomWindow(timeLabels.length, (start, end) => {
+        timeChart.data.labels = timeLabels.slice(start, end);
+        timeChart.data.datasets[0].data = timeMinutes.slice(start, end);
+        timeChart.data.datasets[1].data = timeSmoothed.slice(start, end);
+        timeChart.update('none');
+      }));
     } else {
       document.getElementById('chart-time').parentElement.insertAdjacentHTML(
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No time history yet.</p>'
@@ -952,22 +1038,24 @@ async function main() {
       document.getElementById('waa-callout').textContent =
         `Today: ${fmt(todayWAA)} · 7d avg: ${fmt(avg7WAA)}`;
 
-      const waaMonthIndices = monthTickIndices(waaLabels);
-      new Chart(document.getElementById('chart-waa'), {
+      const waaBg = v => v >= 0 ? 'rgba(78,204,163,0.45)' : 'rgba(233,69,96,0.45)';
+      const waaBorder = v => v >= 0 ? 'rgba(78,204,163,0.8)' : 'rgba(233,69,96,0.8)';
+      const waaCanvas = document.getElementById('chart-waa');
+      const waaChart = new Chart(waaCanvas, {
         type: 'bar',
         data: {
-          labels: waaLabels,
+          labels: waaLabels.slice(),
           datasets: [{
-            data: waaValues,
-            backgroundColor: waaValues.map(v => v >= 0 ? 'rgba(78,204,163,0.45)' : 'rgba(233,69,96,0.45)'),
-            borderColor: waaValues.map(v => v >= 0 ? 'rgba(78,204,163,0.8)' : 'rgba(233,69,96,0.8)'),
+            data: waaValues.slice(),
+            backgroundColor: waaValues.map(waaBg),
+            borderColor: waaValues.map(waaBorder),
             borderWidth: 1,
             borderRadius: 2,
           }],
         },
         options: deepMerge(CHART_OPTS_BASE, {
           scales: {
-            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return waaMonthIndices.has(i) ? waaLabels[i]?.slice(0, 7) : null; } } },
+            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return monthTickIndices(this.chart.data.labels).has(i) ? this.chart.data.labels[i]?.slice(0, 7) : null; } } },
             y: {
               min: -10,
               max: 10,
@@ -984,8 +1072,16 @@ async function main() {
             },
           },
         }),
-        plugins: [zeroLinePlugin, makeMonthLinesPlugin(waaMonthIndices)],
+        plugins: [zeroLinePlugin, makeMonthLinesPlugin()],
       });
+      attachZoomGestures(waaCanvas, makeZoomWindow(waaLabels.length, (start, end) => {
+        const slice = waaValues.slice(start, end);
+        waaChart.data.labels = waaLabels.slice(start, end);
+        waaChart.data.datasets[0].data = slice;
+        waaChart.data.datasets[0].backgroundColor = slice.map(waaBg);
+        waaChart.data.datasets[0].borderColor = slice.map(waaBorder);
+        waaChart.update('none');
+      }));
     } else {
       document.getElementById('chart-waa').parentElement.insertAdjacentHTML(
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No WAA history yet — start reviewing cards to track performance.</p>'
@@ -1076,7 +1172,8 @@ async function main() {
     calloutEl.textContent =
       `${under80Sod} words under 80% at start of day · ${under80Now} now · median shift: ${medianDeltaStr}`;
 
-    new Chart(document.getElementById('chart-recall-dist'), {
+    const recallDistCanvas = document.getElementById('chart-recall-dist');
+    const recallDistChart = new Chart(recallDistCanvas, {
       type: 'line',
       data: {
         datasets: [
@@ -1135,6 +1232,14 @@ async function main() {
       }),
       plugins: [threshold90Plugin],
     });
+    attachZoomGestures(recallDistCanvas, makeZoomWindow(kdeEval.length, (start, end) => {
+      const xs = kdeEval.slice(start, end);
+      recallDistChart.data.datasets[0].data = xs.map((x, j) => ({ x, y: kdeSod[start + j] }));
+      recallDistChart.data.datasets[1].data = xs.map((x, j) => ({ x, y: kdeNow[start + j] }));
+      recallDistChart.options.scales.x.min = xs[0];
+      recallDistChart.options.scales.x.max = xs[xs.length - 1];
+      recallDistChart.update('none');
+    }));
 
     // ---- Chart: P(Recall) CDF ----
     function empiricalCDF(pValues, evalPoints) {
@@ -1150,7 +1255,8 @@ async function main() {
     const cdfNow = empiricalCDF(pvNow, kdeEval);
     const cdfSod = empiricalCDF(pvSod, kdeEval);
 
-    new Chart(document.getElementById('chart-recall-cdf'), {
+    const recallCdfCanvas = document.getElementById('chart-recall-cdf');
+    const recallCdfChart = new Chart(recallCdfCanvas, {
       type: 'line',
       data: {
         datasets: [
@@ -1216,20 +1322,14 @@ async function main() {
       }),
       plugins: [threshold90Plugin],
     });
-
-    // ---- Double-tap / double-click a chart to reset its zoom ----
-    let lastTapTime = 0, lastTapCanvas = null;
-    for (const canvas of document.querySelectorAll('.chart-wrap canvas')) {
-      const chart = Chart.getChart(canvas);
-      if (!chart) continue;
-      canvas.addEventListener('dblclick', () => chart.resetZoom());
-      canvas.addEventListener('touchend', () => {
-        const now = Date.now();
-        if (lastTapCanvas === canvas && now - lastTapTime < 350) chart.resetZoom();
-        lastTapTime = now;
-        lastTapCanvas = canvas;
-      });
-    }
+    attachZoomGestures(recallCdfCanvas, makeZoomWindow(kdeEval.length, (start, end) => {
+      const xs = kdeEval.slice(start, end);
+      recallCdfChart.data.datasets[0].data = xs.map((x, j) => ({ x, y: cdfSod[start + j] }));
+      recallCdfChart.data.datasets[1].data = xs.map((x, j) => ({ x, y: cdfNow[start + j] }));
+      recallCdfChart.options.scales.x.min = xs[0];
+      recallCdfChart.options.scales.x.max = xs[xs.length - 1];
+      recallCdfChart.update('none');
+    }));
 
   } catch (err) {
     document.getElementById('loading').style.display = 'none';

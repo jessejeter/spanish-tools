@@ -468,10 +468,18 @@ const DAY_TIMER_KEY = 'spanish-flashcards-day-timer';
 const DAY_TIMER_HISTORY_KEY = 'spanish-flashcards-time-history';
 const MY_TIMER_HISTORY_KEY = 'spanish-flashcards-my-time-history'; // this device's raw seconds only
 
+function secondsSinceMidnight() {
+  const d = new Date();
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+}
+
 function getDayTimer() {
   try {
     const d = JSON.parse(localStorage.getItem(DAY_TIMER_KEY));
-    if (d && d.date === todayStr()) return d.seconds;
+    // Clamp to elapsed time since local midnight: today's active time can
+    // never exceed that, so this also self-heals a stale in-memory total
+    // that got carried across a midnight rollover and saved under today's date.
+    if (d && d.date === todayStr()) return Math.min(d.seconds, secondsSinceMidnight());
   } catch {}
   return 0;
 }
@@ -564,11 +572,18 @@ function formatTimer(seconds) {
 let dayTimerSeconds = getDayTimer();
 let timerInterval = null;
 let timerTickStart = null;
+// The calendar day this page load believes it is. If the real date ever
+// disagrees — whether the app was open straight through midnight, or was
+// backgrounded and resumed the next day — nothing else in this script
+// re-checks the date on its own, so reload to get a clean re-init instead
+// of silently carrying yesterday's counters into today.
+const sessionDateStr = todayStr();
 
 function startTimer() {
   if (timerInterval) return;
   timerTickStart = Date.now();
   timerInterval = setInterval(() => {
+    if (todayStr() !== sessionDateStr) { location.reload(); return; }
     dayTimerSeconds++;
     saveDayTimer(dayTimerSeconds);
     const el = document.getElementById('day-timer');
@@ -582,6 +597,7 @@ function stopTimer() {
 }
 
 document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && todayStr() !== sessionDateStr) { location.reload(); return; }
   if (document.hidden) stopTimer(); else startTimer();
 });
 

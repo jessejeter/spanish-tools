@@ -473,12 +473,33 @@ function secondsSinceMidnight() {
   return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
 }
 
+// One-time cleanup for a bug (fixed 2026-08-11) that let the day timer carry
+// seconds across a midnight rollover without resetting, so a pre-existing
+// "today" entry from before this fix landed is not trustworthy. A loose
+// elapsed-since-midnight bound isn't enough to catch this later in the day,
+// so just wipe today's entry outright, once, rather than try to guess.
+const DAY_TIMER_MIGRATION_KEY = 'spanish-flashcards-daytimer-migrated-20260811';
+function migrateDayTimerIfNeeded() {
+  if (localStorage.getItem(DAY_TIMER_MIGRATION_KEY)) return;
+  localStorage.setItem(DAY_TIMER_MIGRATION_KEY, '1');
+  const today = todayStr();
+  try {
+    localStorage.removeItem(DAY_TIMER_KEY);
+    const myHistory = JSON.parse(localStorage.getItem(MY_TIMER_HISTORY_KEY)) || {};
+    delete myHistory[today];
+    localStorage.setItem(MY_TIMER_HISTORY_KEY, JSON.stringify(myHistory));
+    const history = JSON.parse(localStorage.getItem(DAY_TIMER_HISTORY_KEY)) || {};
+    delete history[today];
+    localStorage.setItem(DAY_TIMER_HISTORY_KEY, JSON.stringify(history));
+  } catch {}
+}
+migrateDayTimerIfNeeded();
+
 function getDayTimer() {
   try {
     const d = JSON.parse(localStorage.getItem(DAY_TIMER_KEY));
-    // Clamp to elapsed time since local midnight: today's active time can
-    // never exceed that, so this also self-heals a stale in-memory total
-    // that got carried across a midnight rollover and saved under today's date.
+    // Clamp to elapsed time since local midnight as an ongoing sanity check
+    // (belt-and-suspenders alongside the day-rollover reload below).
     if (d && d.date === todayStr()) return Math.min(d.seconds, secondsSinceMidnight());
   } catch {}
   return 0;

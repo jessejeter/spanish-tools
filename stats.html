@@ -11,6 +11,7 @@
 <link rel="icon" type="image/png" href="icon-180.png">
 <title>Vocab Stats</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -163,7 +164,7 @@ a.stat-card:active { opacity: 0.6; }
   position: relative;
 }
 
-.chart-wrap canvas { display: block; }
+.chart-wrap canvas { display: block; touch-action: none; }
 </style>
 </head>
 <body>
@@ -499,6 +500,18 @@ const CHART_OPTS_BASE = {
       bodyColor: '#e4e4e4',
       borderColor: 'rgba(255,255,255,0.1)',
       borderWidth: 1,
+    },
+    zoom: {
+      // Pinch/wheel only — no single-finger drag-to-pan, since that's the
+      // same gesture already used to scrub across the chart and see the
+      // tooltip for each day. Double-tap/double-click resets (wired below).
+      zoom: {
+        wheel: { enabled: true },
+        pinch: { enabled: true },
+        mode: 'x',
+      },
+      pan: { enabled: false },
+      limits: { x: { min: 'original', max: 'original' } },
     },
   },
   scales: {
@@ -1193,6 +1206,20 @@ async function main() {
       }),
       plugins: [threshold90Plugin],
     });
+
+    // ---- Double-tap / double-click a chart to reset its zoom ----
+    let lastTapTime = 0, lastTapCanvas = null;
+    for (const canvas of document.querySelectorAll('.chart-wrap canvas')) {
+      const chart = Chart.getChart(canvas);
+      if (!chart) continue;
+      canvas.addEventListener('dblclick', () => chart.resetZoom());
+      canvas.addEventListener('touchend', () => {
+        const now = Date.now();
+        if (lastTapCanvas === canvas && now - lastTapTime < 350) chart.resetZoom();
+        lastTapTime = now;
+        lastTapCanvas = canvas;
+      });
+    }
 
   } catch (err) {
     document.getElementById('loading').style.display = 'none';

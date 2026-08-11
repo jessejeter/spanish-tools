@@ -510,13 +510,23 @@ function makeZoomWindow(n, onWindowChange) {
     end = start + newLen;
     onWindowChange(start, end);
   }
+  function panBy(deltaIndices) {
+    const curLen = end - start;
+    let newStart = Math.round(start + deltaIndices);
+    newStart = Math.max(0, Math.min(newStart, n - curLen));
+    if (newStart === start) return;
+    start = newStart;
+    end = start + curLen;
+    onWindowChange(start, end);
+  }
   function reset() {
     if (start === 0 && end === n) return;
     start = 0;
     end = n;
     onWindowChange(start, end);
   }
-  return { zoomAt, reset };
+  function state() { return { start, end }; }
+  return { zoomAt, panBy, reset, state };
 }
 
 function attachZoomGestures(canvas, controller) {
@@ -526,23 +536,52 @@ function attachZoomGestures(canvas, controller) {
     const rect = canvas.getBoundingClientRect();
     return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
   };
+
+  // Single-finger drag pans the zoom window (only takes effect once
+  // zoomed in — at full range there's nowhere to pan to, so this is a
+  // no-op and doesn't change the unzoomed tap/scrub-tooltip behavior at
+  // all). Chart.js's own tooltip handling keeps responding to the same
+  // touchmove events independently, so the value under your finger keeps
+  // updating live as the content shifts under it — same as an iOS Stocks-
+  // style chart, not either/or with panning.
+  let panStartX = null;
+
   canvas.addEventListener('touchstart', e => {
     if (e.touches.length === 2) {
       pinchStartDist = dist(e.touches);
       pinchFrac = fracOf((e.touches[0].clientX + e.touches[1].clientX) / 2);
+      panStartX = null;
+    } else if (e.touches.length === 1) {
+      panStartX = e.touches[0].clientX;
     }
   }, { passive: true });
+
   canvas.addEventListener('touchmove', e => {
-    if (e.touches.length !== 2 || pinchStartDist == null) return;
-    const newDist = dist(e.touches);
-    const ratio = newDist / pinchStartDist;
-    if (Math.abs(ratio - 1) > 0.03) {
-      controller.zoomAt(pinchFrac, ratio);
-      pinchStartDist = newDist;
+    if (e.touches.length === 2) {
+      panStartX = null;
+      if (pinchStartDist == null) return;
+      const newDist = dist(e.touches);
+      const ratio = newDist / pinchStartDist;
+      if (Math.abs(ratio - 1) > 0.03) {
+        controller.zoomAt(pinchFrac, ratio);
+        pinchStartDist = newDist;
+      }
+    } else if (e.touches.length === 1 && panStartX != null) {
+      const x = e.touches[0].clientX;
+      const deltaPixels = x - panStartX;
+      if (deltaPixels !== 0) {
+        const { start, end } = controller.state();
+        const rect = canvas.getBoundingClientRect();
+        const pixelsPerIndex = rect.width / (end - start);
+        controller.panBy(-deltaPixels / pixelsPerIndex);
+        panStartX = x;
+      }
     }
   }, { passive: true });
+
   canvas.addEventListener('touchend', e => {
     if (e.touches.length < 2) pinchStartDist = null;
+    if (e.touches.length < 1) panStartX = null;
   }, { passive: true });
 
   let lastTapTime = 0;

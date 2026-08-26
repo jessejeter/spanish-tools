@@ -12,6 +12,7 @@ Dependencies:
 import json
 import math
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -44,10 +45,18 @@ MIN_SAMPLES = 30  # skip training if fewer rows than this
 # Data fetching
 # ---------------------------------------------------------------------------
 
-def fetch_srs(url: str) -> dict:
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+def fetch_srs(url: str, retries: int = 3, timeout: int = 60) -> dict:
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.RequestException, ValueError):
+            if attempt == retries:
+                raise
+            wait = 5 * attempt
+            print(f"  fetch attempt {attempt} failed, retrying in {wait}s...")
+            time.sleep(wait)
 
 
 # ---------------------------------------------------------------------------

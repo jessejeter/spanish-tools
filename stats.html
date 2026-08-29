@@ -434,15 +434,21 @@ function gaussianSmooth(labels, countsByDate, bandwidth = 7) {
   const dataDates = Object.keys(countsByDate);
   if (!dataDates.length) return labels.map(() => null);
   const firstDataTime = Math.min(...dataDates.map(d => new Date(d).getTime()));
+  // Sum over every day in the full label range (not just Object.keys(countsByDate)),
+  // so days with zero activity contribute a v=0 term instead of being omitted
+  // from both the numerator and denominator - omitting them turns this into an
+  // average-over-active-days, which skews high whenever there are gap days.
   return labels.map(d => {
     const td = new Date(d).getTime();
     if (td < firstDataTime) return null;
     let sumW = 0, sumV = 0;
-    for (const [d2, v] of Object.entries(countsByDate)) {
-      const diff = (td - new Date(d2).getTime()) / 86400000;
+    for (const d2 of labels) {
+      const t2 = new Date(d2).getTime();
+      if (t2 < firstDataTime) continue;
+      const diff = (td - t2) / 86400000;
       const w = Math.exp(-(diff * diff) / (2 * bandwidth * bandwidth));
       sumW += w;
-      sumV += w * v;
+      sumV += w * (countsByDate[d2] || 0);
     }
     return sumW > 0 ? sumV / sumW : 0;
   });

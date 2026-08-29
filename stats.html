@@ -430,7 +430,7 @@ function clipToStart(labels, data, startDate) {
   return { labels: labels.slice(idx), data: data.slice(idx) };
 }
 
-function gaussianSmooth(labels, countsByDate, windowDays = 7) {
+function gaussianSmooth(labels, countsByDate, sigma = 7) {
   const dataDates = Object.keys(countsByDate);
   if (!dataDates.length) return labels.map(() => null);
   const firstDataTime = Math.min(...dataDates.map(d => new Date(d).getTime()));
@@ -438,14 +438,6 @@ function gaussianSmooth(labels, countsByDate, windowDays = 7) {
   // so days with zero activity contribute a v=0 term instead of being omitted
   // from both the numerator and denominator - omitting them turns this into an
   // average-over-active-days, which skews high whenever there are gap days.
-  //
-  // windowDays is the *intended* averaging width (e.g. 7 for a "7d avg"), not
-  // the Gaussian's sigma directly - using windowDays itself as sigma made the
-  // kernel decay far slower than the label implied (still ~14% weight 14 days
-  // out), so the line blended in about a month of history. Matching sigma to
-  // a boxcar of that width (variance W^2/12) keeps the curve smooth while
-  // making it actually track the stated window.
-  const sigma = windowDays / Math.sqrt(12);
   return labels.map(d => {
     const td = new Date(d).getTime();
     if (td < firstDataTime) return null;
@@ -919,7 +911,7 @@ async function main() {
               borderWidth: 2,
               pointRadius: 0,
               tension: 0.4,
-              label: '7d avg',
+              label: 'Gaussian smooth (σ=7)',
             },
           ],
         },
@@ -973,7 +965,7 @@ async function main() {
               borderWidth: 2,
               pointRadius: 0,
               tension: 0.4,
-              label: '7d avg',
+              label: 'Gaussian smooth (σ=7)',
             },
           ],
         },
@@ -1061,7 +1053,7 @@ async function main() {
               borderWidth: 2,
               pointRadius: 0,
               tension: 0.4,
-              label: '7d avg',
+              label: 'Gaussian smooth (σ=7)',
             },
           ],
         },

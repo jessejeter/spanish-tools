@@ -887,20 +887,43 @@ async function main() {
     if (Object.keys(wordsPerDay).length > 0) {
       const wpLabels = dateRange(globalStart, today);
       const wpCounts = wpLabels.map(d => wordsPerDay[d] || 0);
+      const wpSmoothed = gaussianSmooth(wpLabels, wordsPerDay, 7);
       const wpCanvas = document.getElementById('chart-words-per-day');
       const wpChart = new Chart(wpCanvas, {
         type: 'bar',
         data: {
           labels: wpLabels.slice(),
-          datasets: [{
-            data: wpCounts.slice(),
-            backgroundColor: 'rgba(240,192,64,0.4)',
-            borderColor: 'rgba(240,192,64,0.7)',
-            borderWidth: 1,
-            borderRadius: 2,
-          }],
+          datasets: [
+            {
+              type: 'bar',
+              data: wpCounts.slice(),
+              backgroundColor: 'rgba(240,192,64,0.4)',
+              borderColor: 'rgba(240,192,64,0.7)',
+              borderWidth: 1,
+              borderRadius: 2,
+              label: 'Words',
+            },
+            {
+              type: 'line',
+              data: wpSmoothed.slice(),
+              borderColor: '#e94560',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.4,
+              label: '7d avg',
+            },
+          ],
         },
         options: deepMerge(CHART_OPTS_BASE, {
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 } },
+            },
+          },
           scales: { x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return monthTickIndices(this.chart.data.labels).has(i) ? this.chart.data.labels[i]?.slice(0, 7) : null; } } } },
         }),
         plugins: [makeMonthLinesPlugin()],
@@ -908,6 +931,7 @@ async function main() {
       attachZoomGestures(wpCanvas, makeZoomWindow(wpLabels.length, (start, end) => {
         wpChart.data.labels = wpLabels.slice(start, end);
         wpChart.data.datasets[0].data = wpCounts.slice(start, end);
+        wpChart.data.datasets[1].data = wpSmoothed.slice(start, end);
         wpChart.update('none');
       }));
     }

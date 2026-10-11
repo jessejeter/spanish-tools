@@ -447,7 +447,9 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
     const nPlot = isToday ? nTotal : 0;
     const withN = forecastWithN(fc, nPlot);
     const avg = (a, i, j) => a.slice(i, j).reduce((s, v) => s + v.mean, 0) / (j - i);
+    const none = forecastWithN(fc, 0);
     const weekAvg = avg(withN, 1, 8);
+    const weekAvgNone = avg(none, 1, 8);
     const laterOver = [[8, 15], [15, 22], [22, 29]].filter(([i, j]) => avg(withN, i, j) > budget);
 
     const lines = [];
@@ -459,7 +461,10 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
       lines.push(`<span style="color:var(--accent);font-size:14px;">Hold off on new words today</span> — next week is already at ~${fmtMin(avg(forecastWithN(fc, 0), 1, 8))}/day`);
     }
     if (isToday) {
-      lines.push(`Today: ${fmtMin(todaySecs / 60)} so far of ~${fmtMin(fc.base.mean[0])} expected · Next 7 days: ~${fmtMin(weekAvg)}/day`);
+      lines.push(`Today: ${fmtMin(todaySecs / 60)} so far of ~${fmtMin(fc.base.mean[0])} expected`);
+      lines.push(nPlot > 0
+        ? `Next 7 days: ~${fmtMin(weekAvgNone)}/day adding none · ~${fmtMin(weekAvg)}/day adding ${nPlot}`
+        : `Next 7 days: ~${fmtMin(weekAvgNone)}/day adding none`);
       const tb = fc.today_breakdown;
       if (tb) {
         const parts = [`~${Math.round(tb.repeat_reviews)} reviews`];
@@ -475,13 +480,20 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
     }
     callout.innerHTML = lines.join('<br>');
 
+    // Bands are drawn as lo/hi pairs (hi fills down to lo); hidden from legend and tooltip
+    const band = (key, rows, color) => [
+      { label: `${key}-lo`, data: rows.map(x => x.lo), borderColor: 'transparent', pointRadius: 0, fill: false },
+      { label: `${key}-hi`, data: rows.map(x => x.hi), borderColor: 'transparent', backgroundColor: color, pointRadius: 0, fill: '-1' },
+    ];
     const datasets = [
-      { label: 'Low', data: withN.map(x => x.lo), borderColor: 'transparent', pointRadius: 0, fill: false },
-      { label: 'Range (80%)', data: withN.map(x => x.hi), borderColor: 'transparent', backgroundColor: 'rgba(78,204,163,0.15)', pointRadius: 0, fill: '-1' },
-      { label: nPlot > 0 ? 'With max new words' : 'Expected', data: withN.map(x => x.mean), borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+      ...band('band-none', none, 'rgba(240,192,64,0.12)'),
+      { label: 'Add none', data: none.map(x => x.mean), borderColor: '#f0c040', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
     ];
     if (nPlot > 0) {
-      datasets.push({ label: 'No new words', data: fc.base.mean, borderColor: '#8888aa', borderDash: [4, 3], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
+      datasets.push(
+        ...band('band-n', withN, 'rgba(78,204,163,0.12)'),
+        { label: `Add ${nPlot} today`, data: withN.map(x => x.mean), borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+      );
     }
     datasets.push({ label: 'Budget', data: labels.map(() => budget), borderColor: '#e94560', borderDash: [6, 4], backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0 });
 
@@ -493,15 +505,13 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
         plugins: {
           legend: {
             display: true, position: 'top', align: 'end',
-            labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 }, filter: item => item.text !== 'Low' },
+            labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 }, filter: item => !item.text.startsWith('band-') },
           },
           tooltip: {
-            filter: item => item.dataset.label !== 'Low',
+            filter: item => !item.dataset.label.startsWith('band-'),
             callbacks: {
               title: items => (items[0]?.dataIndex === 0 ? 'Today' : fc.days[items[0]?.dataIndex]) || '',
-              label: item => item.dataset.label === 'Range (80%)'
-                ? ` Range: ${fmtMin(withN[item.dataIndex].lo)}–${fmtMin(withN[item.dataIndex].hi)}`
-                : ` ${item.dataset.label}: ${fmtMin(item.raw)}`,
+              label: item => ` ${item.dataset.label}: ${fmtMin(item.raw)}`,
             },
           },
         },

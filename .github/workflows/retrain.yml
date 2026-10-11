@@ -23,12 +23,20 @@ jobs:
       - name: Run retraining
         run: python retrain.py
 
-      - name: Commit and push model weights
+      # Never blocks the model commit: if this fails, yesterday's forecast stays up
+      - name: Forecast daily review time
+        continue-on-error: true
+        run: python forecast.py
+
+      - name: Commit and push model weights and forecast
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet vocab_model.json frames_model.json && exit 0
-          echo "{\"model_trained\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\", \"model_trained_iso\": \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" > model_version.json
+          if ! git diff --quiet vocab_model.json frames_model.json; then
+            echo "{\"model_trained\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\", \"model_trained_iso\": \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" > model_version.json
+          fi
           git add vocab_model.json frames_model.json model_version.json
-          git commit -m "Update SRS model weights"
+          if [ -f forecast.json ]; then git add forecast.json; fi
+          git diff --cached --quiet && exit 0
+          git commit -m "Update SRS model weights and review forecast"
           git push

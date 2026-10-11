@@ -244,6 +244,17 @@ a.stat-card:active { opacity: 0.6; }
   </div>
 
   <div class="chart-section">
+    <div class="chart-title">Review Time Forecast (Next 30 Days)</div>
+    <div id="forecast-callout" style="font-size:12px;color:var(--text-dim);margin-bottom:8px;line-height:1.6;"></div>
+    <div class="chart-wrap"><canvas id="chart-forecast" height="180"></canvas></div>
+    <div id="forecast-foot" style="font-size:10px;color:var(--text-dim);opacity:0.7;margin-top:6px;line-height:1.6;">
+      Budget: <input id="forecast-budget" type="number" min="1" max="60" step="0.5"
+        style="width:44px;background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,0.15);border-radius:4px;padding:1px 4px;font-size:11px;"> min/day (avg over next 7 days)
+      <span id="forecast-meta"></span>
+    </div>
+  </div>
+
+  <div class="chart-section">
     <div class="chart-title">Daily WAA (Words Above Average)</div>
     <div id="waa-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
     <div class="chart-wrap"><canvas id="chart-waa" height="160"></canvas></div>
@@ -373,6 +384,135 @@ function getPRecallAt(data, refTime) {
 
 function getPRecall(data) {
   return getPRecallAt(data, Date.now());
+}
+
+// ---- Review time forecast (precomputed daily by forecast.py) ----
+const FORECAST_BUDGET_KEY = 'spanish-forecast-budget-min';
+
+async function loadForecast() {
+  try {
+    const res = await fetchWithTimeout('forecast.json', { cache: 'no-store' });
+    if (res.ok) return await res.json();
+  } catch {}
+  return null;
+}
+
+// Cards are scheduled independently, so N new cards add N × the per-card
+// expected minutes (and variance) on top of the no-new-cards baseline.
+function forecastWithN(fc, n) {
+  return fc.days.map((_, i) => {
+    const mean = fc.base.mean[i] + n * fc.per_new_card.mean[i];
+    const sd = Math.sqrt(fc.base.var[i] + n * fc.per_new_card.var[i]);
+    return { mean, lo: Math.max(0, mean - 1.2816 * sd), hi: mean + 1.2816 * sd };
+  });
+}
+
+function maxNewCards(fc, budget) {
+  const sum = a => a.slice(1, 8).reduce((s, v) => s + v, 0);
+  const perCard = sum(fc.per_new_card.mean);
+  if (perCard <= 0) return 0;
+  return Math.max(0, Math.floor((7 * budget - sum(fc.base.mean)) / perCard));
+}
+
+function renderForecast(fc, { sheetsToday, todaySecs }) {
+  const canvas = document.getElementById('chart-forecast');
+  const callout = document.getElementById('forecast-callout');
+  if (!fc) {
+    callout.textContent = 'Forecast not available yet — it is generated each morning after the model retrains.';
+    canvas.parentElement.style.display = 'none';
+    return;
+  }
+  const budgetInput = document.getElementById('forecast-budget');
+  let budget = fc.default_budget_min;
+  try { budget = parseFloat(localStorage.getItem(FORECAST_BUDGET_KEY)) || budget; } catch {}
+  budgetInput.value = budget;
+
+  const fmtMin = m => {
+    const mins = Math.floor(m), secs = Math.round((m - mins) * 60);
+    return secs === 60 ? `${mins + 1}:00` : `${mins}:${String(secs).padStart(2, '0')}`;
+  };
+  const labels = fc.days.map(d => d.slice(5));
+  const isToday = fc.today === todayStr();
+  const p = fc.params;
+  document.getElementById('forecast-meta').textContent =
+    ` · Forecast ${fc.generated_at.slice(0, 16).replace('T', ' ')} · ${p.sec_review.toFixed(1)}s/review, ` +
+    `${p.sec_first_review.toFixed(1)}s/first review`;
+
+  let chart = null;
+  function draw() {
+    // Words already marked in Sheets since the forecast ran use up today's allowance
+    const nTotal = maxNewCards(fc, budget);
+    const usedSinceRun = isToday ? Math.max(0, sheetsToday - fc.sheets_today_at_run) : 0;
+    const nMore = Math.max(0, nTotal - usedSinceRun);
+    const nPlot = isToday ? nTotal : 0;
+    const withN = forecastWithN(fc, nPlot);
+    const avg = (a, i, j) => a.slice(i, j).reduce((s, v) => s + v.mean, 0) / (j - i);
+    const weekAvg = avg(withN, 1, 8);
+    const laterOver = [[8, 15], [15, 22], [22, 29]].filter(([i, j]) => avg(withN, i, j) > budget);
+
+    const lines = [];
+    if (!isToday) {
+      lines.push(`<span style="color:var(--yellow)">Forecast is from ${fc.today} — it refreshes each morning.</span>`);
+    } else if (nMore > 0) {
+      lines.push(`<span style="color:var(--green);font-size:14px;">Review up to <b>${nMore}</b> more word${nMore === 1 ? '' : 's'} in Sheets today</span>`);
+    } else {
+      lines.push(`<span style="color:var(--accent);font-size:14px;">Hold off on new words today</span> — next week is already at ~${fmtMin(avg(forecastWithN(fc, 0), 1, 8))}/day`);
+    }
+    if (isToday) {
+      lines.push(`Today: ${fmtMin(todaySecs / 60)} so far of ~${fmtMin(fc.base.mean[0])} expected · Next 7 days: ~${fmtMin(weekAvg)}/day`);
+    }
+    if (laterOver.length) {
+      lines.push(`<span style="color:var(--yellow)">⚠ A later week is forecast above ${budget} min/day</span>`);
+    }
+    callout.innerHTML = lines.join('<br>');
+
+    const datasets = [
+      { label: 'Low', data: withN.map(x => x.lo), borderColor: 'transparent', pointRadius: 0, fill: false },
+      { label: 'Range (80%)', data: withN.map(x => x.hi), borderColor: 'transparent', backgroundColor: 'rgba(78,204,163,0.15)', pointRadius: 0, fill: '-1' },
+      { label: nPlot > 0 ? 'With max new words' : 'Expected', data: withN.map(x => x.mean), borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    ];
+    if (nPlot > 0) {
+      datasets.push({ label: 'No new words', data: fc.base.mean, borderColor: '#8888aa', borderDash: [4, 3], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
+    }
+    datasets.push({ label: 'Budget', data: labels.map(() => budget), borderColor: '#e94560', borderDash: [6, 4], backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0 });
+
+    if (chart) chart.destroy();
+    chart = new Chart(canvas, {
+      type: 'line',
+      data: { labels, datasets },
+      options: deepMerge(CHART_OPTS_BASE, {
+        plugins: {
+          legend: {
+            display: true, position: 'top', align: 'end',
+            labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 }, filter: item => item.text !== 'Low' },
+          },
+          tooltip: {
+            filter: item => item.dataset.label !== 'Low',
+            callbacks: {
+              title: items => (items[0]?.dataIndex === 0 ? 'Today' : fc.days[items[0]?.dataIndex]) || '',
+              label: item => item.dataset.label === 'Range (80%)'
+                ? ` Range: ${fmtMin(withN[item.dataIndex].lo)}–${fmtMin(withN[item.dataIndex].hi)}`
+                : ` ${item.dataset.label}: ${fmtMin(item.raw)}`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { drawOnChartArea: false }, ticks: { maxTicksLimit: 6 } },
+          y: { ticks: { callback: v => `${Math.round(v)}m` } },
+        },
+      }),
+      plugins: [crosshairPlugin],
+    });
+  }
+
+  budgetInput.addEventListener('change', () => {
+    const v = parseFloat(budgetInput.value);
+    if (!(v > 0)) return;
+    budget = v;
+    try { localStorage.setItem(FORECAST_BUDGET_KEY, String(v)); } catch {}
+    draw();
+  });
+  draw();
 }
 
 // ---- Load SRS ----
@@ -724,10 +864,11 @@ async function main() {
     if (typeof Chart === 'undefined') {
       throw new Error('Failed to load charting library. Check your connection and retry.');
     }
-    const [[s1, s2], srs] = await Promise.all([
+    const [[s1, s2], srs, , forecast] = await Promise.all([
       Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
       loadSRS(),
       loadSRSModel(),
+      loadForecast(),
     ]);
 
     // Build s2Map (same logic as index.html)
@@ -1089,6 +1230,13 @@ async function main() {
       document.getElementById('chart-time').parentElement.insertAdjacentHTML(
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No time history yet.</p>'
       );
+    }
+
+    // ---- Chart: Review time forecast ----
+    try {
+      renderForecast(forecast, { sheetsToday, todaySecs: timeHistory[today] || 0 });
+    } catch (e) {
+      console.error('forecast render failed', e);
     }
 
     // ---- Chart: Daily WAA ----

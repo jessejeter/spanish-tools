@@ -39,4 +39,6 @@ jobs:
           if [ -f forecast.json ]; then git add forecast.json; fi
           git diff --cached --quiet && exit 0
           git commit -m "Update SRS model weights and review forecast"
+          # Other bot workflows (version stamp, vocab sync) may have pushed meanwhile
+          git pull --rebase origin main
           git push

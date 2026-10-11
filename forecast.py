@@ -421,6 +421,15 @@ def main():
     fc, oc = simulate(model, state, avail, HORIZON_DAYS, session_hour, p_first, BASE_RUNS, rng)
     base_min = minutes(fc, oc)
 
+    # What makes up today's load: first reviews of words already in the app,
+    # and repeat reviews (which pile up when days are skipped)
+    last_study = max((r[0] for revs in reviews_by_card.values() for r in revs if r[0] < today_mid), default=None)
+    today_breakdown = {
+        "first_reviews": round(float(fc[:, 0].mean()), 1),
+        "repeat_reviews": round(float(oc[:, 0].mean() * factor), 1),
+        "last_study_date": last_study.date().isoformat() if last_study else None,
+    }
+
     # One new card, first shown tomorrow
     empty = {"last": np.zeros(1), "first": np.zeros(1), "nc": np.zeros(1), "nw": np.zeros(1)}
     nfc, noc = simulate(model, empty, np.array([1]), HORIZON_DAYS, session_hour, p_first, NEW_CARD_RUNS, rng)
@@ -435,6 +444,7 @@ def main():
         "default_budget_min": DEFAULT_BUDGET_MIN,
         "threshold": THRESHOLD,
         "sheets_today_at_run": sheets_today,
+        "today_breakdown": today_breakdown,
         "base": {
             "mean": r(base_min.mean(0)),
             "var": r(base_min.var(0)),
@@ -466,7 +476,7 @@ def main():
     week_base = sum(out["base"]["mean"][1:8])
     week_new = sum(out["per_new_card"]["mean"][1:8])
     n_max = max(0, int((7 * DEFAULT_BUDGET_MIN - week_base) // week_new)) if week_new > 0 else 0
-    print(f"\nToday: {out['base']['mean'][0]:.1f} min expected")
+    print(f"\nToday: {out['base']['mean'][0]:.1f} min expected  {today_breakdown}")
     print(f"Next 7 days avg, no new cards: {week_base / 7:.2f} min")
     print(f"Each new card adds {week_new / 7 * 60:.1f} s/day over the week")
     print(f"→ can add {n_max} cards today at {DEFAULT_BUDGET_MIN:g} min/day")

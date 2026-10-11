@@ -460,6 +460,15 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
     }
     if (isToday) {
       lines.push(`Today: ${fmtMin(todaySecs / 60)} so far of ~${fmtMin(fc.base.mean[0])} expected · Next 7 days: ~${fmtMin(weekAvg)}/day`);
+      const tb = fc.today_breakdown;
+      if (tb) {
+        const parts = [`~${Math.round(tb.repeat_reviews)} reviews`];
+        if (tb.first_reviews >= 1) parts.push(`${Math.round(tb.first_reviews)} first reviews`);
+        const yest = new Date(Date.now() - 86400000);
+        const yestStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+        if (tb.last_study_date && tb.last_study_date < yestStr) parts.push(`catching up since ${tb.last_study_date.slice(5)}`);
+        lines.push(`<span style="font-size:11px;opacity:0.8">Today = ${parts.join(' + ')}</span>`);
+      }
     }
     if (laterOver.length) {
       lines.push(`<span style="color:var(--yellow)">⚠ A later week is forecast above ${budget} min/day</span>`);

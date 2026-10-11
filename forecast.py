@@ -250,33 +250,46 @@ def fit_seconds(timer, first, other, today):
     }
 
 
-def backtest(model, reviews_by_card, today_mid, p_first, rng):
-    """One-day-ahead: predicted vs actual repeat reviews for each recent study day."""
-    rows = []
-    for k in range(BACKTEST_DAYS, 0, -1):
-        day_mid = today_mid - timedelta(days=k)
-        day_end = day_mid + timedelta(days=1)
-        day_revs = [r[0] for revs in reviews_by_card.values() for r in revs if day_mid <= r[0] < day_end]
-        if not day_revs:
+def backtest(model, reviews_by_card, today_mid, session_hour, p_first, rng):
+    """
+    Replay the last BACKTEST_DAYS: start from the deck as it was, add cards on
+    the days they were actually first reviewed, simulate daily clearing, and
+    compare repeat-review totals per week with what you actually did. Totals
+    are robust to skipped or partial days, which a day-by-day check is not.
+    """
+    start = today_mid - timedelta(days=BACKTEST_DAYS)
+    cards, avail = [], []
+    for c, revs in reviews_by_card.items():
+        if not revs or revs[0][0] >= today_mid:
             continue
-        session = min(day_revs)
-        cards = [c for c, revs in reviews_by_card.items() if revs and revs[0][0] < day_mid]
-        actual = sum(1 for c in cards for r in reviews_by_card[c] if day_mid <= r[0] < day_end)
-        state = card_state(reviews_by_card, cards, day_mid, day_mid)
-        hour = (session - day_mid).total_seconds() / 3600
-        _, other = simulate(model, state, np.zeros(len(cards), int), 1, hour, p_first, 20, rng)
-        rows.append((day_mid.date().isoformat(), actual, float(other.mean())))
-    if not rows:
+        cards.append(c)
+        avail.append(0 if revs[0][0] < start else (revs[0][0] - start).days)
+    if not cards:
         return 1.0, {"days": 0}
-    actual = np.array([r[1] for r in rows], float)
-    pred = np.array([r[2] for r in rows], float)
-    factor = float(actual.sum() / pred.sum()) if pred.sum() > 0 else 1.0
+    state = card_state(reviews_by_card, cards, start, start)
+    _, oc = simulate(model, state, np.array(avail), BACKTEST_DAYS, session_hour, p_first, 40, rng)
+    sim = oc.mean(0)
+
+    actual = np.zeros(BACKTEST_DAYS)
+    studied = set()
+    for c in cards:
+        for i, (dt, _) in enumerate(reviews_by_card[c]):
+            k = (dt - start).days
+            if 0 <= k < BACKTEST_DAYS:
+                studied.add(k)
+                if i > 0:
+                    actual[k] += 1
+    factor = float(actual.sum() / sim.sum()) if sim.sum() > 0 else 1.0
+    weeks = [{"week_start": (start + timedelta(days=w)).date().isoformat(),
+              "actual": int(actual[w:w + 7].sum()),
+              "simulated": round(float(factor * sim[w:w + 7].sum()), 1)}
+             for w in range(0, BACKTEST_DAYS, 7)]
     return factor, {
-        "days": len(rows),
-        "actual_mean": round(float(actual.mean()), 1),
-        "predicted_mean_raw": round(float(pred.mean()), 1),
-        "mean_abs_err_calibrated": round(float(np.mean(np.abs(actual - factor * pred))), 1),
-        "by_day": [{"date": d, "actual": a, "predicted": round(factor * p, 1)} for d, a, p in rows],
+        "days": BACKTEST_DAYS,
+        "days_studied": len(studied),
+        "actual_repeat_reviews": int(actual.sum()),
+        "simulated_repeat_reviews_raw": round(float(sim.sum()), 1),
+        "by_week": weeks,
     }
 
 
@@ -393,9 +406,9 @@ def main():
     print(f"Seconds per first review: {sec_first:.1f}, per review: {sec_review:.1f}  {fit_info}")
 
     rng = np.random.default_rng(42)
-    factor, bt = backtest(model, reviews_by_card, today_mid, p_first, rng)
-    print(f"Backtest: {bt.get('days')} days, review factor {factor:.2f}, "
-          f"actual mean {bt.get('actual_mean')}, calibrated MAE {bt.get('mean_abs_err_calibrated')}")
+    factor, bt = backtest(model, reviews_by_card, today_mid, session_hour, p_first, rng)
+    print(f"Backtest: studied {bt.get('days_studied')}/{bt.get('days')} days, review factor {factor:.2f}, "
+          f"by week (actual vs calibrated sim): {bt.get('by_week')}")
 
     decay = decay_check(model, reviews_by_card, today_mid)
     print(f"Decay check: {decay}")

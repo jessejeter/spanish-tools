@@ -874,11 +874,10 @@ function updateCounter() {
   const { newDone, newRemaining } = computeSessionStats();
   const parts = [];
 
-  if (newDone > 0 || newRemaining > 0) {
-    const total = newDone + newRemaining;
-    const done = newRemaining === 0;
-    parts.push(`<span style="color:${done ? 'var(--green)' : 'inherit'}">New ${newDone}/${total}</span>`);
-  }
+  // Always shown, including "New 0/0" on days with no new cards
+  const total = newDone + newRemaining;
+  const done = newRemaining === 0;
+  parts.push(`<span style="color:${done ? 'var(--green)' : 'inherit'}">New ${newDone}/${total}</span>`);
 
   const srs = getSRS();
   const now = Date.now();

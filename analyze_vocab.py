@@ -460,6 +460,52 @@ def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
     )
 
 
+def find_new_sheet1_rows(csv_rows, sheet1_rows):
+    """
+    CSV rows (one per saved SpanishDict meaning) that aren't in Sheet1 yet.
+
+    A word can have several meanings, so a CSV row counts as already present
+    when Sheet1 has the same Spanish word with:
+      - the same English, or
+      - the same date added (the same saved meaning, English edited in the sheet), or
+      - the same part of speech, a date within a day (older rows were dated in
+        UTC) and near-identical English ("work day" vs "working day").
+    CSV columns: [Date Added, Spanish, English, Part of Speech, Popularity]
+    """
+    from difflib import SequenceMatcher
+
+    def norm(v):
+        return (v or "").strip().lower()
+
+    existing = {}  # spanish -> [(english, date, pos)]
+    for row in sheet1_rows[1:]:  # skip header
+        row = row + [""] * (4 - len(row))
+        if row[1].strip():
+            existing.setdefault(norm(row[1]), []).append((norm(row[2]), parse_date(row[0]), norm(row[3])))
+
+    def present(spanish, english, date, pos):
+        for e_eng, e_date, e_pos in existing.get(spanish, []):
+            if english == e_eng or (date != datetime.min and date == e_date):
+                return True
+            if (pos == e_pos and date != datetime.min and e_date != datetime.min
+                    and abs((date - e_date).days) <= 1
+                    and SequenceMatcher(None, english, e_eng).ratio() >= 0.75):
+                return True
+        return False
+
+    new_rows = []
+    for row in csv_rows:
+        if len(row) < 3 or not row[1].strip():
+            continue
+        row4 = row + [""] * (4 - len(row))
+        spanish, english, date, pos = norm(row[1]), norm(row[2]), parse_date(row[0]), norm(row4[3])
+        if present(spanish, english, date, pos):
+            continue
+        existing.setdefault(spanish, []).append((english, date, pos))  # same meaning saved in two lists
+        new_rows.append(row)
+    return new_rows
+
+
 def sync_csv_to_sheet1(service):
     """Sync new words from the CSV to Sheet1, appending any missing entries."""
     if not CSV_FILE.exists():
@@ -474,17 +520,7 @@ def sync_csv_to_sheet1(service):
 
     # Read current Sheet1
     sheet1_rows = read_sheet(service, "Sheet1!A:E")
-    existing_words = set()
-    for row in sheet1_rows[1:]:  # skip header
-        if len(row) >= 2 and row[1]:
-            existing_words.add(row[1].strip())
-
-    # Find new words in CSV not in Sheet1
-    # CSV columns: [Date Added, Spanish, English, Part of Speech, Popularity]
-    new_rows = []
-    for row in csv_rows:
-        if len(row) >= 2 and row[1].strip() not in existing_words:
-            new_rows.append(row)
+    new_rows = find_new_sheet1_rows(csv_rows, sheet1_rows)
 
     if not new_rows:
         print("Sheet1 is up to date with CSV")

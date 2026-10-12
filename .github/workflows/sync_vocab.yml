@@ -30,6 +30,8 @@ jobs:
           git diff --quiet spanishdict_vocab.csv && exit 0
           git add spanishdict_vocab.csv
           git commit -m "Update vocabulary data"
+          # Other bot workflows (version stamp, retrain) may have pushed meanwhile
+          git pull --rebase origin main
           git push
 
       - name: Install analysis dependencies

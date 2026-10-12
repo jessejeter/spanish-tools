@@ -342,16 +342,53 @@ async function loadSRSModel() {
   } catch {}
 }
 
+// The model is compiled once into flat arrays and plain loops: the app calls
+// this thousands of times per load, and an ensemble multiplies that by its size.
+const _compiledNN = new WeakMap();
 function nnForward(features, model) {
-  let a = features.map((v, i) => (v - model.scaler_mean[i]) / model.scaler_std[i]);
-  for (let l = 0; l < model.weights.length; l++) {
-    const W = model.weights[l], b = model.biases[l];
-    const z = b.map((bi, j) => bi + a.reduce((s, ai, k) => s + ai * W[k][j], 0));
-    a = l < model.weights.length - 1
-      ? z.map(v => Math.max(0, v))
-      : z.map(v => 1 / (1 + Math.exp(-Math.max(-20, Math.min(20, v)))));
-  }
-  return a[0];
+  let run = _compiledNN.get(model);
+  if (!run) { run = compileNN(model); _compiledNN.set(model, run); }
+  return run(features);
+}
+
+// Ensemble: average the members' predictions (retrain.py trains several to keep nightly updates stable)
+function compileNN(model) {
+  const members = (model.ensemble?.length ? model.ensemble : [model]).map(m => ({
+    mean: Float64Array.from(m.scaler_mean),
+    std: Float64Array.from(m.scaler_std),
+    layers: m.weights.map((W, l) => ({
+      nIn: W.length, nOut: W[0].length,
+      W: Float64Array.from(W.flat()), b: Float64Array.from(m.biases[l]),
+    })),
+  }));
+  const width = Math.max(...members.flatMap(m => m.layers.map(L => Math.max(L.nIn, L.nOut))));
+  const bufA = new Float64Array(width), bufB = new Float64Array(width);
+  // Flatten everything into per-member arrays so the hot loop touches only numbers
+  const K = members.length, nLayers = members[0].layers.length;
+  const means = members.map(m => m.mean), stds = members.map(m => m.std);
+  const Ws = members.map(m => m.layers.map(L => L.W)), bs = members.map(m => m.layers.map(L => L.b));
+  const nIns = members[0].layers.map(L => L.nIn), nOuts = members[0].layers.map(L => L.nOut);
+  return features => {
+    let sum = 0;
+    const nF = features.length;
+    for (let e = 0; e < K; e++) {
+      let a = bufA, z = bufB;
+      const mean = means[e], std = stds[e];
+      for (let i = 0; i < nF; i++) a[i] = (features[i] - mean[i]) / std[i];
+      for (let l = 0; l < nLayers; l++) {
+        const W = Ws[e][l], b = bs[e][l], nIn = nIns[l], nOut = nOuts[l];
+        const last = l === nLayers - 1;
+        for (let j = 0; j < nOut; j++) {
+          let s = b[j];
+          for (let k = 0, w = j; k < nIn; k++, w += nOut) s += a[k] * W[w];
+          z[j] = last ? 1 / (1 + Math.exp(-(s < -20 ? -20 : s > 20 ? 20 : s))) : (s > 0 ? s : 0);
+        }
+        const t = a; a = z; z = t;
+      }
+      sum += a[0];
+    }
+    return sum / K;
+  };
 }
 
 function getPRecallAt(data, refTime) {
@@ -579,6 +616,35 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
     draw();
   });
   draw();
+}
+
+// Review history is keyed per card ("spanish: english") so each meaning of a
+// word has its own; the meaning that owned a word's older Spanish-keyed record
+// keeps it (srs_keys.json pins which one). Same as index.html.
+function cardId(spanish, english) {
+  return `${spanish.trim()}: ${english.trim()}`.toLowerCase();
+}
+
+async function loadSrsOwners() {
+  try {
+    const res = await fetch('srs_keys.json');
+    if (res.ok) return await res.json();
+  } catch {}
+  return {};
+}
+
+function assignSrsKeys(cards, srs, owners) {
+  const idsBySpanish = {};
+  for (const c of cards) {
+    c.id = cardId(c.spanish, c.english);
+    (idsBySpanish[c.spanish] = idsBySpanish[c.spanish] || []).push(c.id);
+  }
+  for (const c of cards) {
+    const ids = idsBySpanish[c.spanish];
+    let owner = owners[c.spanish];
+    if (!ids.includes(owner)) owner = srs[c.spanish] ? ids[0] : undefined;
+    c.key = owner === c.id ? c.spanish : c.id;
+  }
 }
 
 // ---- Load SRS ----
@@ -930,11 +996,12 @@ async function main() {
     if (typeof Chart === 'undefined') {
       throw new Error('Failed to load charting library. Check your connection and retry.');
     }
-    const [[s1, s2], srs, , forecast] = await Promise.all([
+    const [[s1, s2], srs, , forecast, srsOwners] = await Promise.all([
       Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
       loadSRS(),
       loadSRSModel(),
       loadForecast(),
+      loadSrsOwners(),
     ]);
 
     // Build s2Map (same logic as index.html)
@@ -962,11 +1029,13 @@ async function main() {
       const isReviewed = (s2row[2] || '').toUpperCase() === 'TRUE';
 
       if (isReviewed) {
-        reviewed.push({ spanish, dateAdded, dateReviewed: parseMDY(s2row[3] || '') });
+        reviewed.push({ spanish, english, dateAdded, dateReviewed: parseMDY(s2row[3] || '') });
       } else {
         pending.push({ spanish, dateAdded });
       }
     }
+
+    assignSrsKeys(reviewed, srs, srsOwners);
 
     // ---- Stats ----
     const totalCards = reviewed.length;
@@ -975,7 +1044,7 @@ async function main() {
 
     let lowRecall = 0, sheetsToday = 0, newInApp = 0, activeCount = 0, retiredCount = 0;
     for (const card of reviewed) {
-      const data = srs[card.spanish];
+      const data = srs[card.key];
       if (data?.retired) { retiredCount++; continue; }
       if (!data?.reviews?.length) {
         if (card.dateReviewed === today) { sheetsToday++; } else { newInApp++; }
@@ -1381,7 +1450,7 @@ async function main() {
       const pValues = [];
       let under80 = 0;
       for (const card of reviewed) {
-        const data = srs[card.spanish];
+        const data = srs[card.key];
         if (!data || data.retired || !(data.reviews || []).filter(r => new Date(r.date) < refTime).length) continue;
         const p = getPRecallAt(data, refTime);
         if (p === null) continue;
@@ -1416,7 +1485,7 @@ async function main() {
     // Median P(recall) shift from start of day to now
     const deltas = [];
     for (const card of reviewed) {
-      const data = srs[card.spanish];
+      const data = srs[card.key];
       if (!data || data.retired) continue;
       const pNow = getPRecallAt(data, Date.now());
       const pSod = getPRecallAt(data, startOfDay);

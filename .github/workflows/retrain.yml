@@ -2,9 +2,16 @@ name: Retrain SRS Model
 
 on:
   schedule:
-    # 9 AM UTC daily — runs after the vocab sync (8 AM UTC) so training data is fresh
-    - cron: "0 9 * * *"
+    # GitHub starts scheduled runs late — often hours late, worst on the hour —
+    # so ask several times overnight at an off-peak minute (05:17-10:17 UTC =
+    # 1:17-6:17 AM EDT / 12:17-5:17 AM EST). The first slot to actually start
+    # does the work; the rest see today's forecast and stop.
+    - cron: "17 5-10 * * *"
   workflow_dispatch: # Allow manual runs from GitHub UI
+
+# Overlapping slots queue behind each other instead of both retraining
+concurrency:
+  group: retrain
 
 jobs:
   retrain:
@@ -13,22 +20,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip if today's run already happened
+        id: guard
+        if: github.event_name == 'schedule'
+        run: |
+          TODAY=$(TZ=America/New_York date +%F)
+          if [ -f forecast.json ] && grep -q "\"today\": \"$TODAY\"" forecast.json; then
+            echo "Forecast for $TODAY already exists; nothing to do"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
         with:
           python-version: "3.12"
 
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: pip install requests numpy scikit-learn
 
       - name: Run retraining
+        if: steps.guard.outputs.skip != 'true'
         run: python retrain.py
 
       # Never blocks the model commit: if this fails, yesterday's forecast stays up
       - name: Forecast daily review time
+        if: steps.guard.outputs.skip != 'true'
         continue-on-error: true
         run: python forecast.py
 
       - name: Commit and push model weights and forecast
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

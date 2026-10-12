@@ -633,8 +633,11 @@ let timerTickStart = null;
 // of silently carrying yesterday's counters into today.
 const sessionDateStr = todayStr();
 
+// Only count time once the cards are on screen, not while the deck is loading
+let appReady = false;
+
 function startTimer() {
-  if (timerInterval) return;
+  if (timerInterval || !appReady) return;
   timerTickStart = Date.now();
   updateMidnightWarning();
   timerInterval = setInterval(() => {
@@ -657,8 +660,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopTimer(); else startTimer();
 });
 
-// Start immediately if page is visible and initialize display
-if (!document.hidden) startTimer();
+// The timer starts in showApp(), once loading finishes; just initialize the display here
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('day-timer');
   if (el) el.textContent = `Today: ${formatTimer(dayTimerSeconds)}`;
@@ -714,12 +716,44 @@ async function fetchSheet(url) {
   return parseGvizJson(await res.text());
 }
 
+// Review history is keyed per card ("spanish: english") so each meaning of a
+// word has its own. Before that it was keyed by the Spanish word alone; the
+// meaning that owns such a record keeps using it (srs_keys.json pins which
+// one), so no existing history moves.
+function cardId(spanish, english) {
+  return `${spanish.trim()}: ${english.trim()}`.toLowerCase();
+}
+
+async function loadSrsOwners() {
+  try {
+    const res = await fetchWithTimeout('srs_keys.json');
+    if (res.ok) return await res.json();
+  } catch {}
+  return {};
+}
+
+function assignSrsKeys(cards, srs, owners) {
+  const idsBySpanish = {};
+  for (const c of cards) {
+    c.id = cardId(c.spanish, c.english);
+    (idsBySpanish[c.spanish] = idsBySpanish[c.spanish] || []).push(c.id);
+  }
+  for (const c of cards) {
+    const ids = idsBySpanish[c.spanish];
+    // Fall back to the first meaning if the pinned one is gone (e.g. its English was edited)
+    let owner = owners[c.spanish];
+    if (!ids.includes(owner)) owner = srs[c.spanish] ? ids[0] : undefined;
+    c.key = owner === c.id ? c.spanish : c.id;
+  }
+}
+
 async function loadData() {
   try {
-    const [[s1, s2]] = await Promise.all([
+    const [[s1, s2], , , srsOwners] = await Promise.all([
       Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
       syncRemoteSRS(),
       loadSRSModel(),
+      loadSrsOwners(),
     ]);
 
     const s2Map = {};
@@ -758,6 +792,7 @@ async function loadData() {
       throw new Error('No reviewed words found. Mark words as reviewed in Sheet2 column C.');
     }
 
+    assignSrsKeys(cards, getSRS(), srsOwners);
     allCards = cards;
     recomputeTodayWAA();
     recomputeAllWAAHistory();
@@ -813,7 +848,7 @@ function computeSessionStats() {
   let newDone = 0, newRemaining = 0;
 
   for (const card of allCards) {
-    const data = srs[card.spanish];
+    const data = srs[card.key];
     if (data?.retired) continue;
     if (card.dateAdded === today) continue;
     if (card.dateReviewed === today) continue;
@@ -847,9 +882,9 @@ function updateCounter() {
 
   const srs = getSRS();
   const now = Date.now();
-  const inHoldout = c => recentFails[c.spanish] && now - recentFails[c.spanish] < 2 * 60 * 1000;
+  const inHoldout = c => recentFails[c.key] && now - recentFails[c.key] < 2 * 60 * 1000;
   const holdout = allCards.filter(inHoldout).length;
-  const under90 = allCards.filter(c => !srs[c.spanish]?.retired && c.dateReviewed !== todayStr() && srs[c.spanish]?.reviews?.length > 0 && !inHoldout(c) && getPRecall(srs[c.spanish]) < 0.9).length;
+  const under90 = allCards.filter(c => !srs[c.key]?.retired && c.dateReviewed !== todayStr() && srs[c.key]?.reviews?.length > 0 && !inHoldout(c) && getPRecall(srs[c.key]) < 0.9).length;
   const todayWAA = getDailyWAA()[todayStr()] || 0;
   const waaSign = todayWAA >= 0 ? '+' : '';
   const waaColor = todayWAA >= 0 ? 'var(--green)' : 'var(--red)';
@@ -1056,16 +1091,53 @@ async function loadSRSModel() {
 
 // Forward pass through the stored MLP weights.
 // weights[l] has shape [in, out]; biases[l] has shape [out].
+// The model is compiled once into flat arrays and plain loops: the app calls
+// this thousands of times per load, and an ensemble multiplies that by its size.
+const _compiledNN = new WeakMap();
 function nnForward(features, model) {
-  let a = features.map((v, i) => (v - model.scaler_mean[i]) / model.scaler_std[i]);
-  for (let l = 0; l < model.weights.length; l++) {
-    const W = model.weights[l], b = model.biases[l];
-    const z = b.map((bi, j) => bi + a.reduce((s, ai, k) => s + ai * W[k][j], 0));
-    a = l < model.weights.length - 1
-      ? z.map(v => Math.max(0, v))                              // ReLU hidden
-      : z.map(v => 1 / (1 + Math.exp(-Math.max(-20, Math.min(20, v)))));  // sigmoid output
-  }
-  return a[0];
+  let run = _compiledNN.get(model);
+  if (!run) { run = compileNN(model); _compiledNN.set(model, run); }
+  return run(features);
+}
+
+// Ensemble: average the members' predictions (retrain.py trains several to keep nightly updates stable)
+function compileNN(model) {
+  const members = (model.ensemble?.length ? model.ensemble : [model]).map(m => ({
+    mean: Float64Array.from(m.scaler_mean),
+    std: Float64Array.from(m.scaler_std),
+    layers: m.weights.map((W, l) => ({
+      nIn: W.length, nOut: W[0].length,
+      W: Float64Array.from(W.flat()), b: Float64Array.from(m.biases[l]),
+    })),
+  }));
+  const width = Math.max(...members.flatMap(m => m.layers.map(L => Math.max(L.nIn, L.nOut))));
+  const bufA = new Float64Array(width), bufB = new Float64Array(width);
+  // Flatten everything into per-member arrays so the hot loop touches only numbers
+  const K = members.length, nLayers = members[0].layers.length;
+  const means = members.map(m => m.mean), stds = members.map(m => m.std);
+  const Ws = members.map(m => m.layers.map(L => L.W)), bs = members.map(m => m.layers.map(L => L.b));
+  const nIns = members[0].layers.map(L => L.nIn), nOuts = members[0].layers.map(L => L.nOut);
+  return features => {
+    let sum = 0;
+    const nF = features.length;
+    for (let e = 0; e < K; e++) {
+      let a = bufA, z = bufB;
+      const mean = means[e], std = stds[e];
+      for (let i = 0; i < nF; i++) a[i] = (features[i] - mean[i]) / std[i];
+      for (let l = 0; l < nLayers; l++) {
+        const W = Ws[e][l], b = bs[e][l], nIn = nIns[l], nOut = nOuts[l];
+        const last = l === nLayers - 1;
+        for (let j = 0; j < nOut; j++) {
+          let s = b[j];
+          for (let k = 0, w = j; k < nIn; k++, w += nOut) s += a[k] * W[w];
+          z[j] = last ? 1 / (1 + Math.exp(-(s < -20 ? -20 : s > 20 ? 20 : s))) : (s > 0 ? s : 0);
+        }
+        const t = a; a = z; z = t;
+      }
+      sum += a[0];
+    }
+    return sum / K;
+  };
 }
 
 function getPRecall(data, displayOnly = false) {
@@ -1137,7 +1209,7 @@ function computePFromHistory(prevReviews, refTimeMs) {
 function weightedRandom(cards, srs) {
   // Weight = (1 - P(recall))^2: squaring strongly favors low-recall cards.
   // A 90% card is 81x less likely to be picked than a 10% card.
-  const weights = cards.map(c => Math.pow(1 - getPRecall(srs[c.spanish]), 2));
+  const weights = cards.map(c => Math.pow(1 - getPRecall(srs[c.key]), 2));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total === 0) return cards[Math.floor(Math.random() * cards.length)];
   let r = Math.random() * total;
@@ -1157,17 +1229,17 @@ function pickNextCard() {
   // Eligible = not retired, not added today, not marked reviewed in sheet today,
   // not the just-graded card, not in the 2-minute fail holdout
   const eligible = allCards.filter(c => {
-    if (srs[c.spanish]?.retired) return false;
+    if (srs[c.key]?.retired) return false;
     if (c.dateAdded === today) return false;
     if (c.dateReviewed === today) return false;
-    if (c.spanish === currentCard?.spanish) return false;
-    if (recentFails[c.spanish] && Date.now() - recentFails[c.spanish] < FAIL_HOLDOUT_MS) return false;
+    if (c.spanish === currentCard?.spanish) return false;  // not even another meaning of the same word
+    if (recentFails[c.key] && Date.now() - recentFails[c.key] < FAIL_HOLDOUT_MS) return false;
     return true;
   });
   if (!eligible.length) return null;
 
   // 1. New words first (never reviewed), in sheet order
-  const unreviewed = eligible.filter(c => !srs[c.spanish]?.reviews?.length);
+  const unreviewed = eligible.filter(c => !srs[c.key]?.reviews?.length);
   if (unreviewed.length) return unreviewed[0];
 
   // 2. Every 5th card: random sample from full eligible set (forces broad data collection)
@@ -1177,10 +1249,13 @@ function pickNextCard() {
     return eligible[Math.floor(Math.random() * eligible.length)];
   }
 
-  // 3. Otherwise pick the card with lowest P(recall)
-  return eligible.reduce((best, c) =>
-    getPRecall(srs[c.spanish]) < getPRecall(srs[best.spanish]) ? c : best
-  );
+  // 3. Otherwise pick the card with lowest P(recall) (each card scored once)
+  let best = eligible[0], bestP = getPRecall(srs[best.key]);
+  for (let i = 1; i < eligible.length; i++) {
+    const p = getPRecall(srs[eligible[i].key]);
+    if (p < bestP) { best = eligible[i]; bestP = p; }
+  }
+  return best;
 }
 
 // ---- Review Recording ----
@@ -1225,7 +1300,7 @@ function nowStr() {
 // ---- UI ----
 function showEmpty() {
   const srs = getSRS();
-  const allRetired = allCards.every(c => srs[c.spanish]?.retired);
+  const allRetired = allCards.every(c => srs[c.key]?.retired);
   document.getElementById('app').style.display = 'none';
   document.getElementById('empty').style.display = 'flex';
   if (allRetired) {
@@ -1239,6 +1314,8 @@ function showEmpty() {
 
 function showApp() {
   document.getElementById('loading').style.display = 'none';
+  appReady = true;
+  if (!document.hidden) startTimer();
   const card = pickNextCard();
   if (!card) {
     showEmpty();
@@ -1337,7 +1414,7 @@ function showCard(card) {
   if (card.dateReviewed) parts.push('Reviewed: ' + card.dateReviewed);
   datesEl.textContent = parts.join('   ·   ');
 
-  const srsData = getSRS()[card.spanish];
+  const srsData = getSRS()[card.key];
   const timeline = renderTimeline(srsData);
   document.getElementById('review-timeline').innerHTML = timeline ? timeline.svg : '';
   document.getElementById('timeline-stats').textContent = timeline ? `${timeline.passes} / ${timeline.total} correct` : '';
@@ -1374,7 +1451,7 @@ function flipToFront() {
 function grade(passed) {
   if (!currentCard) return;
   const srs = getSRS();
-  const srsEntry = srs[currentCard.spanish];
+  const srsEntry = srs[currentCard.key];
   const priorReviews = srsEntry?.reviews || [];
   const today = todayStr();
   // Only count WAA once there's at least one prior review to base P(recall) on
@@ -1386,10 +1463,10 @@ function grade(passed) {
     todayCount: getTodayCount(),
     waaDelta,
   };
-  recordReview(currentCard.spanish, passed);
+  recordReview(currentCard.key, passed);
   if (waaDelta !== null) addDailyWAA(waaDelta);
-  if (!passed) recentFails[currentCard.spanish] = Date.now();
-  else delete recentFails[currentCard.spanish];
+  if (!passed) recentFails[currentCard.key] = Date.now();
+  else delete recentFails[currentCard.key];
   incrementTodayCount();
   const next = pickNextCard();
   if (!next) { showEmpty(); return; }
@@ -1405,12 +1482,12 @@ function undoLast() {
   if (waaDelta != null) addDailyWAA(-waaDelta);
   const srs = getSRS();
   if (srsEntry === null) {
-    delete srs[card.spanish];
+    delete srs[card.key];
   } else {
-    srs[card.spanish] = srsEntry;
+    srs[card.key] = srsEntry;
   }
   saveSRS(srs);
-  pushSRSRemote([{ word: card.spanish, ...(srsEntry || { reviews: [], retired: false }) }]);
+  pushSRSRemote([{ word: card.key, ...(srsEntry || { reviews: [], retired: false }) }]);
   localStorage.setItem(TODAY_COUNT_KEY, JSON.stringify({ date: todayStr(), count: todayCount }));
   pushTodayCount(todayCount);
   document.getElementById('undo-row').classList.remove('visible');
@@ -1420,11 +1497,11 @@ function undoLast() {
 function retire() {
   if (!currentCard) return;
   const srs = getSRS();
-  const priorEntry = srs[currentCard.spanish] ? JSON.parse(JSON.stringify(srs[currentCard.spanish])) : null;
-  const entry = { ...(srs[currentCard.spanish] || {}), retired: true };
-  srs[currentCard.spanish] = entry;
+  const priorEntry = srs[currentCard.key] ? JSON.parse(JSON.stringify(srs[currentCard.key])) : null;
+  const entry = { ...(srs[currentCard.key] || {}), retired: true };
+  srs[currentCard.key] = entry;
   saveSRS(srs);
-  pushSRSRemote([{ word: currentCard.spanish, ...entry }]);
+  pushSRSRemote([{ word: currentCard.key, ...entry }]);
   const next = pickNextCard();
   if (!next) { showEmpty(); return; }
   lastUndo = { card: currentCard, srsEntry: priorEntry, todayCount: getTodayCount(), waaDelta: null };

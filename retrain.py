@@ -18,6 +18,7 @@ from pathlib import Path
 
 try:
     import numpy as np
+    from joblib import Parallel, delayed
     from sklearn.neural_network import MLPClassifier
     from sklearn.preprocessing import StandardScaler
 except ImportError:
@@ -39,6 +40,12 @@ APPS_SCRIPT_URL = (
 OUTPUT_DIR = Path(__file__).parent
 
 MIN_SAMPLES = 30  # skip training if fewer rows than this
+
+# Averaging several nets trained from different random starts keeps nightly
+# retrains from shifting predictions much: a single net lands in a slightly
+# different place each night, and with hundreds of cards sitting near 90%,
+# small shifts flip many cards between due and not due.
+ENSEMBLE_SIZE = 10
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +129,18 @@ def build_dataset(srs: dict) -> list[tuple[list[float], int]]:
 # Training
 # ---------------------------------------------------------------------------
 
+def fit_member(X_scaled: np.ndarray, y: np.ndarray, seed: int) -> MLPClassifier:
+    clf = MLPClassifier(
+        hidden_layer_sizes=(16, 8),
+        activation="relu",
+        solver="adam",
+        alpha=0.01,        # L2 regularization
+        max_iter=1000,
+        random_state=seed,
+    )
+    return clf.fit(X_scaled, y)
+
+
 def train(rows: list, name: str) -> dict:
     X = np.array([r[0] for r in rows], dtype=float)
     y = np.array([r[1] for r in rows], dtype=float)
@@ -129,21 +148,22 @@ def train(rows: list, name: str) -> dict:
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    clf = MLPClassifier(
-        hidden_layer_sizes=(16, 8),
-        activation="relu",
-        solver="adam",
-        alpha=0.01,        # L2 regularization
-        max_iter=1000,
-        random_state=42,
-    )
-    clf.fit(X_scaled, y)
+    clfs = Parallel(n_jobs=-1)(delayed(fit_member)(X_scaled, y, seed) for seed in range(ENSEMBLE_SIZE))
 
-    train_acc = clf.score(X_scaled, y)
+    p = np.mean([c.predict_proba(X_scaled)[:, 1] for c in clfs], axis=0)
+    train_acc = float(((p >= 0.5) == y).mean())
     class_balance = y.mean()
-    print(f"  {name}: {len(rows)} samples, "
+    print(f"  {name}: {len(rows)} samples, {ENSEMBLE_SIZE} members, "
           f"train acc={train_acc:.3f}, "
           f"positive rate={class_balance:.2f}")
+
+    # sklearn stores weights as [in x out], which matches our JS forward pass
+    members = [{
+        "scaler_mean":  scaler.mean_.tolist(),
+        "scaler_std":   scaler.scale_.tolist(),
+        "weights":      [w.tolist() for w in c.coefs_],
+        "biases":       [b.tolist() for b in c.intercepts_],
+    } for c in clfs]
 
     return {
         "trained_at":   datetime.now().isoformat(),
@@ -157,11 +177,10 @@ def train(rows: list, name: str) -> dict:
             "log1p_n_reviews",
             "log1p_days_since_first",
         ],
-        "scaler_mean":  scaler.mean_.tolist(),
-        "scaler_std":   scaler.scale_.tolist(),
-        # sklearn stores weights as [in x out], which matches our JS forward pass
-        "weights":      [w.tolist() for w in clf.coefs_],
-        "biases":       [b.tolist() for b in clf.intercepts_],
+        # Top level holds the first member so older cached pages still work;
+        # current pages average everything in "ensemble".
+        **members[0],
+        "ensemble":     members,
     }
 
 
@@ -212,7 +231,7 @@ def main():
             failed = True
             continue
 
-        output_path.write_text(json.dumps(model, indent=2))
+        output_path.write_text(json.dumps(model))  # compact: 10 members
         print(f"  wrote {output_path.name}")
 
     print("\nDone!")

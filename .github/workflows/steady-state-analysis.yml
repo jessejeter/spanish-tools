@@ -5,14 +5,13 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: analysis/steady-state
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install requests numpy scikit-learn
-      - run: pip install google-auth google-api-python-client && python check_sheet1.py
+      - run: pip install requests google-auth google-api-python-client
+      - run: python -u dryrun_inbox.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}

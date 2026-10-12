@@ -8,12 +8,14 @@ using Gemini API, and writes results to Sheet2.
 
 import csv
 import json
+import re
 import os
 import ssl
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 from google.oauth2.service_account import Credentials
@@ -21,6 +23,7 @@ from googleapiclient.discovery import build
 
 CSV_FILE = Path(__file__).parent / "spanishdict_vocab.csv"
 
+EASTERN = ZoneInfo("America/New_York")
 SPREADSHEET_ID = "14oqOzF2MXMDvhp8XbZo1fa3yFHTW3anVgfFrHvK4tNc"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 GEMINI_MODEL = "gemini-2.5-flash"
@@ -132,13 +135,16 @@ def read_sheet(service, range_name):
     return result.get("values", [])
 
 
-def call_gemini(prompt, api_key):
+def call_gemini(prompt, api_key, json_output=False):
     """Call Gemini API with retry and exponential backoff on rate limits."""
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
+    if json_output:
+        body["generationConfig"] = {"responseMimeType": "application/json"}
     for attempt in range(MAX_RETRIES):
         response = requests.post(
             GEMINI_URL,
             params={"key": api_key},
-            json={"contents": [{"parts": [{"text": prompt}]}]},
+            json=body,
             timeout=60,
         )
         if response.status_code in (429, 503):
@@ -506,6 +512,156 @@ def find_new_sheet1_rows(csv_rows, sheet1_rows):
     return new_rows
 
 
+# ---------------------------------------------------------------------------
+# Inbox: free-form notes for words that aren't in SpanishDict
+# ---------------------------------------------------------------------------
+# One rough note per row in column A, in any form ("Loma: in between a
+# mountain and a hill?", "To be down (for something): apuntarse", grammar
+# patterns, ...). Each night Gemini turns new notes into a standard Sheet1
+# entry, which then gets the usual sense, AI analysis and review in Sheets.
+
+INBOX_SHEET = "Inbox"
+INBOX_HEADER = ["Note", "Added as", "Flag", "Processed"]
+INBOX_MAX_PER_RUN = 50
+
+
+def make_inbox_prompt(note):
+    return f"""You turn a Spanish learner's rough vocabulary note into one standard flashcard entry.
+
+The note was typed quickly. Spanish and English may be in either order, separated by
+":", "=", "-" or nothing. The learner may be unsure ("???", "?") or simply wrong. It may
+be a single word, an idiom, a phrase, or a grammar pattern.
+
+Note: {note!r}
+
+Return JSON with exactly these keys:
+- "spanish": the standard dictionary form. Infinitive for verbs; keep a reflexive "-se"
+  if the meaning needs it; idioms in their usual citation form (e.g. "no tener pelos en
+  la lengua"); optional parts in parentheses, e.g. "apuntarse (a algo)". For grammar
+  patterns, a short template in Spanish, e.g. "llevar + [tiempo] + gerundio".
+- "english": a concise, natural English equivalent, like a dictionary headword
+  ("to take a dip", "hill"). For grammar patterns, the English template
+  ("to have been doing (for [time])").
+- "part_of_speech": one of: noun (M), noun (F), adjective, adverb, transitive verb,
+  intransitive verb, pronominal verb, reflexive verb, phrase, conjunction, preposition,
+  interjection, grammar pattern.
+- "sense": a 2-6 word English gloss that pins down which meaning this is (e.g. "small
+  rounded hill", "to remove by force"), or "" if obvious.
+- "flag": "" if the note is right. Otherwise one short sentence for the learner, e.g.
+  when the idiom needs "no" to mean what they wrote, when their Spanish is unnatural (give
+  the more common way), or when the meaning they wrote is off. If you changed their
+  Spanish, say so here.
+
+Use the Spanish that best matches the meaning the learner intended. Prefer neutral,
+widely understood Spanish; mention regional use (e.g. Caribbean) in "sense"."""
+
+
+def inbox_duplicate(entry, sheet1_rows):
+    """Sheet1 already has this meaning: same Spanish (ignoring optional parts like
+    "(a algo)") with the same or near-identical English."""
+    from difflib import SequenceMatcher
+
+    def base(spanish):
+        return re.sub(r"\s*\([^)]*\)", "", spanish).strip().lower()
+
+    spanish, english = base(entry["spanish"]), entry["english"].strip().lower()
+    for row in sheet1_rows[1:]:
+        row = row + [""] * (3 - len(row))
+        if base(row[1]) == spanish:
+            other = row[2].strip().lower()
+            if other == english or SequenceMatcher(None, other, english).ratio() >= 0.75:
+                return f"{row[1].strip()}: {row[2].strip()}"
+    return None
+
+
+def interpret_inbox_note(note, api_key):
+    raw = call_gemini(make_inbox_prompt(note), api_key, json_output=True)
+    entry = json.loads(raw)
+    if isinstance(entry, list):
+        entry = entry[0]
+    out = {k: str(entry.get(k, "") or "").strip() for k in ("spanish", "english", "part_of_speech", "sense", "flag")}
+    if not out["spanish"] or not out["english"]:
+        raise ValueError(f"incomplete entry: {raw[:200]}")
+    return out
+
+
+def ensure_inbox_sheet(service):
+    meta = execute_with_retry(service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID, fields="sheets.properties.title"))
+    if any(sh["properties"]["title"] == INBOX_SHEET for sh in meta.get("sheets", [])):
+        return
+    print(f"Creating {INBOX_SHEET} sheet...")
+    execute_with_retry(service.spreadsheets().batchUpdate(
+        spreadsheetId=SPREADSHEET_ID,
+        body={"requests": [{"addSheet": {"properties": {"title": INBOX_SHEET}}}]},
+    ))
+    execute_with_retry(service.spreadsheets().values().update(
+        spreadsheetId=SPREADSHEET_ID, range=f"{INBOX_SHEET}!A1:D1",
+        valueInputOption="RAW", body={"values": [INBOX_HEADER]},
+    ))
+
+
+def process_inbox(service, api_key, dry_run=False, notes=None):
+    """
+    Turn new Inbox notes into Sheet1 rows. With dry_run, print the entries
+    instead of writing anything (notes may then be passed in directly).
+    """
+    if notes is None:
+        ensure_inbox_sheet(service)
+        rows = read_sheet(service, f"{INBOX_SHEET}!A:D")
+        pending = []
+        for i, row in enumerate(rows[1:], start=2):  # sheet row numbers, after header
+            row = row + [""] * (4 - len(row))
+            if row[0].strip() and not row[3].strip():
+                pending.append((i, row[0].strip()))
+    else:
+        pending = [(None, n) for n in notes]
+    if not pending:
+        print("Inbox: nothing new")
+        return
+    pending = pending[:INBOX_MAX_PER_RUN]
+    print(f"Inbox: {len(pending)} new notes")
+
+    sheet1_rows = read_sheet(service, "Sheet1!A:E") if service else [["header"]]
+    today = datetime.now(EASTERN).strftime("%Y-%m-%d")
+    new_sheet1, inbox_updates = [], []
+    for sheet_row, note in pending:
+        try:
+            e = interpret_inbox_note(note, api_key)
+        except Exception as ex:
+            print(f"  could not interpret {note!r}: {ex}")
+            if sheet_row:
+                inbox_updates.append({"range": f"{INBOX_SHEET}!C{sheet_row}",
+                                      "values": [["Couldn't interpret yet; will retry tonight"]]})
+            continue
+        row = [today, e["spanish"], e["english"], e["part_of_speech"], ""]
+        added_as = f"{e['spanish']}: {e['english']}" + (f" ({e['sense']})" if e["sense"] else "")
+        existing = inbox_duplicate(e, sheet1_rows)
+        if existing:
+            added_as = f"Already in Sheet1 as {existing}"
+        else:
+            new_sheet1.append(row + [e["sense"], ""])
+            sheet1_rows.append(row)  # so a repeated note in the same batch is caught
+        print(f"  {note!r}\n    -> {added_as}  [{e['part_of_speech']}]" + (f"\n    flag: {e['flag']}" if e["flag"] else ""))
+        if sheet_row:
+            inbox_updates.append({"range": f"{INBOX_SHEET}!B{sheet_row}:D{sheet_row}",
+                                  "values": [[added_as, e["flag"], today]]})
+        time.sleep(0.5)
+
+    if dry_run:
+        print(f"Dry run: would add {len(new_sheet1)} rows to Sheet1")
+        return
+    if new_sheet1:
+        execute_with_retry(service.spreadsheets().values().append(
+            spreadsheetId=SPREADSHEET_ID, range="Sheet1!A1", valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS", body={"values": new_sheet1},
+        ))
+        print(f"Inbox: added {len(new_sheet1)} rows to Sheet1")
+    if inbox_updates:
+        execute_with_retry(service.spreadsheets().values().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID, body={"valueInputOption": "RAW", "data": inbox_updates},
+        ))
+
+
 def sync_csv_to_sheet1(service):
     """Sync new words from the CSV to Sheet1, appending any missing entries."""
     if not CSV_FILE.exists():
@@ -580,6 +736,12 @@ def main():
 
     print("Syncing CSV to Sheet1...")
     sync_csv_to_sheet1(service)
+
+    print("Processing Inbox notes...")
+    try:
+        process_inbox(service, gemini_key)
+    except Exception as e:  # never block the rest of the nightly run
+        print(f"  Inbox processing failed: {e}")
 
     print("Sorting and formatting Sheet1...")
     sort_sheets(service)

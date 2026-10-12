@@ -17,3 +17,10 @@ sheet1 = [["header"]] + fetch_sheet("Sheet1")
 rows = av.find_new_sheet1_rows(new, sheet1)
 print(f"\nWould append {len(rows)} rows to Sheet1:")
 for r in rows: print("  ", r)
+
+print("\nExisting Sheet1 rows for those words (date | spanish | english | sense | ctx):")
+want = {r[1].strip().lower() for r in rows}
+for r in sheet1[1:]:
+    r = r + [""] * (7 - len(r))
+    if r[1].strip().lower() in want:
+        print("   ", r[0], "|", r[1], "|", r[2], "|", r[5], "|", r[6])

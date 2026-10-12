@@ -464,30 +464,44 @@ def find_new_sheet1_rows(csv_rows, sheet1_rows):
     """
     CSV rows (one per saved SpanishDict meaning) that aren't in Sheet1 yet.
 
-    A word can have several meanings, so a row is already present when Sheet1
-    has the same Spanish word with the same English, or with the same date
-    added (the same saved meaning whose English was edited in the sheet).
+    A word can have several meanings, so a CSV row counts as already present
+    when Sheet1 has the same Spanish word with:
+      - the same English, or
+      - the same date added (the same saved meaning, English edited in the sheet), or
+      - the same part of speech, a date within a day (older rows were dated in
+        UTC) and near-identical English ("work day" vs "working day").
     CSV columns: [Date Added, Spanish, English, Part of Speech, Popularity]
     """
+    from difflib import SequenceMatcher
+
     def norm(v):
         return (v or "").strip().lower()
 
-    existing_meanings, existing_dates = set(), set()
+    existing = {}  # spanish -> [(english, date, pos)]
     for row in sheet1_rows[1:]:  # skip header
-        if len(row) >= 2 and row[1]:
-            spanish = norm(row[1])
-            existing_meanings.add((spanish, norm(row[2]) if len(row) > 2 else ""))
-            if row[0]:
-                existing_dates.add((spanish, parse_date(row[0])))
+        row = row + [""] * (4 - len(row))
+        if row[1].strip():
+            existing.setdefault(norm(row[1]), []).append((norm(row[2]), parse_date(row[0]), norm(row[3])))
+
+    def present(spanish, english, date, pos):
+        for e_eng, e_date, e_pos in existing.get(spanish, []):
+            if english == e_eng or (date != datetime.min and date == e_date):
+                return True
+            if (pos == e_pos and date != datetime.min and e_date != datetime.min
+                    and abs((date - e_date).days) <= 1
+                    and SequenceMatcher(None, english, e_eng).ratio() >= 0.75):
+                return True
+        return False
 
     new_rows = []
     for row in csv_rows:
         if len(row) < 3 or not row[1].strip():
             continue
-        meaning = (norm(row[1]), norm(row[2]))
-        if meaning in existing_meanings or (row[0] and (meaning[0], parse_date(row[0])) in existing_dates):
+        row4 = row + [""] * (4 - len(row))
+        spanish, english, date, pos = norm(row[1]), norm(row[2]), parse_date(row[0]), norm(row4[3])
+        if present(spanish, english, date, pos):
             continue
-        existing_meanings.add(meaning)  # the same meaning saved in two lists
+        existing.setdefault(spanish, []).append((english, date, pos))  # same meaning saved in two lists
         new_rows.append(row)
     return new_rows
 

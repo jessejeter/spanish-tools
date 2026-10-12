@@ -40,3 +40,7 @@ print("due cards accuracy quartiles:", np.percentile(acc[due], [25, 50, 75]).rou
 print("due cards n reviews quartiles:", np.percentile(n[due], [25, 50, 75]))
 _, oc = F.simulate(model, st, np.zeros(len(cards), int), 1, 20.68, 0.84, 50, np.random.default_rng(1))
 print("simulated day-0 repeat reviews (no factor):", oc.mean())
+
+for H in (1, 2, 31):
+    fc_, oc_ = F.simulate(model, st, np.zeros(len(cards), int), H, 20.68, 0.84, 50, np.random.default_rng(1))
+    print(f"horizon {H}: day-0 repeats {oc_[:, 0].mean():.1f}, first {fc_[:, 0].mean():.1f}; day1 {oc_[:, 1].mean() if H > 1 else '-'}")

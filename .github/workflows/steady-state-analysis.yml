@@ -11,5 +11,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install requests numpy scikit-learn
-      - run: python diag_today.py
-      - run: python forecast.py && python -c "import json;f=json.load(open('forecast.json'));print(f['today_breakdown'], f['base']['reviews_mean'][:3])"
+      - run: python experiment_ensemble.py

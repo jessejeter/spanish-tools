@@ -522,7 +522,8 @@ def find_new_sheet1_rows(csv_rows, sheet1_rows):
 # entry, which then gets the usual sense, AI analysis and review in Sheets.
 
 INBOX_SHEET = "Inbox"
-INBOX_HEADER = ["Note", "Added as", "Flag", "Processed"]
+# Column E keeps the note text as processed, so editing a note re-processes it
+INBOX_HEADER = ["Note", "Added as", "Flag", "Processed", "Processed note"]
 INBOX_MAX_PER_RUN = 50
 
 
@@ -599,7 +600,7 @@ def ensure_inbox_sheet(service):
         body={"requests": [{"addSheet": {"properties": {"title": INBOX_SHEET}}}]},
     ))
     execute_with_retry(service.spreadsheets().values().update(
-        spreadsheetId=SPREADSHEET_ID, range=f"{INBOX_SHEET}!A1:D1",
+        spreadsheetId=SPREADSHEET_ID, range=f"{INBOX_SHEET}!A1:E1",
         valueInputOption="RAW", body={"values": [INBOX_HEADER]},
     ))
 
@@ -611,12 +612,21 @@ def process_inbox(service, api_key, dry_run=False, notes=None):
     """
     if notes is None:
         ensure_inbox_sheet(service)
-        rows = read_sheet(service, f"{INBOX_SHEET}!A:D")
-        pending = []
+        rows = read_sheet(service, f"{INBOX_SHEET}!A:E")
+        pending, backfill = [], [{"range": f"{INBOX_SHEET}!E1", "values": [[INBOX_HEADER[4]]]}]
         for i, row in enumerate(rows[1:], start=2):  # sheet row numbers, after header
-            row = row + [""] * (4 - len(row))
-            if row[0].strip() and not row[3].strip():
-                pending.append((i, row[0].strip()))
+            row = row + [""] * (5 - len(row))
+            note, processed, processed_note = row[0].strip(), row[3].strip(), row[4].strip()
+            if not note:
+                continue
+            if not processed:
+                pending.append((i, note))
+            elif not processed_note:  # processed before column E existed
+                backfill.append({"range": f"{INBOX_SHEET}!E{i}", "values": [[note]]})
+            elif note != processed_note:  # edited since: process again
+                pending.append((i, note))
+        execute_with_retry(service.spreadsheets().values().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID, body={"valueInputOption": "RAW", "data": backfill}))
     else:
         pending = [(None, n) for n in notes]
     if not pending:
@@ -641,14 +651,16 @@ def process_inbox(service, api_key, dry_run=False, notes=None):
         added_as = f"{e['spanish']}: {e['english']}" + (f" ({e['sense']})" if e["sense"] else "")
         existing = inbox_duplicate(e, sheet1_rows)
         if existing:
-            added_as = f"Already in Sheet1 as {existing}"
+            added_as = ""
+            e["flag"] = (f"Not added: exact duplicate of {existing}. "
+                         "Edit the note (e.g. add nuance) and it will be processed again.")
         else:
             new_sheet1.append(row + [e["sense"], ""])
             sheet1_rows.append(row)  # so a repeated note in the same batch is caught
         print(f"  {note!r}\n    -> {added_as}  [{e['part_of_speech']}]" + (f"\n    flag: {e['flag']}" if e["flag"] else ""))
         if sheet_row:
-            inbox_updates.append({"range": f"{INBOX_SHEET}!B{sheet_row}:D{sheet_row}",
-                                  "values": [[added_as, e["flag"], today]]})
+            inbox_updates.append({"range": f"{INBOX_SHEET}!B{sheet_row}:E{sheet_row}",
+                                  "values": [[added_as, e["flag"], today, note]]})
         time.sleep(0.5)
 
     if dry_run:

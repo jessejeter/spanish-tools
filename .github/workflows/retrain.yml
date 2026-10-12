@@ -54,10 +54,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet vocab_model.json frames_model.json; then
+          if ! git diff --quiet vocab_model.json; then
             echo "{\"model_trained\": \"$(TZ='America/New_York' date '+%b %-d, %Y %-I:%M %p ET')\", \"model_trained_iso\": \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" > model_version.json
           fi
-          git add vocab_model.json frames_model.json model_version.json
+          git add vocab_model.json model_version.json
           if [ -f forecast.json ]; then git add forecast.json; fi
           git diff --cached --quiet && exit 0
           git commit -m "Update SRS model weights and review forecast"

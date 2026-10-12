@@ -2,8 +2,8 @@
 Nightly SRS model retraining.
 
 Fetches review history from Google Sheets via Apps Script, trains a small
-neural net for each card type (vocab / frames), and writes JSON weight files
-that the browser loads on startup.
+neural net on the vocab review history, and writes JSON weight files that the
+browser loads on startup.
 
 Dependencies:
     pip install requests numpy scikit-learn
@@ -194,7 +194,6 @@ def main():
     print(f"Running at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
 
-    # All data lives in the SRS sheet; frame entries are prefixed with "frame:"
     print("\nFetching SRS data...")
     try:
         all_srs = fetch_srs(APPS_SCRIPT_URL)
@@ -203,13 +202,11 @@ def main():
         print(f"  ERROR fetching: {e}")
         sys.exit(1)
 
-    vocab_srs  = {k: v for k, v in all_srs.items() if not k.startswith("frame:") and not k.startswith("__")}
-    frames_srs = {k: v for k, v in all_srs.items() if k.startswith("frame:")}
-    print(f"  vocab: {len(vocab_srs)}  frames: {len(frames_srs)}")
+    vocab_srs = {k: v for k, v in all_srs.items() if not k.startswith("frame:") and not k.startswith("__")}
+    print(f"  vocab: {len(vocab_srs)}")
 
     jobs = [
-        ("vocab",  vocab_srs,  OUTPUT_DIR / "vocab_model.json"),
-        ("frames", frames_srs, OUTPUT_DIR / "frames_model.json"),
+        ("vocab", vocab_srs, OUTPUT_DIR / "vocab_model.json"),
     ]
 
     failed = False

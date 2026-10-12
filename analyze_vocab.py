@@ -135,14 +135,15 @@ def read_sheet(service, range_name):
     return result.get("values", [])
 
 
-def call_gemini(prompt, api_key, json_output=False):
+def call_gemini(prompt, api_key, json_output=False, model=None):
     """Call Gemini API with retry and exponential backoff on rate limits."""
     body = {"contents": [{"parts": [{"text": prompt}]}]}
     if json_output:
         body["generationConfig"] = {"responseMimeType": "application/json"}
+    url = GEMINI_URL if model is None else GEMINI_URL.replace(GEMINI_MODEL, model)
     for attempt in range(MAX_RETRIES):
         response = requests.post(
-            GEMINI_URL,
+            url,
             params={"key": api_key},
             json=body,
             timeout=60,
@@ -523,6 +524,9 @@ def find_new_sheet1_rows(csv_rows, sheet1_rows):
 INBOX_SHEET = "Inbox"
 INBOX_HEADER = ["Note", "Added as", "Flag", "Processed"]
 INBOX_MAX_PER_RUN = 50
+# Judging what a rough note meant, and whether it's right, needs a stronger
+# model than the routine analysis; it's only a few notes a day.
+INBOX_MODEL = "gemini-2.5-pro"
 
 
 def make_inbox_prompt(note):
@@ -546,14 +550,20 @@ Return JSON with exactly these keys:
   intransitive verb, pronominal verb, reflexive verb, phrase, conjunction, preposition,
   interjection, grammar pattern.
 - "sense": a 2-6 word English gloss that pins down which meaning this is (e.g. "small
-  rounded hill", "to remove by force"), or "" if obvious.
-- "flag": "" if the note is right. Otherwise one short sentence for the learner, e.g.
-  when the idiom needs "no" to mean what they wrote, when their Spanish is unnatural (give
-  the more common way), or when the meaning they wrote is off. If you changed their
-  Spanish, say so here.
+  rounded hill", "to remove by force", "Caribbean usage"). Must add information beyond
+  "english"; never repeat it. "" if nothing to add.
+- "flag": "" unless the learner's note has a real problem. Only flag when: their Spanish
+  is wrong or doesn't mean what they wrote (e.g. an idiom that needs "no"), their Spanish
+  is grammatical but not what native speakers would normally say for that meaning (give
+  the usual expression), the word is vulgar or strongly regional, or the meaning they
+  wrote is off. Do NOT flag when you merely reworded the English or standardized the form.
+  One or two short, accurate sentences; don't overstate what the learner's version means.
 
-Use the Spanish that best matches the meaning the learner intended. Prefer neutral,
-widely understood Spanish; mention regional use (e.g. Caribbean) in "sense"."""
+Choose the Spanish a native speaker would actually use for the meaning the learner
+intended, not a literal translation of the English (e.g. "I can't wait" -> "tener muchas
+ganas (de algo)" or "no ver la hora (de algo)", not "no poder esperar"). If the learner's
+own Spanish is natural for that meaning, keep it. Prefer neutral, widely understood
+Spanish."""
 
 
 def inbox_duplicate(entry, sheet1_rows):
@@ -575,7 +585,11 @@ def inbox_duplicate(entry, sheet1_rows):
 
 
 def interpret_inbox_note(note, api_key):
-    raw = call_gemini(make_inbox_prompt(note), api_key, json_output=True)
+    try:
+        raw = call_gemini(make_inbox_prompt(note), api_key, json_output=True, model=INBOX_MODEL)
+    except Exception as e:  # e.g. the key's tier doesn't include the stronger model
+        print(f"  {INBOX_MODEL} unavailable ({e}); using {GEMINI_MODEL}")
+        raw = call_gemini(make_inbox_prompt(note), api_key, json_output=True)
     entry = json.loads(raw)
     if isinstance(entry, list):
         entry = entry[0]

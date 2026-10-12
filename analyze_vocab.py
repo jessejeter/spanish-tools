@@ -524,9 +524,6 @@ def find_new_sheet1_rows(csv_rows, sheet1_rows):
 INBOX_SHEET = "Inbox"
 INBOX_HEADER = ["Note", "Added as", "Flag", "Processed"]
 INBOX_MAX_PER_RUN = 50
-# Judging what a rough note meant, and whether it's right, needs a stronger
-# model than the routine analysis; it's only a few notes a day.
-INBOX_MODEL = "gemini-2.5-pro"
 
 
 def make_inbox_prompt(note):
@@ -585,11 +582,7 @@ def inbox_duplicate(entry, sheet1_rows):
 
 
 def interpret_inbox_note(note, api_key):
-    try:
-        raw = call_gemini(make_inbox_prompt(note), api_key, json_output=True, model=INBOX_MODEL)
-    except Exception as e:  # e.g. the key's tier doesn't include the stronger model
-        print(f"  {INBOX_MODEL} unavailable ({e}); using {GEMINI_MODEL}")
-        raw = call_gemini(make_inbox_prompt(note), api_key, json_output=True)
+    raw = call_gemini(make_inbox_prompt(note), api_key, json_output=True)
     entry = json.loads(raw)
     if isinstance(entry, list):
         entry = entry[0]

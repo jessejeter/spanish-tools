@@ -33,10 +33,12 @@
 2025-10-04,pajita,straw,noun (F),7675
 2025-10-04,truco,trick,noun (M),32429
 2025-10-05,abordar,to approach,transitive verb,111382
+2025-10-06,bromear,to joke,intransitive verb,27541
 2025-10-06,bromear,to kid,intransitive verb,27541
 2025-10-07,callarse,to be quiet,pronominal verb,34915
 2025-10-07,conjunto,collection,noun (M),116181
 2025-10-07,despertarse,to wake up,reflexive verb,554322
+2025-10-07,fijarse,to pay attention,pronominal verb,64293
 2025-10-07,panza,belly,noun (F),50459
 2025-10-07,recalcar,to stress,transitive verb,14981
 2025-10-07,traba,obstacle,noun (F),8463
@@ -174,10 +176,12 @@
 2025-11-01,tener ganas de,to want to,transitive verb phrase,144532
 2025-11-02,aro,hoop,noun (M),18736
 2025-11-02,encogerse,to shrink,pronominal verb,11050
+2025-11-02,estropearse,to break down,pronominal verb,5457
 2025-11-02,inmobiliaria,real estate agency,noun (F),14981
 2025-11-02,inquilino,tenant,noun (CH),22439
 2025-11-02,tubería,pipe,noun (F),13292
 2025-11-02,tuerca,nut,noun (F),17604
+2025-11-03,arrancar,to pull out,transitive verb,162654
 2025-11-03,ayuntamiento,city council,noun (M),94502
 2025-11-03,bajarse de,to get off,pronominal verb phrase,4360
 2025-11-03,bendecir,to bless,transitive verb,27223
@@ -206,6 +210,7 @@
 2025-11-07,lineal,linear,adjective,2690
 2025-11-07,retroceder,to back up,intransitive verb,31778
 2025-11-07,tijera,scissors,noun (F),33823
+2025-11-08,penoso,laborious,adjective,17632
 2025-11-09,aldea,small village,noun (F),71702
 2025-11-09,aula,classroom,noun (FX),95452
 2025-11-09,tender a,to tend to,intransitive verb phrase,0
@@ -311,6 +316,7 @@
 2025-11-26,trazar,to draw,transitive verb,31256
 2025-11-26,umbral,threshold,noun (M),28381
 2025-11-26,urgir,to urge,transitive verb,4709
+2025-11-27,agotarse,to tire oneself out,reflexive verb,15541
 2025-11-27,al final,in the end,phrase,33530
 2025-11-27,apuntarse,to be up for it,pronominal verb,11598
 2025-11-27,arriesgarse a,to risk,transitive verb phrase,0
@@ -335,6 +341,7 @@
 2025-11-28,resfriado,cold,noun (M),126855
 2025-11-28,resumir,to summarize,transitive verb,21481
 2025-11-28,sobornar,to bribe,transitive verb,10833
+2025-11-28,tapón,plug,noun (M),16478
 2025-11-29,a grandes rasgos,broadly,phrase,0
 2025-11-29,a medida que,as,conjunction,26448
 2025-11-29,acariciar,to pet,transitive verb,65533
@@ -485,6 +492,7 @@
 2025-12-28,encasillar,to pigeonhole,transitive verb,2507
 2025-12-28,moretón,bruise,noun (M),17295
 2025-12-29,acabar con,to put an end to,transitive verb phrase,10048
+2025-12-29,apenas,hardly,adverb,299023
 2025-12-29,asqueroso,disgusting,adjective,37915
 2025-12-29,azotar,to whip,transitive verb,31360
 2025-12-29,dar asco,to disgust,transitive verb phrase,6692
@@ -511,6 +519,7 @@
 2025-12-31,tajo,slash,noun (M),11179
 2026-01-01,arado,plow,noun (M),11542
 2026-01-01,empeño,determination,noun (M),35342
+2026-01-01,franja,band,noun (F),19957
 2026-01-01,peluche,stuffed animal,noun (M),55765
 2026-01-01,pendiente,pending,adjective,104958
 2026-01-01,prevalecer,to prevail,intransitive verb,9263
@@ -645,6 +654,7 @@
 2026-01-25,trineo,sled,noun (M),19440
 2026-01-26,descalzo,barefoot,adjective,24327
 2026-01-26,desempeñarse,to work as,reflexive verb,2486
+2026-01-26,muelle,pier,noun (M),52763
 2026-01-26,pan de molde,sliced bread,phrase,1907
 2026-01-26,sortear,to avoid,transitive verb,10838
 2026-01-26,trepar,to climb,intransitive verb,52345
@@ -679,6 +689,7 @@
 2026-01-31,don,talent,noun (M),90122
 2026-01-31,jaula,cage,noun (F),54717
 2026-01-31,no hay problema,no problem,phrase,15090
+2026-01-31,paleta,paddle,noun (F),35429
 2026-01-31,prepararse,to get ready,reflexive verb,43263
 2026-01-31,recaída,relapse,noun (F),7262
 2026-01-31,¡Wepa!,Oh yeah!,interjection,6531
@@ -720,6 +731,7 @@
 2026-02-06,escudo,shield,noun (M),42263
 2026-02-06,espantar,to frighten away,transitive verb,33816
 2026-02-06,factible,feasible,adjective,10844
+2026-02-06,fastidiar,to annoy,transitive verb,48621
 2026-02-06,fastidiar,to spoil,transitive verb,48621
 2026-02-06,meñique,little finger,noun (M),7081
 2026-02-06,qué onda,what's up,phrase,0
@@ -779,6 +791,7 @@
 2026-02-13,libro de bolsillo,paperback,phrase,940
 2026-02-13,rastrear,to track,transitive verb,25642
 2026-02-13,sello,stamp,noun (M),76646
+2026-02-14,acaparar,to hoard,transitive verb,9676
 2026-02-14,aludir,to allude to,intransitive verb,8433
 2026-02-14,cabreado,furious,adjective,3548
 2026-02-14,cal,lime,noun (F),63438
@@ -909,6 +922,7 @@
 2026-03-05,plomo,lead,noun (M),48728
 2026-03-05,resbalar,to slip,intransitive verb,35107
 2026-03-06,reírse de,to laugh at,pronominal verb phrase,1519
+2026-03-07,a fin de cuentas,after all,phrase,6665
 2026-03-07,a medida que,as,conjunction,26448
 2026-03-07,en el seno de,at the heart of,phrase,0
 2026-03-07,hierro,iron,noun (M),81971
@@ -936,6 +950,7 @@
 2026-03-09,repollo,cabbage,noun (M),33627
 2026-03-09,salir,to turn out,intransitive verb,1880504
 2026-03-11,acoso,harassment,noun (M),37023
+2026-03-11,apretar,to press,transitive verb,81277
 2026-03-11,penoso,pathetic,adjective,17632
 2026-03-11,tentar,to tempt,transitive verb,16221
 2026-03-12,antojarse,to have a craving for,pronominal verb,22594
@@ -1087,6 +1102,7 @@
 2026-03-31,riñón,kidney,noun (M),43119
 2026-03-31,una vez que,once,phrase,4617
 2026-03-31,viuda,widow,noun (F),68106
+2026-03-31,volcar,to knock over,transitive verb,21716
 2026-04-01,a grandes rasgos,roughly,phrase,0
 2026-04-01,agradable,pleasant,adjective,220719
 2026-04-01,alboroto,disturbance,noun (M),31606
@@ -1115,7 +1131,9 @@
 2026-04-03,copa,drink,noun (F),126789
 2026-04-03,cuñada,sister-in-law,noun (F),139992
 2026-04-03,de la mano,hand in hand,phrase,2056
+2026-04-03,descargar,to unload,transitive verb,177376
 2026-04-03,desembocadura,mouth,noun (F),5456
+2026-04-03,desmoronarse,to crumble,pronominal verb,3848
 2026-04-03,echarle un vistazo a,to take a look at,intransitive verb phrase,0
 2026-04-03,equipaje,luggage,noun (M),109846
 2026-04-03,foráneo,foreign,adjective,4584
@@ -1152,6 +1170,7 @@
 2026-04-07,descortés,impolite,adjective,18586
 2026-04-07,educado,polite,adjective,35934
 2026-04-07,esmerarse,to go to a lot of trouble,pronominal verb,3195
+2026-04-07,fogata,bonfire,noun (F),50863
 2026-04-07,forjar,to forge,transitive verb,15379
 2026-04-07,harto,extremely,adverb,76909
 2026-04-07,recinto,enclosure,noun (M),25375
@@ -1396,6 +1415,7 @@
 2026-06-03,bahía,bay,noun (F),47151
 2026-06-03,chaleco,vest,noun (M),64938
 2026-06-03,goma,rubber,noun (F),75170
+2026-06-03,grúa,crane,noun (F),42680
 2026-06-03,toma,shot,noun (F),139625
 2026-06-04,seda,silk,noun (F),104501
 2026-06-04,víveres,supplies,plural noun (M),10533
@@ -1476,6 +1496,7 @@
 2026-06-20,rasgar,to rip,transitive verb,18336
 2026-06-20,viñedo,vineyard,noun (M),9020
 2026-06-21,alojarse,to stay,pronominal verb,51846
+2026-06-21,juntar,to put together,transitive verb,73713
 2026-06-21,marcapasos,pacemaker,noun (M),5727
 2026-06-21,paja,straw,noun (F),57512
 2026-06-21,recoger,to gather,transitive verb,405814
@@ -1483,6 +1504,7 @@
 2026-06-24,cédula,identity card,noun (F),25264
 2026-06-24,demandar,to sue,transitive verb,16883
 2026-06-25,asilo de ancianos,retirement home,noun (M),1975
+2026-06-25,cercano,close,adjective,47564
 2026-06-25,tapón,traffic jam,noun (M),16478
 2026-06-26,agridulce,bittersweet,adjective,13823
 2026-06-26,en breve,shortly,phrase,4372
@@ -1605,6 +1627,7 @@
 2026-08-17,púa,spine,noun (F),10268
 2026-08-17,sigiloso,stealthy,adjective,9302
 2026-08-18,acero,steel,noun (M),59196
+2026-08-19,víveres,provisions,plural noun (M),10533
 2026-08-20,hocico,snout,noun (M),24773
 2026-08-21,alcachofa,artichoke,noun (F),21255
 2026-08-21,marea,tide,noun (F),29085
@@ -1663,3 +1686,5 @@
 2026-10-10,multitud,crowd,noun (F),15894
 2026-10-10,rasguñar,to scratch,transitive verb,3854
 2026-10-10,roble,oak,noun (M),32110
+2026-10-11,alzar la voz,to speak up,intransitive verb phrase,0
+2026-10-11,esgrima,fencing,noun (F),13716

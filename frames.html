@@ -505,6 +505,8 @@ async function loadSRSModel() {
 }
 
 function nnForward(features, model) {
+  // Ensemble: average the members' predictions (retrain.py trains several to keep nightly updates stable)
+  if (model.ensemble?.length) return model.ensemble.reduce((s, m) => s + nnForward(features, m), 0) / model.ensemble.length;
   let a = features.map((v, i) => (v - model.scaler_mean[i]) / model.scaler_std[i]);
   for (let l = 0; l < model.weights.length; l++) {
     const W = model.weights[l], b = model.biases[l];

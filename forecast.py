@@ -120,6 +120,8 @@ def load_deck() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 def nn_forward(X: np.ndarray, model: dict) -> np.ndarray:
+    if model.get("ensemble"):
+        return np.mean([nn_forward(X, m) for m in model["ensemble"]], axis=0)
     a = (X - np.array(model["scaler_mean"])) / np.array(model["scaler_std"])
     n_layers = len(model["weights"])
     for i, (W, b) in enumerate(zip(model["weights"], model["biases"])):

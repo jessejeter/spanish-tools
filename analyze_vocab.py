@@ -542,7 +542,10 @@ Return JSON with exactly these keys:
   patterns, a short template in Spanish, e.g. "llevar + [tiempo] + gerundio".
 - "english": a concise, natural English equivalent, like a dictionary headword
   ("to take a dip", "hill"). For grammar patterns, the English template
-  ("to have been doing (for [time])").
+  ("to have been doing (for [time])"). If the note draws a distinction or nuance
+  (often why the learner wrote it: telling near-synonyms apart), keep it here in a
+  short parenthetical, e.g. "to delay (take longer than expected)" vs "to delay (make
+  late, set back)", so the card is distinguishable from a plain dictionary entry.
 - "part_of_speech": one of: noun (M), noun (F), adjective, adverb, transitive verb,
   intransitive verb, pronominal verb, reflexive verb, phrase, conjunction, preposition,
   interjection, grammar pattern.
@@ -564,20 +567,14 @@ Spanish."""
 
 
 def inbox_duplicate(entry, sheet1_rows):
-    """Sheet1 already has this meaning: same Spanish (ignoring optional parts like
-    "(a algo)") with the same or near-identical English."""
-    from difflib import SequenceMatcher
-
-    def base(spanish):
-        return re.sub(r"\s*\([^)]*\)", "", spanish).strip().lower()
-
-    spanish, english = base(entry["spanish"]), entry["english"].strip().lower()
+    """Sheet1 already has exactly this card: same Spanish and same English (the
+    card's identity in the app). Anything else is kept: an Inbox note is usually
+    written on purpose, often to capture nuance a plain entry lacks."""
+    spanish, english = entry["spanish"].strip().lower(), entry["english"].strip().lower()
     for row in sheet1_rows[1:]:
         row = row + [""] * (3 - len(row))
-        if base(row[1]) == spanish:
-            other = row[2].strip().lower()
-            if other == english or SequenceMatcher(None, other, english).ratio() >= 0.75:
-                return f"{row[1].strip()}: {row[2].strip()}"
+        if row[1].strip().lower() == spanish and row[2].strip().lower() == english:
+            return f"{row[1].strip()}: {row[2].strip()}"
     return None
 
 

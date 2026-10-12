@@ -78,69 +78,57 @@ def scrape_spanishdict_list(url: str) -> list[dict]:
         print(f"Warning: Failed to parse JSON from {url}: {e}")
         return []
 
-    words = []
-
     # Data is at top level (not nested under props.pageProps)
     word_list = data.get("words", [])
     senses = data.get("senses", [])
     translations = data.get("translations", [])
-
     vocab_translations = data.get("vocabTranslations", [])
 
-    # Build lookup: senseId -> translation (text and id)
-    sense_to_translation = {}
-    for t in translations:
-        sense_to_translation[t.get("senseId")] = {
-            "text": t.get("translation"),
-            "id": t.get("id"),
-        }
+    words_by_id = {w.get("id"): w for w in word_list}
+    senses_by_id = {s.get("id"): s for s in senses}
+    translations_by_id = {t.get("id"): t for t in translations}
 
-    # Build lookup: translationId -> createdAt date
-    translation_to_date = {}
-    for vt in vocab_translations:
-        created = vt.get("createdAt", "")
+    def make_row(word_entry, sense, trans, created):
+        date_added = ""
         if created:
             dt = datetime.fromisoformat(created.replace('Z', '+00:00'))
-            translation_to_date[vt.get("translationId")] = dt.astimezone(EASTERN).strftime('%Y-%m-%d')
-
-    # Build lookup: wordId -> sense data
-    word_to_sense = {}
-    for s in senses:
-        word_to_sense[s.get("wordId")] = {
-            "id": s.get("id"),
-            "contextEn": s.get("contextEn", ""),
-            "contextEs": s.get("contextEs", ""),
-            "partOfSpeechId": s.get("partOfSpeechId", ""),
-            "gender": s.get("gender", ""),
-        }
-
-    # Extract each word with its translation, metadata, and date added
-    for word_entry in word_list:
-        word_id = word_entry.get("id")
-        spanish = word_entry.get("source")
-
-        if not spanish:
-            continue
-
-        sense = word_to_sense.get(word_id, {})
-        sense_id = sense.get("id")
-        trans = sense_to_translation.get(sense_id, {}) if sense_id else {}
-        english = trans.get("text", "")
-        date_added = translation_to_date.get(trans.get("id"), "")
-
+            date_added = dt.astimezone(EASTERN).strftime('%Y-%m-%d')
         pos = PART_OF_SPEECH.get(sense.get("partOfSpeechId"), str(sense.get("partOfSpeechId", "")))
         gender = sense.get("gender", "")
         if gender:
             pos = f"{pos} ({gender})"
-
-        words.append({
-            "spanish": spanish,
-            "english": english,
+        return {
+            "spanish": word_entry.get("source"),
+            "english": trans.get("translation", ""),
             "context_en": sense.get("contextEn", ""),
             "part_of_speech": pos,
             "popularity": word_entry.get("popularity", ""),
             "date_added": date_added,
-        })
+        }
+
+    # One row per saved list entry. A word saved with two meanings has two
+    # entries pointing at different translations of the same word; walking
+    # words instead (one sense per word) kept only one of them.
+    words = []
+    seen = set()
+    for vt in vocab_translations:
+        trans = translations_by_id.get(vt.get("translationId"))
+        sense = senses_by_id.get(trans.get("senseId")) if trans else None
+        word_entry = words_by_id.get(sense.get("wordId")) if sense else None
+        if not word_entry or not word_entry.get("source") or trans.get("id") in seen:
+            continue
+        seen.add(trans.get("id"))
+        words.append(make_row(word_entry, sense, trans, vt.get("createdAt", "")))
+
+    # Fallback for any word the entries above didn't reach (or a page without them)
+    covered = {sense.get("wordId") for sense in senses if any(
+        t.get("senseId") == sense.get("id") and t.get("id") in seen for t in translations)}
+    for word_entry in word_list:
+        if word_entry.get("id") in covered or not word_entry.get("source"):
+            continue
+        sense = next((sn for sn in senses if sn.get("wordId") == word_entry.get("id")), {})
+        trans = next((t for t in translations if t.get("senseId") == sense.get("id")), {}) if sense else {}
+        words.append(make_row(word_entry, sense, trans, ""))
 
     return words
 

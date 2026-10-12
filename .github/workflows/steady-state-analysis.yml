@@ -15,4 +15,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install requests numpy scikit-learn
-      - run: pip install google-auth google-api-python-client && python dryrun_meanings.py
+      - run: pip install google-auth google-api-python-client && python check_sheet1.py

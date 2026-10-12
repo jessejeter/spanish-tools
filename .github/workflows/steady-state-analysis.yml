@@ -11,4 +11,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install requests numpy scikit-learn
-      - run: python steady_state.py
+      - run: python diag_today.py

@@ -249,7 +249,9 @@ a.stat-card:active { opacity: 0.6; }
     <div class="chart-wrap"><canvas id="chart-forecast" height="180"></canvas></div>
     <div id="forecast-foot" style="font-size:10px;color:var(--text-dim);opacity:0.7;margin-top:6px;line-height:1.6;">
       Budget: <input id="forecast-budget" type="number" min="1" max="60" step="0.5"
-        style="width:44px;background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,0.15);border-radius:4px;padding:1px 4px;font-size:11px;"> min/day (avg over next 7 days)
+        style="width:44px;background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,0.15);border-radius:4px;padding:1px 4px;font-size:11px;"> min/day (avg over next 7 days) ·
+      then <input id="forecast-rate" type="number" min="0" max="50" step="0.5"
+        style="width:40px;background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,0.15);border-radius:4px;padding:1px 4px;font-size:11px;"> words/day from tomorrow
       <span id="forecast-meta"></span>
     </div>
   </div>
@@ -388,6 +390,8 @@ function getPRecall(data) {
 
 // ---- Review time forecast (precomputed daily by forecast.py) ----
 const FORECAST_BUDGET_KEY = 'spanish-forecast-budget-min';
+const FORECAST_RATE_KEY = 'spanish-forecast-daily-rate';
+const DEFAULT_DAILY_RATE = 1.5;
 
 async function loadForecast() {
   try {
@@ -397,21 +401,47 @@ async function loadForecast() {
   return null;
 }
 
-// Cards are scheduled independently, so N new cards add N × the per-card
-// expected minutes (and variance) on top of the no-new-cards baseline.
-function forecastWithN(fc, n) {
+// Cards are scheduled independently, so load adds up linearly: N words marked
+// today add N × the per-word curve, and `rate` words marked on each later day
+// add `rate` × that curve shifted to each day (a word marked on day j costs
+// per_new_card[d - j] on day d).
+function forecastWithN(fc, n, rate = 0) {
+  const e = fc.per_new_card.mean, v = fc.per_new_card.var;
+  let futMean = 0, futVar = 0;  // running sums of e[0..i-1], v[0..i-1]
   return fc.days.map((_, i) => {
-    const mean = fc.base.mean[i] + n * fc.per_new_card.mean[i];
-    const sd = Math.sqrt(fc.base.var[i] + n * fc.per_new_card.var[i]);
+    if (i > 0) { futMean += e[i - 1]; futVar += v[i - 1]; }
+    const mean = fc.base.mean[i] + n * e[i] + rate * futMean;
+    const sd = Math.sqrt(fc.base.var[i] + n * v[i] + rate * futVar);
     return { mean, lo: Math.max(0, mean - 1.2816 * sd), hi: mean + 1.2816 * sd };
   });
 }
 
-function maxNewCards(fc, budget) {
-  const sum = a => a.slice(1, 8).reduce((s, v) => s + v, 0);
-  const perCard = sum(fc.per_new_card.mean);
+function maxNewCards(fc, budget, rate = 0) {
+  const week = rows => rows.slice(1, 8).reduce((s, r) => s + r.mean, 0);
+  const perCard = fc.per_new_card.mean.slice(1, 8).reduce((s, x) => s + x, 0);
   if (perCard <= 0) return 0;
-  return Math.max(0, Math.floor((7 * budget - sum(fc.base.mean)) / perCard));
+  return Math.max(0, Math.floor((7 * budget - week(forecastWithN(fc, 0, rate))) / perCard));
+}
+
+// GitHub runs the scheduled job hours late, so in the morning the newest
+// forecast is often yesterday's. Shift it forward rather than going blank:
+// drop the elapsed days from the deck baseline (the per-word curve is by
+// word age, so it just gets shorter).
+const MAX_FORECAST_ROLL_DAYS = 3;
+function rollForecast(fc, k) {
+  const L = fc.days.length - k;
+  const cut = obj => Object.fromEntries(Object.entries(obj).map(([key, a]) => [key, a.slice(0, L)]));
+  const shift = obj => Object.fromEntries(Object.entries(obj).map(([key, a]) => [key, a.slice(k)]));
+  return {
+    ...fc,
+    days: fc.days.slice(k),
+    today: fc.days[k],
+    base: shift(fc.base),
+    per_new_card: cut(fc.per_new_card),
+    sheets_today_at_run: 0,  // every word marked in Sheets today came after this run
+    today_breakdown: null,
+    rolled_from: fc.today,
+  };
 }
 
 function renderForecast(fc, { sheetsToday, todaySecs }) {
@@ -422,10 +452,16 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
     canvas.parentElement.style.display = 'none';
     return;
   }
+  const ageDays = Math.round((new Date(todayStr()) - new Date(fc.today)) / 86400000);
+  if (ageDays > 0 && ageDays <= MAX_FORECAST_ROLL_DAYS) fc = rollForecast(fc, ageDays);
   const budgetInput = document.getElementById('forecast-budget');
   let budget = fc.default_budget_min;
   try { budget = parseFloat(localStorage.getItem(FORECAST_BUDGET_KEY)) || budget; } catch {}
   budgetInput.value = budget;
+  const rateInput = document.getElementById('forecast-rate');
+  let rate = DEFAULT_DAILY_RATE;
+  try { const r = parseFloat(localStorage.getItem(FORECAST_RATE_KEY)); if (r >= 0) rate = r; } catch {}
+  rateInput.value = rate;
 
   const fmtMin = m => {
     const mins = Math.floor(m), secs = Math.round((m - mins) * 60);
@@ -441,11 +477,12 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
   let chart = null;
   function draw() {
     // Words already marked in Sheets since the forecast ran use up today's allowance
-    const nTotal = maxNewCards(fc, budget);
+    const nTotal = maxNewCards(fc, budget, rate);
     const usedSinceRun = isToday ? Math.max(0, sheetsToday - fc.sheets_today_at_run) : 0;
     const nMore = Math.max(0, nTotal - usedSinceRun);
     const nPlot = isToday ? nTotal : 0;
-    const withN = forecastWithN(fc, nPlot);
+    const withN = forecastWithN(fc, nPlot, rate);
+    const planLabel = `Add ${nPlot} today, then ${rate}/day`;
     const avg = (a, i, j) => a.slice(i, j).reduce((s, v) => s + v.mean, 0) / (j - i);
     const none = forecastWithN(fc, 0);
     const weekAvg = avg(withN, 1, 8);
@@ -456,15 +493,15 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
     if (!isToday) {
       lines.push(`<span style="color:var(--yellow)">Forecast is from ${fc.today} — it refreshes each morning.</span>`);
     } else if (nMore > 0) {
-      lines.push(`<span style="color:var(--green);font-size:14px;">Review up to <b>${nMore}</b> more word${nMore === 1 ? '' : 's'} in Sheets today</span>`);
+      lines.push(`<span style="color:var(--green);font-size:14px;">Review up to <b>${nMore}</b> more word${nMore === 1 ? '' : 's'} in Sheets today</span>` +
+        (rate > 0 ? ` <span style="font-size:11px">(then ${rate}/day)</span>` : ''));
     } else {
-      lines.push(`<span style="color:var(--accent);font-size:14px;">Hold off on new words today</span> — next week is already at ~${fmtMin(avg(forecastWithN(fc, 0), 1, 8))}/day`);
+      lines.push(`<span style="color:var(--accent);font-size:14px;">Hold off on new words today</span> — next week is already at ~${fmtMin(avg(forecastWithN(fc, 0, rate), 1, 8))}/day` +
+        (rate > 0 ? ` with ${rate}/day from tomorrow` : ''));
     }
     if (isToday) {
       lines.push(`Today: ${fmtMin(todaySecs / 60)} so far of ~${fmtMin(fc.base.mean[0])} expected`);
-      lines.push(nPlot > 0
-        ? `Next 7 days: ~${fmtMin(weekAvgNone)}/day adding none · ~${fmtMin(weekAvg)}/day adding ${nPlot}`
-        : `Next 7 days: ~${fmtMin(weekAvgNone)}/day adding none`);
+      lines.push(`Next 7 days: ~${fmtMin(weekAvgNone)}/day adding none · ~${fmtMin(weekAvg)}/day if you ${planLabel.toLowerCase()}`);
       const tb = fc.today_breakdown;
       if (tb) {
         const parts = [`~${Math.round(tb.repeat_reviews)} reviews`];
@@ -476,7 +513,10 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
       }
     }
     if (laterOver.length) {
-      lines.push(`<span style="color:var(--yellow)">⚠ A later week is forecast above ${budget} min/day</span>`);
+      lines.push(`<span style="color:var(--yellow)">⚠ Keeping up ${rate}/day, a later week goes above ${budget} min/day</span>`);
+    }
+    if (fc.rolled_from) {
+      lines.push(`<span style="font-size:11px;color:var(--yellow);opacity:0.85">Based on the ${fc.rolled_from.slice(5)} forecast — today's update usually lands by early afternoon</span>`);
     }
     callout.innerHTML = lines.join('<br>');
 
@@ -489,10 +529,10 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
       ...band('band-none', none, 'rgba(240,192,64,0.12)'),
       { label: 'Add none', data: none.map(x => x.mean), borderColor: '#f0c040', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
     ];
-    if (nPlot > 0) {
+    if (nPlot > 0 || rate > 0) {
       datasets.push(
         ...band('band-n', withN, 'rgba(78,204,163,0.12)'),
-        { label: `Add ${nPlot} today`, data: withN.map(x => x.mean), borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+        { label: planLabel, data: withN.map(x => x.mean), borderColor: '#4ecca3', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
       );
     }
     datasets.push({ label: 'Budget', data: labels.map(() => budget), borderColor: '#e94560', borderDash: [6, 4], backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0 });
@@ -524,6 +564,13 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
     });
   }
 
+  rateInput.addEventListener('change', () => {
+    const v = parseFloat(rateInput.value);
+    if (!(v >= 0)) return;
+    rate = v;
+    try { localStorage.setItem(FORECAST_RATE_KEY, String(v)); } catch {}
+    draw();
+  });
   budgetInput.addEventListener('change', () => {
     const v = parseFloat(budgetInput.value);
     if (!(v > 0)) return;

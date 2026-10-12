@@ -460,6 +460,38 @@ def make_other_translations_prompt(spanish, english, sense='', trans_ctx=''):
     )
 
 
+def find_new_sheet1_rows(csv_rows, sheet1_rows):
+    """
+    CSV rows (one per saved SpanishDict meaning) that aren't in Sheet1 yet.
+
+    A word can have several meanings, so a row is already present when Sheet1
+    has the same Spanish word with the same English, or with the same date
+    added (the same saved meaning whose English was edited in the sheet).
+    CSV columns: [Date Added, Spanish, English, Part of Speech, Popularity]
+    """
+    def norm(v):
+        return (v or "").strip().lower()
+
+    existing_meanings, existing_dates = set(), set()
+    for row in sheet1_rows[1:]:  # skip header
+        if len(row) >= 2 and row[1]:
+            spanish = norm(row[1])
+            existing_meanings.add((spanish, norm(row[2]) if len(row) > 2 else ""))
+            if row[0]:
+                existing_dates.add((spanish, parse_date(row[0])))
+
+    new_rows = []
+    for row in csv_rows:
+        if len(row) < 3 or not row[1].strip():
+            continue
+        meaning = (norm(row[1]), norm(row[2]))
+        if meaning in existing_meanings or (row[0] and (meaning[0], parse_date(row[0])) in existing_dates):
+            continue
+        existing_meanings.add(meaning)  # the same meaning saved in two lists
+        new_rows.append(row)
+    return new_rows
+
+
 def sync_csv_to_sheet1(service):
     """Sync new words from the CSV to Sheet1, appending any missing entries."""
     if not CSV_FILE.exists():
@@ -474,17 +506,7 @@ def sync_csv_to_sheet1(service):
 
     # Read current Sheet1
     sheet1_rows = read_sheet(service, "Sheet1!A:E")
-    existing_words = set()
-    for row in sheet1_rows[1:]:  # skip header
-        if len(row) >= 2 and row[1]:
-            existing_words.add(row[1].strip())
-
-    # Find new words in CSV not in Sheet1
-    # CSV columns: [Date Added, Spanish, English, Part of Speech, Popularity]
-    new_rows = []
-    for row in csv_rows:
-        if len(row) >= 2 and row[1].strip() not in existing_words:
-            new_rows.append(row)
+    new_rows = find_new_sheet1_rows(csv_rows, sheet1_rows)
 
     if not new_rows:
         print("Sheet1 is up to date with CSV")

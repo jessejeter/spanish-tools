@@ -10,17 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: analysis/steady-state
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install requests numpy scikit-learn
-      - run: python build_srs_keys.py && head -c 400 srs_keys.json && echo
-      - name: Commit srs_keys.json to main
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add srs_keys.json
-          git commit -m "Record which meaning owns each legacy review record"
-          git pull --rebase origin main
-          git push origin HEAD:main
+      - run: pip install google-auth google-api-python-client && python dryrun_meanings.py

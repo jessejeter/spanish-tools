@@ -34,6 +34,7 @@ import numpy as np
 
 OUTPUT_DIR = Path(__file__).parent
 MODEL_PATH = OUTPUT_DIR / "vocab_model.json"
+SRS_KEYS_PATH = OUTPUT_DIR / "srs_keys.json"
 OUTPUT_PATH = OUTPUT_DIR / "forecast.json"
 
 TZ = ZoneInfo("America/New_York")
@@ -87,15 +88,26 @@ def fetch_sheet(name: str) -> list[list[str]]:
             for row in table["rows"]]
 
 
-def load_deck() -> dict[str, str]:
-    """Cards in the app: spanish -> date marked reviewed in Sheets (mirrors index.html)."""
+def card_id(spanish: str, english: str) -> str:
+    """Same as cardId() in index.html."""
+    return f"{spanish.strip()}: {english.strip()}".lower()
+
+
+def load_deck(srs: dict) -> dict[str, str]:
+    """
+    Cards in the app: review-history key -> date marked reviewed in Sheets
+    (mirrors index.html). Each meaning has its own history keyed by
+    card_id(); the meaning that owned a word's older Spanish-only record
+    keeps that key, as pinned in srs_keys.json.
+    """
     s1, s2 = fetch_sheet("Sheet1"), fetch_sheet("Sheet2")
+    owners = json.loads(SRS_KEYS_PATH.read_text()) if SRS_KEYS_PATH.exists() else {}
     s2map = {}
     for row in s2:
         key = (row[0] if row else "").split("\n")[0].strip().lower()
         if key:
             s2map[key] = row
-    deck = {}
+    cards = []  # (spanish, card id, date reviewed in Sheets)
     for row in s1:
         row = row + [""] * (7 - len(row))
         spanish, english = row[1].strip(), row[2].strip()
@@ -109,9 +121,20 @@ def load_deck() -> dict[str, str]:
         s2row = s2row + [""] * (4 - len(s2row))
         if s2row[2].upper() != "TRUE":
             continue
-        date_rev = parse_mdy(s2row[3])
-        if spanish not in deck or date_rev < deck[spanish]:
-            deck[spanish] = date_rev
+        cards.append((spanish, card_id(spanish, english), parse_mdy(s2row[3])))
+
+    ids_by_spanish = defaultdict(list)
+    for spanish, cid, _ in cards:
+        ids_by_spanish[spanish].append(cid)
+    deck = {}
+    for spanish, cid, date_rev in cards:
+        ids = ids_by_spanish[spanish]
+        owner = owners.get(spanish)
+        if owner not in ids:
+            owner = ids[0] if spanish in srs else None
+        srs_key = spanish if owner == cid else cid
+        if srs_key not in deck or date_rev < deck[srs_key]:
+            deck[srs_key] = date_rev
     return deck
 
 
@@ -357,7 +380,7 @@ def main():
     deck = None
     if not args.no_sheets:
         try:
-            deck = load_deck()
+            deck = load_deck(srs)
             print(f"Deck from Sheets: {len(deck)} cards")
         except Exception as e:
             print(f"WARNING: could not load Sheets ({e}); using cards with review history only")

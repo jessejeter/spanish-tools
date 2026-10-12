@@ -470,12 +470,42 @@ async function loadSRS() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
 }
 
+// Review history is keyed per card ("spanish: english") so each meaning of a
+// word has its own; the meaning that owned a word's older Spanish-keyed record
+// keeps it (srs_keys.json pins which one). Same as index.html.
+function cardId(spanish, english) {
+  return `${spanish.trim()}: ${english.trim()}`.toLowerCase();
+}
+
+async function loadSrsOwners() {
+  try {
+    const res = await fetch('srs_keys.json');
+    if (res.ok) return await res.json();
+  } catch {}
+  return {};
+}
+
+function assignSrsKeys(cards, srs, owners) {
+  const idsBySpanish = {};
+  for (const c of cards) {
+    c.id = cardId(c.spanish, c.english);
+    (idsBySpanish[c.spanish] = idsBySpanish[c.spanish] || []).push(c.id);
+  }
+  for (const c of cards) {
+    const ids = idsBySpanish[c.spanish];
+    let owner = owners[c.spanish];
+    if (!ids.includes(owner)) owner = srs[c.spanish] ? ids[0] : undefined;
+    c.key = owner === c.id ? c.spanish : c.id;
+  }
+}
+
 // ---- Data loading ----
 async function loadData() {
-  const [[s1, s2], srsLoaded, model] = await Promise.all([
+  const [[s1, s2], srsLoaded, model, srsOwners] = await Promise.all([
     Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
     loadSRS(),
     fetch('vocab_model.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    loadSrsOwners(),
   ]);
 
   srs = srsLoaded;
@@ -510,6 +540,7 @@ async function loadData() {
     });
   }
 
+  assignSrsKeys(cards, srs, srsOwners);
   allCards = cards.sort((a, b) => a.spanish.localeCompare(b.spanish));
 }
 
@@ -529,10 +560,10 @@ function applyFilter(cards) {
     const now = Date.now();
     return cards
       .filter(c => {
-        const data = srs[c.spanish];
+        const data = srs[c.key];
         return data && !data.retired && (data.reviews || []).length > 0;
       })
-      .map(c => ({ c, p: computeP(srs[c.spanish].reviews, Date.now()) }))
+      .map(c => ({ c, p: computeP(srs[c.key].reviews, Date.now()) }))
       .filter(({ p }) => p !== null && p < 0.9)
       .sort((a, b) => a.p - b.p)
       .map(({ c }) => c);
@@ -540,13 +571,13 @@ function applyFilter(cards) {
 
   if (activeFilter === 'new') {
     return cards.filter(c => {
-      const data = srs[c.spanish];
+      const data = srs[c.key];
       return !data?.retired && !(data?.reviews?.length);
     });
   }
 
   if (activeFilter === 'retired') {
-    return cards.filter(c => srs[c.spanish]?.retired);
+    return cards.filter(c => srs[c.key]?.retired);
   }
 
   return cards;
@@ -591,7 +622,7 @@ function renderResults(query) {
   }
 
   for (const card of matches) {
-    const data = srs[card.spanish];
+    const data = srs[card.key];
     const reviews = data?.reviews || [];
     const p = reviews.length ? computeP(reviews, Date.now()) : null;
     const pStr = p !== null ? `${Math.round(p * 100)}%` : '—';
@@ -687,13 +718,13 @@ function updateRetireButton(retired) {
 
 function toggleRetire() {
   if (!detailCard) return;
-  const entry = srs[detailCard.spanish] || {};
+  const entry = srs[detailCard.key] || {};
   const nowRetired = !entry.retired;
-  srs[detailCard.spanish] = { ...entry, retired: nowRetired };
+  srs[detailCard.key] = { ...entry, retired: nowRetired };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(srs));
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
-    body: JSON.stringify([{ word: detailCard.spanish, ...srs[detailCard.spanish] }]),
+    body: JSON.stringify([{ word: detailCard.key, ...srs[detailCard.key] }]),
   }).catch(e => console.warn('SRS remote save failed:', e));
   updateRetireButton(nowRetired);
 }
@@ -712,7 +743,7 @@ function showDetail(card) {
   document.getElementById('results').style.display = 'none';
   detailCard = card;
 
-  const data = srs[card.spanish];
+  const data = srs[card.key];
   const reviews = data?.reviews || [];
   const p = reviews.length ? computeP(reviews, Date.now()) : null;
   const now = Date.now();

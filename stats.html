@@ -618,6 +618,35 @@ function renderForecast(fc, { sheetsToday, todaySecs }) {
   draw();
 }
 
+// Review history is keyed per card ("spanish: english") so each meaning of a
+// word has its own; the meaning that owned a word's older Spanish-keyed record
+// keeps it (srs_keys.json pins which one). Same as index.html.
+function cardId(spanish, english) {
+  return `${spanish.trim()}: ${english.trim()}`.toLowerCase();
+}
+
+async function loadSrsOwners() {
+  try {
+    const res = await fetch('srs_keys.json');
+    if (res.ok) return await res.json();
+  } catch {}
+  return {};
+}
+
+function assignSrsKeys(cards, srs, owners) {
+  const idsBySpanish = {};
+  for (const c of cards) {
+    c.id = cardId(c.spanish, c.english);
+    (idsBySpanish[c.spanish] = idsBySpanish[c.spanish] || []).push(c.id);
+  }
+  for (const c of cards) {
+    const ids = idsBySpanish[c.spanish];
+    let owner = owners[c.spanish];
+    if (!ids.includes(owner)) owner = srs[c.spanish] ? ids[0] : undefined;
+    c.key = owner === c.id ? c.spanish : c.id;
+  }
+}
+
 // ---- Load SRS ----
 async function loadSRS() {
   if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
@@ -967,11 +996,12 @@ async function main() {
     if (typeof Chart === 'undefined') {
       throw new Error('Failed to load charting library. Check your connection and retry.');
     }
-    const [[s1, s2], srs, , forecast] = await Promise.all([
+    const [[s1, s2], srs, , forecast, srsOwners] = await Promise.all([
       Promise.all([fetchSheet(SHEET1_URL), fetchSheet(SHEET2_URL)]),
       loadSRS(),
       loadSRSModel(),
       loadForecast(),
+      loadSrsOwners(),
     ]);
 
     // Build s2Map (same logic as index.html)
@@ -999,11 +1029,13 @@ async function main() {
       const isReviewed = (s2row[2] || '').toUpperCase() === 'TRUE';
 
       if (isReviewed) {
-        reviewed.push({ spanish, dateAdded, dateReviewed: parseMDY(s2row[3] || '') });
+        reviewed.push({ spanish, english, dateAdded, dateReviewed: parseMDY(s2row[3] || '') });
       } else {
         pending.push({ spanish, dateAdded });
       }
     }
+
+    assignSrsKeys(reviewed, srs, srsOwners);
 
     // ---- Stats ----
     const totalCards = reviewed.length;
@@ -1012,7 +1044,7 @@ async function main() {
 
     let lowRecall = 0, sheetsToday = 0, newInApp = 0, activeCount = 0, retiredCount = 0;
     for (const card of reviewed) {
-      const data = srs[card.spanish];
+      const data = srs[card.key];
       if (data?.retired) { retiredCount++; continue; }
       if (!data?.reviews?.length) {
         if (card.dateReviewed === today) { sheetsToday++; } else { newInApp++; }
@@ -1418,7 +1450,7 @@ async function main() {
       const pValues = [];
       let under80 = 0;
       for (const card of reviewed) {
-        const data = srs[card.spanish];
+        const data = srs[card.key];
         if (!data || data.retired || !(data.reviews || []).filter(r => new Date(r.date) < refTime).length) continue;
         const p = getPRecallAt(data, refTime);
         if (p === null) continue;
@@ -1453,7 +1485,7 @@ async function main() {
     // Median P(recall) shift from start of day to now
     const deltas = [];
     for (const card of reviewed) {
-      const data = srs[card.spanish];
+      const data = srs[card.key];
       if (!data || data.retired) continue;
       const pNow = getPRecallAt(data, Date.now());
       const pSod = getPRecallAt(data, startOfDay);

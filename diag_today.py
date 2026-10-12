@@ -29,3 +29,14 @@ print("no-history deck cards (sample):", [(c, deck[c]) for c in nohist[:15]])
 t = 20.68 / 24
 p = F.p_recall(model, t, st["last"], st["first"], st["nc"], st["nw"])
 print("seen & below 90%:", int(((n > 0) & (p < 0.9)).sum()))
+
+due = (n > 0) & (p < 0.9)
+t2 = t + 3 / 1440
+for label, dc, dw in [("after a PASS", 1, 0), ("after 2 passes", 2, 0), ("after a FAIL", 0, 1)]:
+    q = F.p_recall(model, t2, np.full(len(p), t), st["first"], st["nc"] + dc, st["nw"] + dw)
+    print(f"due cards still <90% {label}: {int((due & (q < 0.9)).sum())} of {int(due.sum())}")
+acc = st["nc"] / np.maximum(n, 1)
+print("due cards accuracy quartiles:", np.percentile(acc[due], [25, 50, 75]).round(2), "| all cards median acc:", round(float(np.median(acc[n > 0])), 2))
+print("due cards n reviews quartiles:", np.percentile(n[due], [25, 50, 75]))
+_, oc = F.simulate(model, st, np.zeros(len(cards), int), 1, 20.68, 0.84, 50, np.random.default_rng(1))
+print("simulated day-0 repeat reviews (no factor):", oc.mean())

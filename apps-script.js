@@ -14,6 +14,17 @@
  *
  * Re-deploying after edits: Deploy > Manage deployments > edit the existing one.
  *
+ * Nightly sync trigger (optional, recommended):
+ *   GitHub starts scheduled workflows hours late, so the sheet may not have
+ *   re-sorted by morning. Apps Script time triggers fire on time, so this one
+ *   kicks off the sync workflow at 3-4 AM ET.
+ *   1. Create a fine-grained GitHub token for jessejeter/spanish-tools with
+ *      "Actions: Read and write" permission
+ *   2. Project Settings (gear icon) > Script properties > add
+ *      GITHUB_TOKEN = <the token>
+ *   3. In the editor, select installNightlySyncTrigger and click Run (once),
+ *      then authorize. Run triggerNightlySync to test it immediately.
+ *
  * SRS sheet column layout (v3):
  *   A: word
  *   B: data (JSON object — {reviews, right, wrong, firstReview})
@@ -78,6 +89,38 @@ function onEdit(e) {
   } else {
     sheet.getRange(row, 4).clearContent();
   }
+}
+
+const SYNC_WORKFLOW_URL =
+  'https://api.github.com/repos/jessejeter/spanish-tools/actions/workflows/sync_vocab.yml/dispatches';
+
+// Start the GitHub "Sync SpanishDict Vocabulary" workflow (sync, AI analysis, sort).
+function triggerNightlySync() {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  if (!token) throw new Error('Add GITHUB_TOKEN under Project Settings > Script properties');
+  const res = UrlFetchApp.fetch(SYNC_WORKFLOW_URL, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' },
+    payload: JSON.stringify({ ref: 'main' }),
+    muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 204) {
+    throw new Error(`Workflow dispatch failed (${res.getResponseCode()}): ${res.getContentText()}`);
+  }
+}
+
+// Run once by hand: (re)installs the daily 3 AM ET trigger for triggerNightlySync.
+function installNightlySyncTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'triggerNightlySync')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('triggerNightlySync')
+    .timeBased()
+    .everyDays(1)
+    .atHour(3)
+    .inTimezone('America/New_York')
+    .create();
 }
 
 function getSheet(name) {

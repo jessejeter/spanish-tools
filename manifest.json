@@ -1,6 +1,6 @@
 {
   "name": "Spanish Flashcards",
-  "short_name": "Español",
+  "short_name": "SFA",
   "description": "Spaced repetition Spanish vocabulary flashcards",
   "start_url": "home.html",
   "display": "standalone",

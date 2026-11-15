@@ -2,28 +2,65 @@ name: Sync SpanishDict Vocabulary
 
 on:
   schedule:
-    # 3 AM Eastern (8 AM UTC). During daylight saving time this runs at 4 AM EDT.
-    - cron: "0 8 * * *"
-  workflow_dispatch: # Allow manual runs from GitHub UI
+    # GitHub starts scheduled runs hours late (a single "0 8 * * *" slot was
+    # starting at 10 AM-2 PM ET, so the sheet hadn't re-sorted by morning) and
+    # silently drops some slots. Ask several times overnight at an off-peak
+    # minute (05:43-10:43 UTC = 12:43-5:43 AM EST / 1:43-6:43 AM EDT); the first
+    # slot to start does the work, the rest see today's run and stop.
+    # For a reliable start time, the Apps Script triggerNightlySync() function
+    # also dispatches this workflow at 3 AM ET (see apps-script.js).
+    - cron: "43 5-10 * * *"
+  workflow_dispatch: # Manual runs and the Apps Script nightly trigger
+
+# Overlapping slots queue behind each other instead of re-sorting the sheet twice at once
+concurrency:
+  group: sync-vocab
+
+permissions:
+  contents: write # push spanishdict_vocab.csv
+  actions: read   # guard step: look up today's earlier runs
 
 jobs:
   sync:
     runs-on: ubuntu-latest
 
     steps:
+      # Don't re-sort the sheet mid-day while it's being reviewed: scheduled runs
+      # stop once any run (scheduled or dispatched) has succeeded today (ET).
+      - name: Skip if today's sync already happened
+        id: guard
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TODAY=$(TZ=America/New_York date +%F)
+          for t in $(gh run list -R "$GITHUB_REPOSITORY" --workflow sync_vocab.yml \
+                       --status success --limit 20 --json createdAt --jq '.[].createdAt'); do
+            if [ "$(TZ=America/New_York date -d "$t" +%F)" = "$TODAY" ]; then
+              echo "Sync already ran successfully on $TODAY; nothing to do"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.skip != 'true'
 
       - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
         with:
           python-version: "3.12"
 
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: pip install requests
 
       - name: Run vocabulary sync
+        if: steps.guard.outputs.skip != 'true'
         run: python sync_vocab.py
 
       - name: Commit and push if changed
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -35,9 +72,11 @@ jobs:
           git push
 
       - name: Install analysis dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: pip install google-auth google-api-python-client
 
       - name: Run AI analysis
+        if: steps.guard.outputs.skip != 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}

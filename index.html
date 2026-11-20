@@ -90,9 +90,9 @@ body {
   width: 100%;
   margin: 0 auto;
   padding: 16px;
-  /* Keep content out from under the iOS status bar, which blurs whatever
-     sits beneath it (strongest at the top edge) */
-  padding-top: calc(16px + env(safe-area-inset-top));
+  /* iOS 26 home-screen apps blur a band along the top of the screen that
+     reaches ~24px below the status bar; start content below that band */
+  padding-top: calc(32px + env(safe-area-inset-top));
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
   gap: 16px;
@@ -113,7 +113,7 @@ body {
 
 .btn-home {
   position: fixed;
-  top: calc(12px + env(safe-area-inset-top));
+  top: calc(30px + env(safe-area-inset-top));
   right: max(14px, env(safe-area-inset-right));
   font-size: 18px;
   color: var(--text-dim);

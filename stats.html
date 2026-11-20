@@ -222,6 +222,14 @@ a.stat-card:active { opacity: 0.6; }
       <div class="stat-value" id="s-avg7">—</div>
       <div class="stat-label">Avg Reviews / Day (7d)</div>
     </div>
+    <div class="stat-card">
+      <div class="stat-value" id="s-total-reviews">—</div>
+      <div class="stat-label">Total Reviews</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="s-total-time">—</div>
+      <div class="stat-label">Total Time in App</div>
+    </div>
   </div>
 
   <div class="chart-section">
@@ -1074,6 +1082,29 @@ async function main() {
     }
     const avg7 = count7 > 0 ? Math.round(sum7 / 7) : 0;
 
+    // All-time vocab reviews (every grade, first reviews and retired words included)
+    let totalReviews = 0;
+    for (const [word, data] of Object.entries(srs)) {
+      if (word.startsWith('__') || word.startsWith('frame:')) continue;
+      totalReviews += (data.reviews || []).length;
+    }
+
+    // All-time seconds in app, summed across devices (same source as the time chart)
+    let totalSecs = 0;
+    const timerEntries = srs['__timer_history__']?.reviews;
+    if (timerEntries?.length) {
+      for (const e of timerEntries) {
+        if (!e.deviceId || !e.data) continue;
+        for (const secs of Object.values(e.data)) totalSecs += secs;
+      }
+    } else {
+      try {
+        for (const secs of Object.values(JSON.parse(localStorage.getItem('spanish-flashcards-time-history')) || {})) totalSecs += secs;
+      } catch {}
+    }
+    const totalMins = Math.round(totalSecs / 60);
+    const totalTimeStr = totalMins >= 60 ? `${Math.floor(totalMins / 60)}h ${totalMins % 60}m` : `${totalMins}m`;
+
     // ---- Render stats ----
     document.getElementById('s-total-added').textContent = totalCards + totalPending;
     document.getElementById('s-active').textContent = activeCount;
@@ -1083,6 +1114,8 @@ async function main() {
     document.getElementById('s-low-recall').textContent = lowRecall;
     document.getElementById('s-retired').textContent = retiredCount;
     document.getElementById('s-avg7').textContent = avg7;
+    document.getElementById('s-total-reviews').textContent = totalReviews.toLocaleString();
+    document.getElementById('s-total-time').textContent = totalTimeStr;
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('stats').style.display = 'block';

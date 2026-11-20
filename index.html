@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SFA">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -90,6 +90,11 @@ body {
   width: 100%;
   margin: 0 auto;
   padding: 16px;
+  /* Keep content out from under the iOS status bar, which blurs whatever
+     sits beneath it (strongest at the top edge) */
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
   gap: 16px;
 }
 
@@ -108,8 +113,8 @@ body {
 
 .btn-home {
   position: fixed;
-  top: 12px;
-  right: 14px;
+  top: calc(12px + env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
   font-size: 18px;
   color: var(--text-dim);
   opacity: 0.6;
@@ -1082,7 +1087,7 @@ async function loadSRSModel() {
     if (daysSince > 2) {
       setInfo(`⚠ Model stale — last trained ${dateStr} (${Math.floor(daysSince)}d ago)`, 'var(--yellow)', true);
     } else {
-      setInfo(`Model: ${dateStr} · ${fetched.n_samples.toLocaleString()} samples`);
+      setInfo(`Model: ${dateStr}`);
     }
     return;
   }

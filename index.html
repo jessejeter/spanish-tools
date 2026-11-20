@@ -118,6 +118,8 @@ body {
 }
 .btn-home:hover { opacity: 0.85; }
 #session-stats { font-size: 12px; }
+#waa-toggle { cursor: pointer; }
+#waa-toggle.hidden-waa { color: var(--text-dim); opacity: 0.45; }
 
 /* Card */
 .card-container {
@@ -867,6 +869,7 @@ function computeSessionStats() {
   return { newDone, newRemaining };
 }
 
+let waaRevealed = false;
 function updateCounter() {
   const count = getTodayCount();
   document.getElementById('counter').textContent =
@@ -885,14 +888,25 @@ function updateCounter() {
   const inHoldout = c => recentFails[c.key] && now - recentFails[c.key] < 2 * 60 * 1000;
   const holdout = allCards.filter(inHoldout).length;
   const under90 = allCards.filter(c => !srs[c.key]?.retired && c.dateReviewed !== todayStr() && srs[c.key]?.reviews?.length > 0 && !inHoldout(c) && getPRecall(srs[c.key]) < 0.9).length;
-  const todayWAA = getDailyWAA()[todayStr()] || 0;
-  const waaSign = todayWAA >= 0 ? '+' : '';
-  const waaColor = todayWAA >= 0 ? 'var(--green)' : 'var(--red)';
   parts.push(`<90%: ${under90}`);
   parts.push(`Holdout: ${holdout}`);
-  parts.push(`<span style="color:${waaColor}">Daily WAA: ${waaSign}${todayWAA.toFixed(1)}</span>`);
+  // Daily WAA stays hidden (greyed) so it can't be played to; a tap shows it
+  // until the next card is graded.
+  if (waaRevealed) {
+    const todayWAA = getDailyWAA()[todayStr()] || 0;
+    const waaSign = todayWAA >= 0 ? '+' : '';
+    const waaColor = todayWAA >= 0 ? 'var(--green)' : 'var(--red)';
+    parts.push(`<span id="waa-toggle" style="color:${waaColor}" title="Tap to hide">Daily WAA: ${waaSign}${todayWAA.toFixed(1)}</span>`);
+  } else {
+    parts.push(`<span id="waa-toggle" class="hidden-waa" title="Tap to show">Daily WAA: ••</span>`);
+  }
+  waaRevealed = false;
 
   document.getElementById('session-stats').innerHTML = parts.join(' · ');
+  document.getElementById('waa-toggle').onclick = e => {
+    waaRevealed = e.currentTarget.classList.contains('hidden-waa');
+    updateCounter();
+  };
 }
 
 // ---- SRS Storage ----

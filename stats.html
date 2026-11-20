@@ -187,12 +187,20 @@ a.stat-card:active { opacity: 0.6; }
 
   <div class="stats-grid">
     <div class="stat-card">
+      <div class="stat-value" id="s-total-reviews">—</div>
+      <div class="stat-label">Total Reviews</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="s-total-time">—</div>
+      <div class="stat-label">Total Time in App</div>
+    </div>
+    <div class="stat-card">
       <div class="stat-value good" id="s-total-added">—</div>
-      <div class="stat-label">Total</div>
+      <div class="stat-label">Total Cards</div>
     </div>
     <a href="search.html" class="stat-card">
       <div class="stat-value good" id="s-active">—</div>
-      <div class="stat-label">Active</div>
+      <div class="stat-label">Active Cards</div>
     </a>
     <div class="stat-card">
       <div class="stat-value dim" id="s-spanishdict">?</div>
@@ -221,14 +229,6 @@ a.stat-card:active { opacity: 0.6; }
     <div class="stat-card">
       <div class="stat-value" id="s-avg7">—</div>
       <div class="stat-label">Avg Reviews / Day (7d)</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="s-total-reviews">—</div>
-      <div class="stat-label">Total Reviews</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="s-total-time">—</div>
-      <div class="stat-label">Total Time in App</div>
     </div>
   </div>
 
@@ -1089,19 +1089,20 @@ async function main() {
       totalReviews += (data.reviews || []).length;
     }
 
-    // All-time seconds in app, summed across devices (same source as the time chart)
-    let totalSecs = 0;
-    const timerEntries = srs['__timer_history__']?.reviews;
-    if (timerEntries?.length) {
-      for (const e of timerEntries) {
-        if (!e.deviceId || !e.data) continue;
-        for (const secs of Object.values(e.data)) totalSecs += secs;
-      }
-    } else {
-      try {
-        for (const secs of Object.values(JSON.parse(localStorage.getItem('spanish-flashcards-time-history')) || {})) totalSecs += secs;
-      } catch {}
+    // All-time seconds in the vocab panel (its timer is the only one), summed
+    // across devices. This device's local history can be ahead of the server
+    // (e.g. today's time not pushed yet), so take the larger value per day.
+    const secsByDate = {};
+    for (const e of srs['__timer_history__']?.reviews || []) {
+      if (!e.deviceId || !e.data) continue;
+      for (const [d, secs] of Object.entries(e.data)) secsByDate[d] = (secsByDate[d] || 0) + secs;
     }
+    try {
+      for (const [d, secs] of Object.entries(JSON.parse(localStorage.getItem('spanish-flashcards-time-history')) || {})) {
+        secsByDate[d] = Math.max(secsByDate[d] || 0, secs);
+      }
+    } catch {}
+    const totalSecs = Object.values(secsByDate).reduce((a, b) => a + b, 0);
     const totalMins = Math.round(totalSecs / 60);
     const totalTimeStr = totalMins >= 60 ? `${Math.floor(totalMins / 60)}h ${totalMins % 60}m` : `${totalMins}m`;
 

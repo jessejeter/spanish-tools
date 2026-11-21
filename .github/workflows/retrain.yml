@@ -6,7 +6,16 @@ on:
     # so ask several times overnight at an off-peak minute (05:17-10:17 UTC =
     # 1:17-6:17 AM EDT / 12:17-5:17 AM EST). The first slot to actually start
     # does the work; the rest see today's forecast and stop.
+    # These slots are only a fallback: GitHub runs this once a day around
+    # 7-9 AM ET at best. The reliable start is the trigger below.
     - cron: "17 5-10 * * *"
+  # The Apps Script nightly trigger dispatches the vocab sync at 3 AM ET, and
+  # that dispatch starts on time; retrain as soon as it finishes so the new
+  # model is up before the morning session.
+  workflow_run:
+    workflows: ["Sync SpanishDict Vocabulary"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch: # Allow manual runs from GitHub UI
 
 # Overlapping slots queue behind each other instead of both retraining
@@ -22,7 +31,9 @@ jobs:
 
       - name: Skip if today's run already happened
         id: guard
-        if: github.event_name == 'schedule'
+        # Manual runs always retrain; scheduled and sync-triggered runs stop once
+        # today's model exists (the late scheduled sync also triggers this)
+        if: github.event_name != 'workflow_dispatch'
         run: |
           TODAY=$(TZ=America/New_York date +%F)
           if [ -f forecast.json ] && grep -q "\"today\": \"$TODAY\"" forecast.json; then

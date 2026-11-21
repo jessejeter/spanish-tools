@@ -135,6 +135,8 @@ body {
   perspective: 1000px;
   cursor: pointer;
   min-height: 0;
+  /* Sits the card lower, within thumb reach (the card centers in what's left) */
+  padding-top: 76px;
 }
 
 .card {
@@ -256,7 +258,7 @@ body {
 .grade-buttons {
   display: flex;
   gap: 12px;
-  padding-bottom: env(safe-area-inset-bottom, 8px);
+  padding-bottom: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
@@ -288,7 +290,7 @@ body {
 .retire-row {
   display: flex;
   justify-content: center;
-  padding-bottom: env(safe-area-inset-bottom, 4px);
+  padding-bottom: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;

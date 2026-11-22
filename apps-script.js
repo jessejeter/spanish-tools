@@ -123,10 +123,10 @@ function installNightlySyncTrigger() {
     .create();
 }
 
-// ---- Unsynced SpanishDict words (stats page "Unsynced Today" tile) ----
+// ---- Unsynced SpanishDict words (stats page "Unsynced" tile) ----
 // Same lists as sync_vocab.py. The nightly sync copies them into Sheet1;
-// anything saved since then shows up here, so you can see how many new words
-// you've added today before tomorrow's cards are set.
+// this returns every list entry Sheet1 doesn't have yet, i.e. what the next
+// sync will add, so new-word adds can be kept in check during the day.
 const SPANISHDICT_LISTS = [
   'https://www.spanishdict.com/lists/8562777/jesse35630s-misc',
   'https://www.spanishdict.com/lists/8543367/jesse35630s-nouns',
@@ -134,15 +134,16 @@ const SPANISHDICT_LISTS = [
   'https://www.spanishdict.com/lists/8545180/jesse35630s-adjectives',
   'https://www.spanishdict.com/lists/8545326/jesse35630s-phrases',
 ];
-const UNSYNCED_WINDOW_HOURS = 48; // older misses are deliberate Sheet1 deletions, not pending syncs
 
 function unsyncedSpanishDict() {
   const tz = 'America/New_York';
   const ymd = d => Utilities.formatDate(d, tz, 'yyyy-MM-dd');
   const norm = v => String(v || '').trim().toLowerCase();
 
-  // Sheet1: A date added, B Spanish, C English (same match rule as the sync,
-  // minus its fuzzy-English fallback): same Spanish and same English or date
+  // Sheet1: A date added, B Spanish, C English. Same match rule as the sync
+  // (find_new_sheet1_rows in analyze_vocab.py): same Spanish and either the
+  // same English, the same date added, or a date within a day and
+  // near-identical English (older rows were dated in UTC)
   const s1 = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
   const existing = {};
   if (s1.getLastRow() > 1) {
@@ -153,8 +154,7 @@ function unsyncedSpanishDict() {
     }
   }
 
-  const since = Date.now() - UNSYNCED_WINDOW_HOURS * 3600 * 1000;
-  const today = ymd(new Date());
+  const dayDiff = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400000;
   const responses = UrlFetchApp.fetchAll(SPANISHDICT_LISTS.map(url => ({
     url, muteHttpExceptions: true,
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -169,18 +169,40 @@ function unsyncedSpanishDict() {
     const wordsById = byId(data.words), sensesById = byId(data.senses), transById = byId(data.translations);
     for (const vt of data.vocabTranslations || []) {
       const created = vt.createdAt ? new Date(vt.createdAt) : null;
-      if (!created || created.getTime() < since) continue;
       const trans = transById[vt.translationId];
       const sense = trans && sensesById[trans.senseId];
       const word = sense && wordsById[sense.wordId];
       if (!word || !word.source || seen[trans.id]) continue;
       seen[trans.id] = true;
-      const spanish = norm(word.source), english = norm(trans.translation), added = ymd(created);
-      const present = (existing[spanish] || []).some(e => e.english === english || e.date === added);
-      if (!present) words.push({ spanish: word.source, english: trans.translation || '', added });
+      const spanish = norm(word.source), english = norm(trans.translation), added = created ? ymd(created) : '';
+      const present = (existing[spanish] || []).some(e => e.english === english
+        || (added && e.date === added)
+        || (added && e.date && dayDiff(added, e.date) <= 1 && similarity(english, e.english) >= 0.75));
+      if (!present) {
+        words.push({ spanish: word.source, english: trans.translation || '', added });
+        (existing[spanish] = existing[spanish] || []).push({ english, date: added });  // same meaning in two lists
+      }
     }
   });
-  return { count: words.filter(w => w.added === today).length, words, today };
+  words.sort((a, b) => b.added.localeCompare(a.added));
+  return { count: words.length, words };
+}
+
+// 0-1 likeness of two strings, close to Python's difflib ratio that the sync
+// uses: 2 x (longest common subsequence) / (total length)
+function similarity(a, b) {
+  if (a === b) return 1;
+  const m = a.length, n = b.length;
+  if (!m || !n) return 0;
+  let prev = new Array(n + 1).fill(0);
+  for (let i = 1; i <= m; i++) {
+    const cur = [0];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1]);
+    }
+    prev = cur;
+  }
+  return 2 * prev[n] / (m + n);
 }
 
 function getSheet(name) {

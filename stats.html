@@ -204,7 +204,7 @@ a.stat-card:active { opacity: 0.6; }
     </a>
     <div class="stat-card">
       <div class="stat-value dim" id="s-spanishdict">…</div>
-      <div class="stat-label">Unsynced Today</div>
+      <div class="stat-label">Unsynced</div>
     </div>
     <div class="stat-card">
       <div class="stat-value dim" id="s-pending">—</div>
@@ -656,7 +656,7 @@ function assignSrsKeys(cards, srs, owners) {
   }
 }
 
-// ---- Words saved in SpanishDict today that the nightly sync hasn't added yet ----
+// ---- Words in the SpanishDict lists that the nightly sync hasn't added to Sheet1 yet ----
 async function loadUnsynced() {
   const el = document.getElementById('s-spanishdict');
   try {
@@ -667,7 +667,7 @@ async function loadUnsynced() {
       throw new Error(d.error || 'Apps Script needs redeploying (see apps-script.js)');
     }
     el.textContent = d.count;
-    el.title = d.words.filter(w => w.added === d.today).map(w => `${w.spanish}: ${w.english}`).join('\n') || 'Nothing unsynced';
+    el.title = d.words.map(w => `${w.spanish}: ${w.english}`).join('\n') || 'Nothing unsynced';
   } catch (e) {
     el.textContent = '?';
     el.title = String(e.message || e);

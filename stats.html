@@ -203,8 +203,8 @@ a.stat-card:active { opacity: 0.6; }
       <div class="stat-label">Active Cards</div>
     </a>
     <div class="stat-card">
-      <div class="stat-value dim" id="s-spanishdict">?</div>
-      <div class="stat-label">SpanishDict</div>
+      <div class="stat-value dim" id="s-spanishdict">…</div>
+      <div class="stat-label">Unsynced Today</div>
     </div>
     <div class="stat-card">
       <div class="stat-value dim" id="s-pending">—</div>
@@ -653,6 +653,25 @@ function assignSrsKeys(cards, srs, owners) {
     let owner = owners[c.spanish];
     if (!ids.includes(owner)) owner = srs[c.spanish] ? ids[0] : undefined;
     c.key = owner === c.id ? c.spanish : c.id;
+  }
+}
+
+// ---- Words saved in SpanishDict today that the nightly sync hasn't added yet ----
+async function loadUnsynced() {
+  const el = document.getElementById('s-spanishdict');
+  try {
+    const res = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=unsynced', {}, 30000);
+    const d = await res.json();
+    if (typeof d.count !== 'number') {
+      // An older Apps Script deployment ignores the action and returns SRS data
+      throw new Error(d.error || 'Apps Script needs redeploying (see apps-script.js)');
+    }
+    el.textContent = d.count;
+    el.title = d.words.filter(w => w.added === d.today).map(w => `${w.spanish}: ${w.english}`).join('\n') || 'Nothing unsynced';
+  } catch (e) {
+    el.textContent = '?';
+    el.title = String(e.message || e);
+    console.warn('Unsynced check failed:', e);
   }
 }
 
@@ -1115,6 +1134,7 @@ async function main() {
     document.getElementById('s-low-recall').textContent = lowRecall;
     document.getElementById('s-retired').textContent = retiredCount;
     document.getElementById('s-avg7').textContent = avg7;
+    loadUnsynced();  // slow (Apps Script fetches SpanishDict), so it fills in on its own
     document.getElementById('s-total-reviews').textContent = totalReviews.toLocaleString();
     document.getElementById('s-total-time').textContent = totalTimeStr;
 

@@ -123,6 +123,66 @@ function installNightlySyncTrigger() {
     .create();
 }
 
+// ---- Unsynced SpanishDict words (stats page "Unsynced Today" tile) ----
+// Same lists as sync_vocab.py. The nightly sync copies them into Sheet1;
+// anything saved since then shows up here, so you can see how many new words
+// you've added today before tomorrow's cards are set.
+const SPANISHDICT_LISTS = [
+  'https://www.spanishdict.com/lists/8562777/jesse35630s-misc',
+  'https://www.spanishdict.com/lists/8543367/jesse35630s-nouns',
+  'https://www.spanishdict.com/lists/8524520/jesse35630s-verbs',
+  'https://www.spanishdict.com/lists/8545180/jesse35630s-adjectives',
+  'https://www.spanishdict.com/lists/8545326/jesse35630s-phrases',
+];
+const UNSYNCED_WINDOW_HOURS = 48; // older misses are deliberate Sheet1 deletions, not pending syncs
+
+function unsyncedSpanishDict() {
+  const tz = 'America/New_York';
+  const ymd = d => Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+  const norm = v => String(v || '').trim().toLowerCase();
+
+  // Sheet1: A date added, B Spanish, C English (same match rule as the sync,
+  // minus its fuzzy-English fallback): same Spanish and same English or date
+  const s1 = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  const existing = {};
+  if (s1.getLastRow() > 1) {
+    for (const [date, spanish, english] of s1.getRange(2, 1, s1.getLastRow() - 1, 3).getValues()) {
+      if (!spanish) continue;
+      const d = date instanceof Date ? ymd(date) : String(date || '');
+      (existing[norm(spanish)] = existing[norm(spanish)] || []).push({ english: norm(english), date: d });
+    }
+  }
+
+  const since = Date.now() - UNSYNCED_WINDOW_HOURS * 3600 * 1000;
+  const today = ymd(new Date());
+  const responses = UrlFetchApp.fetchAll(SPANISHDICT_LISTS.map(url => ({
+    url, muteHttpExceptions: true,
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+  })));
+  const words = [], seen = {};
+  responses.forEach((res, i) => {
+    if (res.getResponseCode() !== 200) throw new Error(`SpanishDict list ${i + 1}: HTTP ${res.getResponseCode()}`);
+    const m = res.getContentText().match(/window\.SD_COMPONENT_DATA\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/);
+    if (!m) throw new Error(`SpanishDict list ${i + 1}: page format changed`);
+    const data = JSON.parse(m[1]);
+    const byId = arr => Object.fromEntries((arr || []).map(x => [x.id, x]));
+    const wordsById = byId(data.words), sensesById = byId(data.senses), transById = byId(data.translations);
+    for (const vt of data.vocabTranslations || []) {
+      const created = vt.createdAt ? new Date(vt.createdAt) : null;
+      if (!created || created.getTime() < since) continue;
+      const trans = transById[vt.translationId];
+      const sense = trans && sensesById[trans.senseId];
+      const word = sense && wordsById[sense.wordId];
+      if (!word || !word.source || seen[trans.id]) continue;
+      seen[trans.id] = true;
+      const spanish = norm(word.source), english = norm(trans.translation), added = ymd(created);
+      const present = (existing[spanish] || []).some(e => e.english === english || e.date === added);
+      if (!present) words.push({ spanish: word.source, english: trans.translation || '', added });
+    }
+  });
+  return { count: words.filter(w => w.added === today).length, words, today };
+}
+
 function getSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = name || SRS_SHEET_NAME;
@@ -138,7 +198,13 @@ function fmtDate(v) {
 
 // GET — return all SRS data as JSON
 // Optional query param ?sheet=FramesSRS to read from a different sheet
+// ?action=unsynced instead returns SpanishDict words not yet in Sheet1
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'unsynced') {
+    let result;
+    try { result = unsyncedSpanishDict(); } catch (err) { result = { error: String(err) }; }
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  }
   const sheet = getSheet(e && e.parameter && e.parameter.sheet);
   if (sheet.getLastRow() === 0) {
     return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);

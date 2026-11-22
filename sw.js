@@ -1,4 +1,4 @@
-const CACHE = 'spanish-flashcards-610cc70';
+const CACHE = 'spanish-flashcards-0b8fc7c';
 const STATIC = ['/', '/index.html', '/manifest.json', '/icon-180.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

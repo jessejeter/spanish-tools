@@ -123,7 +123,7 @@ function installNightlySyncTrigger() {
     .create();
 }
 
-// ---- Unsynced SpanishDict words (stats page "Unsynced" tile) ----
+// ---- Newly added words not yet in the sheet (stats page "Newly Added" tile) ----
 // Same lists as sync_vocab.py. The nightly sync copies them into Sheet1;
 // this returns every list entry Sheet1 doesn't have yet, i.e. what the next
 // sync will add, so new-word adds can be kept in check during the day.
@@ -185,7 +185,20 @@ function unsyncedSpanishDict() {
     }
   });
   words.sort((a, b) => b.added.localeCompare(a.added));
-  return { count: words.length, words };
+  const inbox = pendingInboxNotes();
+  return { count: words.length + inbox.length, words, inbox };
+}
+
+// Inbox notes the nightly job hasn't turned into cards yet. Same rule as
+// process_inbox in analyze_vocab.py: no Processed date (col D), or the note
+// was edited after processing (col E holds the note as processed).
+function pendingInboxNotes() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Inbox');
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues()
+    .map(([note, , , processed, processedNote]) => [String(note || '').trim(), processed, String(processedNote || '').trim()])
+    .filter(([note, processed, processedNote]) => note && (!processed || (processedNote && note !== processedNote)))
+    .map(([note]) => note);
 }
 
 // 0-1 likeness of two strings, close to Python's difflib ratio that the sync

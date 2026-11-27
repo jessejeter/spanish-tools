@@ -34,7 +34,7 @@ except ImportError:
 
 APPS_SCRIPT_URL = (
     "https://script.google.com/macros/s/"
-    "AKfycbwbrp0yQwWy4TXLeG0h2NAhW3l0gS4ECGzHhkHJ2XxO2joA7-ShSkTR0Ax2tXbclNW7/exec"
+    "AKfycbx30d0mWQenHRSmE3i0KTvG0rCg9cxbWiLuT_XlLxYAFk4hGHdXikoB1SGx-t5QPQsg/exec"
 )
 
 OUTPUT_DIR = Path(__file__).parent

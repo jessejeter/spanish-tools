@@ -272,6 +272,12 @@ a.stat-card:active { opacity: 0.6; }
   </div>
 
   <div class="chart-section">
+    <div class="chart-title">New Card First-Review Success</div>
+    <div id="first-review-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
+    <div class="chart-wrap"><canvas id="chart-first-review" height="160"></canvas></div>
+  </div>
+
+  <div class="chart-section">
     <div class="chart-title">P(Recall) Distribution</div>
     <div id="recall-dist-callout" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;"></div>
     <div class="chart-wrap"><canvas id="chart-recall-dist" height="180"></canvas></div>
@@ -1493,6 +1499,126 @@ async function main() {
     } else {
       document.getElementById('chart-waa').parentElement.insertAdjacentHTML(
         'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No WAA history yet — start reviewing cards to track performance.</p>'
+      );
+    }
+
+    // ---- Chart: New card first-review success ----
+    // A card's first review is the first entry in its review history (retired
+    // words included, since they were new once too). Bucketed by the day it
+    // happened; the running average is a Gaussian-weighted pass rate
+    // (sum w*passes / sum w*total), so busy days count for more than a day
+    // with one new card, and gap days contribute nothing rather than 0%.
+    const firstByDate = {};  // date -> { n, pass }
+    for (const [word, data] of Object.entries(srs)) {
+      if (word.startsWith('__') || word.startsWith('frame:')) continue;
+      const revs = (data.reviews || []).filter(r => r?.date);
+      if (!revs.length) continue;
+      const first = revs.reduce((a, b) => (new Date(b.date) < new Date(a.date) ? b : a));
+      const d = first.date.slice(0, 10);
+      const b = firstByDate[d] || (firstByDate[d] = { n: 0, pass: 0 });
+      b.n++;
+      if (first.passed) b.pass++;
+    }
+
+    if (Object.keys(firstByDate).length > 0) {
+      const frLabels = dateRange(globalStart, today);
+      const frPct = frLabels.map(d => firstByDate[d] ? 100 * firstByDate[d].pass / firstByDate[d].n : null);
+      const FR_SIGMA = 7;
+      const frTimes = frLabels.map(d => new Date(d).getTime());
+      const firstFrTime = Math.min(...Object.keys(firstByDate).map(d => new Date(d).getTime()));
+      const frSmoothed = frLabels.map((d, i) => {
+        if (frTimes[i] < firstFrTime) return null;
+        let sw = 0, sp = 0;
+        frLabels.forEach((d2, j) => {
+          const b = firstByDate[d2];
+          if (!b) return;
+          const diff = (frTimes[i] - frTimes[j]) / 86400000;
+          const w = Math.exp(-(diff * diff) / (2 * FR_SIGMA * FR_SIGMA));
+          sw += w * b.n;
+          sp += w * b.pass;
+        });
+        return sw > 0 ? 100 * sp / sw : null;
+      });
+
+      const windowRate = days => {
+        let n = 0, pass = 0;
+        for (const d of frLabels.slice(-days)) {
+          const b = firstByDate[d];
+          if (b) { n += b.n; pass += b.pass; }
+        }
+        return { n, pass };
+      };
+      const fmtRate = ({ n, pass }) => n ? `${Math.round(100 * pass / n)}% (${pass}/${n})` : '—';
+      const allRate = Object.values(firstByDate).reduce((a, b) => ({ n: a.n + b.n, pass: a.pass + b.pass }), { n: 0, pass: 0 });
+      document.getElementById('first-review-callout').textContent =
+        `7d: ${fmtRate(windowRate(7))} · 30d: ${fmtRate(windowRate(30))} · All-time: ${fmtRate(allRate)}`;
+
+      const frCanvas = document.getElementById('chart-first-review');
+      const frChart = new Chart(frCanvas, {
+        type: 'bar',
+        data: {
+          labels: frLabels.slice(),
+          datasets: [
+            {
+              type: 'bar',
+              data: frPct.slice(),
+              backgroundColor: 'rgba(78,204,163,0.3)',
+              borderColor: 'rgba(78,204,163,0.55)',
+              borderWidth: 1,
+              borderRadius: 2,
+              label: 'Daily',
+            },
+            {
+              type: 'line',
+              data: frSmoothed.slice(),
+              borderColor: '#e94560',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.4,
+              spanGaps: true,
+              label: `Gaussian avg (σ=${FR_SIGMA})`,
+            },
+          ],
+        },
+        options: deepMerge(CHART_OPTS_BASE, {
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: { boxWidth: 12, padding: 8, color: '#8888aa', font: { size: 10 } },
+            },
+            tooltip: {
+              callbacks: {
+                title: items => items[0]?.label || '',
+                label: item => {
+                  if (item.raw == null) return null;
+                  if (item.datasetIndex === 0) {
+                    const b = firstByDate[item.label];
+                    return ` Daily: ${Math.round(item.raw)}% (${b.pass}/${b.n})`;
+                  }
+                  return ` Avg: ${item.raw.toFixed(1)}%`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { grid: { drawOnChartArea: false }, ticks: { autoSkip: false, callback(v, i) { return monthTickIndices(this.chart.data.labels).has(i) ? this.chart.data.labels[i]?.slice(0, 7) : null; } } },
+            y: { min: 0, max: 100, ticks: { maxTicksLimit: 5, callback: v => `${v}%` } },
+          },
+        }),
+        plugins: [makeMonthLinesPlugin()],
+      });
+      attachZoomGestures(frCanvas, makeZoomWindow(frLabels.length, (start, end) => {
+        frChart.data.labels = frLabels.slice(start, end);
+        frChart.data.datasets[0].data = frPct.slice(start, end);
+        frChart.data.datasets[1].data = frSmoothed.slice(start, end);
+        frChart.update('none');
+      }));
+    } else {
+      document.getElementById('chart-first-review').parentElement.insertAdjacentHTML(
+        'beforeend', '<p style="color:var(--text-dim);font-size:13px;padding:8px 0;">No first reviews yet.</p>'
       );
     }
 

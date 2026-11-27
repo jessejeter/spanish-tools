@@ -123,6 +123,101 @@ function installNightlySyncTrigger() {
     .create();
 }
 
+// ---- Newly added words not yet in the sheet (stats page "Newly Added" tile) ----
+// Same lists as sync_vocab.py. The nightly sync copies them into Sheet1;
+// this returns every list entry Sheet1 doesn't have yet, i.e. what the next
+// sync will add, so new-word adds can be kept in check during the day.
+const SPANISHDICT_LISTS = [
+  'https://www.spanishdict.com/lists/8562777/jesse35630s-misc',
+  'https://www.spanishdict.com/lists/8543367/jesse35630s-nouns',
+  'https://www.spanishdict.com/lists/8524520/jesse35630s-verbs',
+  'https://www.spanishdict.com/lists/8545180/jesse35630s-adjectives',
+  'https://www.spanishdict.com/lists/8545326/jesse35630s-phrases',
+];
+
+function unsyncedSpanishDict() {
+  const tz = 'America/New_York';
+  const ymd = d => Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+  const norm = v => String(v || '').trim().toLowerCase();
+
+  // Sheet1: A date added, B Spanish, C English. Same match rule as the sync
+  // (find_new_sheet1_rows in analyze_vocab.py): same Spanish and either the
+  // same English, the same date added, or a date within a day and
+  // near-identical English (older rows were dated in UTC)
+  const s1 = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  const existing = {};
+  if (s1.getLastRow() > 1) {
+    for (const [date, spanish, english] of s1.getRange(2, 1, s1.getLastRow() - 1, 3).getValues()) {
+      if (!spanish) continue;
+      const d = date instanceof Date ? ymd(date) : String(date || '');
+      (existing[norm(spanish)] = existing[norm(spanish)] || []).push({ english: norm(english), date: d });
+    }
+  }
+
+  const dayDiff = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400000;
+  const responses = UrlFetchApp.fetchAll(SPANISHDICT_LISTS.map(url => ({
+    url, muteHttpExceptions: true,
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+  })));
+  const words = [], seen = {};
+  responses.forEach((res, i) => {
+    if (res.getResponseCode() !== 200) throw new Error(`SpanishDict list ${i + 1}: HTTP ${res.getResponseCode()}`);
+    const m = res.getContentText().match(/window\.SD_COMPONENT_DATA\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/);
+    if (!m) throw new Error(`SpanishDict list ${i + 1}: page format changed`);
+    const data = JSON.parse(m[1]);
+    const byId = arr => Object.fromEntries((arr || []).map(x => [x.id, x]));
+    const wordsById = byId(data.words), sensesById = byId(data.senses), transById = byId(data.translations);
+    for (const vt of data.vocabTranslations || []) {
+      const created = vt.createdAt ? new Date(vt.createdAt) : null;
+      const trans = transById[vt.translationId];
+      const sense = trans && sensesById[trans.senseId];
+      const word = sense && wordsById[sense.wordId];
+      if (!word || !word.source || seen[trans.id]) continue;
+      seen[trans.id] = true;
+      const spanish = norm(word.source), english = norm(trans.translation), added = created ? ymd(created) : '';
+      const present = (existing[spanish] || []).some(e => e.english === english
+        || (added && e.date === added)
+        || (added && e.date && dayDiff(added, e.date) <= 1 && similarity(english, e.english) >= 0.75));
+      if (!present) {
+        words.push({ spanish: word.source, english: trans.translation || '', added });
+        (existing[spanish] = existing[spanish] || []).push({ english, date: added });  // same meaning in two lists
+      }
+    }
+  });
+  words.sort((a, b) => b.added.localeCompare(a.added));
+  const inbox = pendingInboxNotes();
+  return { count: words.length + inbox.length, words, inbox };
+}
+
+// Inbox notes the nightly job hasn't turned into cards yet. Same rule as
+// process_inbox in analyze_vocab.py: no Processed date (col D), or the note
+// was edited after processing (col E holds the note as processed).
+function pendingInboxNotes() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Inbox');
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues()
+    .map(([note, , , processed, processedNote]) => [String(note || '').trim(), processed, String(processedNote || '').trim()])
+    .filter(([note, processed, processedNote]) => note && (!processed || (processedNote && note !== processedNote)))
+    .map(([note]) => note);
+}
+
+// 0-1 likeness of two strings, close to Python's difflib ratio that the sync
+// uses: 2 x (longest common subsequence) / (total length)
+function similarity(a, b) {
+  if (a === b) return 1;
+  const m = a.length, n = b.length;
+  if (!m || !n) return 0;
+  let prev = new Array(n + 1).fill(0);
+  for (let i = 1; i <= m; i++) {
+    const cur = [0];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1]);
+    }
+    prev = cur;
+  }
+  return 2 * prev[n] / (m + n);
+}
+
 function getSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = name || SRS_SHEET_NAME;
@@ -138,7 +233,13 @@ function fmtDate(v) {
 
 // GET — return all SRS data as JSON
 // Optional query param ?sheet=FramesSRS to read from a different sheet
+// ?action=unsynced instead returns SpanishDict words not yet in Sheet1
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'unsynced') {
+    let result;
+    try { result = unsyncedSpanishDict(); } catch (err) { result = { error: String(err) }; }
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  }
   const sheet = getSheet(e && e.parameter && e.parameter.sheet);
   if (sheet.getLastRow() === 0) {
     return ContentService.createTextOutput('{}').setMimeType(ContentService.MimeType.JSON);
